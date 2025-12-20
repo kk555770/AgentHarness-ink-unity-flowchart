@@ -189,3 +189,18 @@ The following packages were added:
   com.unity.modules.vr@1.0.0
   com.unity.modules.wind@1.0.0
   com.unity.modules.xr@1.0.0
+
+=== Fri Dec 19 23:06:33 2025
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were added:
+  com.unity.modules.adaptiveperformance@1.0.0
+  com.unity.modules.vectorgraphics@1.0.0
+  com.unity.ai.navigation@2.0.9
+  com.unity.modules.accessibility@1.0.0
+  com.unity.multiplayer.center@1.0.1
+The following packages were removed:
+  com.unity.package-manager-ui@2.2.0
+  com.unity.textmeshpro@3.0.6
