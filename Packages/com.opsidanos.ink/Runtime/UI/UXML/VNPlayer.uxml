@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:Style src="../USS/VNPlayer.uss" />
+  <ui:VisualElement name="VNRoot" class="vn-root">
+    <ui:VisualElement name="DialoguePanel" class="vn-dialogue-panel">
+      <ui:Label name="SpeakerLabel" class="vn-speaker" text="" />
+      <ui:Label name="BodyLabel" class="vn-body" text="" />
+      <ui:Button name="ContinueButton" class="vn-continue" text="下一句" />
+    </ui:VisualElement>
+    <ui:VisualElement name="ChoicesContainer" class="vn-choices vn-hidden" />
+  </ui:VisualElement>
+</ui:UXML>

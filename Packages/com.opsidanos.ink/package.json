@@ -1,0 +1,26 @@
+{
+  "name": "com.opsidanos.ink",
+  "version": "0.1.0",
+  "displayName": "OpsidanosInk",
+  "description": "用 Ink + UI Toolkit 製作文字冒險 / 視覺小說的可重用框架。",
+  "unity": "6000.3",
+  "keywords": [
+    "ink",
+    "visual-novel",
+    "text-adventure"
+  ],
+  "author": {
+    "name": "Opsidanos"
+  },
+  "dependencies": {
+    "com.inkle.ink-unity-integration": "1.2.1"
+  },
+  "samples": [
+    {
+      "displayName": "玩家模式快速開始",
+      "description": "最小可跑：讀取編譯後的 Ink JSON，顯示文字與選項（UI Toolkit）。",
+      "path": "Samples~/PlayerModeSample"
+    }
+  ]
+}
+
