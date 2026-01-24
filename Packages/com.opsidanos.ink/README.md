@@ -16,6 +16,7 @@
    - `UIDocument`
    - `InkStoryEngine`
    - `VNPlayerPresenter`
+   - （可選）`InkTagEventRouter`（顯示 Tag 除錯輸出用）
 5. 設定元件欄位：
    - `UIDocument`
      - `Source Asset`：指定 `Packages/com.opsidanos.ink/Runtime/UI/UXML/VNPlayer.uxml`
@@ -24,9 +25,11 @@
    - `VNPlayerPresenter`
      - `Ui Document`：拖 `VNPlayer` 自己的 `UIDocument`
      - `Story Engine`：拖 `VNPlayer` 自己的 `InkStoryEngine`
+   - （可選）`InkTagEventRouter`
+     - `Story Engine`：拖 `VNPlayer` 自己的 `InkStoryEngine`
 6. 按下 Play，你會看到文字與選項
 
 ## 目前功能（最小骨架）
 - 讀取 Ink `.json` 建立 `Ink.Runtime.Story`
 - UI Toolkit 顯示：名字、文字、選項
-
+- Tag 除錯輸出：把 `ParsedTags` 變成 Console 訊息（`InkTagEventRouter`）

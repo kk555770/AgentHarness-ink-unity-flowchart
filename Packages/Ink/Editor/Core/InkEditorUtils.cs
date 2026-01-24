@@ -277,22 +277,27 @@ namespace Ink.UnityIntegration {
 		/// <summary>
 		/// Checks to see if the given path is an ink file or not, regardless of extension.
 		/// </summary>
-		/// <param name="path">The path to check.</param>
-		/// <returns>True if it's an ink file, otherwise false.</returns>
-		public static bool IsInkFile(string path) {
-			if (string.IsNullOrEmpty(path)) return false;
-			string extension = Path.GetExtension(path);
-			if (extension == InkEditorUtils.inkFileExtension) {
-				return true;
-			} else if (String.IsNullOrEmpty(extension)) {
-				if (!File.Exists(path)) return false;
-				if (File.GetAttributes(path).HasFlag(FileAttributes.Directory)) return false;
-				// This check exists only in the case of ink files that lack the .ink extension.
-				// We support this mostly for legacy reasons - Inky didn't used to add .ink by default which made a this relatively common issue.
-				// This function needs to be speedy but getting all the ink file paths is a bit slow, so I'd like to remove support for missing extensions in the future.
-				return InkLibrary.instance.inkLibrary.Exists(f => f.filePath == path);
-			} else return false;
-		}
+			/// <param name="path">The path to check.</param>
+			/// <returns>True if it's an ink file, otherwise false.</returns>
+			public static bool IsInkFile(string path) {
+				if (string.IsNullOrEmpty(path)) return false;
+				// ===== 變更開始 =====
+				// 2026/01/22 Opsidanos (修改原因：避免把資料夾誤判成 .ink 檔案)
+				// 預期結果：不再把 `Packages/com.opsidanos.ink` 這類資料夾當成 Ink 檔處理，避免 DirectoryNotFoundException
+				if (Directory.Exists(path)) return false;
+				// ===== 變更結束 =====
+				string extension = Path.GetExtension(path);
+				if (extension == InkEditorUtils.inkFileExtension) {
+					return true;
+				} else if (String.IsNullOrEmpty(extension)) {
+					if (!File.Exists(path)) return false;
+					if (File.GetAttributes(path).HasFlag(FileAttributes.Directory)) return false;
+					// This check exists only in the case of ink files that lack the .ink extension.
+					// We support this mostly for legacy reasons - Inky didn't used to add .ink by default which made a this relatively common issue.
+					// This function needs to be speedy but getting all the ink file paths is a bit slow, so I'd like to remove support for missing extensions in the future.
+					return InkLibrary.instance.inkLibrary.Exists(f => f.filePath == path);
+				} else return false;
+			}
 
 
 

@@ -68,9 +68,13 @@ Bin/
 # Other files #
 # =========== #
 *~
+# Unity UPM Samples 會使用 `Samples~` 資料夾，不能被 `*~` 忽略
+!Packages/**/Samples~/
+!Packages/**/Samples~/**
 .idea/
 codex-hello-loop/
 PlanningWithFiles/
 AGENTS.md
 AGENTS__.md
+UIToolkitSpec.md
 *.dwlt

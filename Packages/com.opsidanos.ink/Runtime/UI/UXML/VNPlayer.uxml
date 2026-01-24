@@ -1,11 +1,30 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
   <ui:Style src="../USS/VNPlayer.uss" />
   <ui:VisualElement name="VNRoot" class="vn-root">
-    <ui:VisualElement name="DialoguePanel" class="vn-dialogue-panel">
-      <ui:Label name="SpeakerLabel" class="vn-speaker" text="" />
-      <ui:Label name="BodyLabel" class="vn-body" text="" />
-      <ui:Button name="ContinueButton" class="vn-continue" text="下一句" />
+    <ui:VisualElement name="TopBar" class="vn-topbar">
+      <ui:Button name="BacklogButton" class="vn-topbar-button" text="回看" />
+      <ui:Button name="AutoButton" class="vn-topbar-button" text="自動：關" />
+      <ui:Button name="SkipButton" class="vn-topbar-button" text="快轉：關" />
+      <ui:Button name="HideButton" class="vn-topbar-button" text="隱藏 UI" />
     </ui:VisualElement>
-    <ui:VisualElement name="ChoicesContainer" class="vn-choices vn-hidden" />
+
+    <ui:VisualElement name="MainContainer" class="vn-main">
+      <ui:VisualElement name="DialoguePanel" class="vn-dialogue-panel">
+        <ui:Label name="SpeakerLabel" class="vn-speaker" text="" />
+        <ui:Label name="BodyLabel" class="vn-body" text="" />
+        <ui:Button name="ContinueButton" class="vn-continue" text="下一句" />
+      </ui:VisualElement>
+      <ui:VisualElement name="ChoicesContainer" class="vn-choices vn-hidden" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="BacklogPanel" class="vn-backlog vn-hidden">
+      <ui:VisualElement name="BacklogHeader" class="vn-backlog-header">
+        <ui:Label name="BacklogTitleLabel" class="vn-backlog-title" text="回看" />
+        <ui:Button name="BacklogCloseButton" class="vn-backlog-close" text="關閉" />
+      </ui:VisualElement>
+      <ui:ScrollView name="BacklogScrollView" class="vn-backlog-scroll" />
+    </ui:VisualElement>
+
+    <ui:Button name="ShowUIButton" class="vn-show-ui" text="顯示 UI" />
   </ui:VisualElement>
 </ui:UXML>

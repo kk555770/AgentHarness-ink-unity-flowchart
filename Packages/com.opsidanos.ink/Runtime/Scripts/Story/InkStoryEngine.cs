@@ -1,13 +1,17 @@
 // ===== 變更開始 =====
-// 2026/01/21 Opsidanos (修改原因：建立玩家模式最小 Ink 故事引擎)
-// 預期結果：指定編譯後的 Ink `.json`（TextAsset）就能推進故事並吐出文字/選項，結束時不會無限空白推進
+// 2026/01/22 Opsidanos (修改原因：修正 Story 命名衝突造成的編譯錯誤)
+// 預期結果：Unity Console 不再出現 CS0118（'Story' is a namespace but is used like a type）
 using System;
 using System.Collections.Generic;
-using Ink.Runtime;
 using UnityEngine;
+using InkRuntimeStory = Ink.Runtime.Story;
+using InkRuntimeChoice = Ink.Runtime.Choice;
 
 namespace OpsidanosInk.Runtime.Story
 {
+    // ===== 變更開始 =====
+    // 2026/01/22 Opsidanos (修改原因：打通 Tag→結構化→事件，並避免用字串判斷故事結束)
+    // 預期結果：StoryOutput 帶有 HasEnded 與 ParsedTags，讓 UI/系統不再依賴「（故事結束）」字串
     public sealed class InkStoryEngine : MonoBehaviour
     {
         [Header("Ink")]
@@ -15,7 +19,7 @@ namespace OpsidanosInk.Runtime.Story
 
         public event Action<StoryOutput> OutputGenerated;
 
-        private Story story;
+        private InkRuntimeStory story;
         private int nextOutputId = 1;
         private bool hasEnded;
 
@@ -27,7 +31,7 @@ namespace OpsidanosInk.Runtime.Story
                 return;
             }
 
-            story = new Story(storyJsonAsset.text);
+            story = new InkRuntimeStory(storyJsonAsset.text);
             EmitNext();
         }
 
@@ -75,6 +79,7 @@ namespace OpsidanosInk.Runtime.Story
             }
 
             string lineText = null;
+            bool outputHasEnded = false;
 
             if (story.canContinue)
             {
@@ -84,34 +89,52 @@ namespace OpsidanosInk.Runtime.Story
             {
                 lineText = "（故事結束）";
                 hasEnded = true;
+                outputHasEnded = true;
             }
 
-            var tags = new List<string>(story.currentTags);
-            var speaker = TryGetSpeakerFromTags(tags);
+            List<string> rawTags;
+            List<InkTag> parsedTags;
+
+            // ===== 變更開始 =====
+            // 2026/01/24 Opsidanos (修改原因：避免故事結束時重複沿用上一句 Tag，造成 Console Tag log 重複)
+            // 預期結果：HasEnded 那一筆輸出不再帶出上一句 Tag，Tag log 更清楚
+            if (outputHasEnded)
+            {
+                rawTags = new List<string>(0);
+                parsedTags = new List<InkTag>(0);
+            }
+            else
+            {
+                rawTags = new List<string>(story.currentTags);
+                parsedTags = InkTagParser.Parse(rawTags);
+            }
+            // ===== 變更結束 =====
+            var speaker = TryGetSpeakerFromTags(parsedTags);
             var choices = new List<ChoiceOutput>(story.currentChoices.Count);
 
             for (int i = 0; i < story.currentChoices.Count; i++)
             {
-                Choice choice = story.currentChoices[i];
+                InkRuntimeChoice choice = story.currentChoices[i];
                 choices.Add(new ChoiceOutput(choice.index, choice.text.Trim()));
             }
 
-            OutputGenerated?.Invoke(new StoryOutput(nextOutputId++, speaker, lineText, tags, choices));
+            OutputGenerated?.Invoke(new StoryOutput(nextOutputId++, speaker, lineText, outputHasEnded, rawTags, parsedTags, choices));
         }
 
-        private static string TryGetSpeakerFromTags(List<string> tags)
+        private static string TryGetSpeakerFromTags(List<InkTag> tags)
         {
             for (int i = 0; i < tags.Count; i++)
             {
-                string tag = tags[i];
-                if (tag.StartsWith("speaker:", StringComparison.Ordinal))
+                InkTag tag = tags[i];
+                if (tag.Key == "speaker")
                 {
-                    return tag.Substring("speaker:".Length).Trim();
+                    return tag.Value;
                 }
             }
 
             return null;
         }
     }
+    // ===== 變更結束 =====
 }
 // ===== 變更結束 =====

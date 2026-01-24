@@ -8,6 +8,27 @@
   padding-bottom: 24px;
 }
 
+.vn-topbar {
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.vn-topbar-button {
+  margin-left: 8px;
+}
+
+.vn-toggle-on {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+
+.vn-main {
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+
 .vn-dialogue-panel {
   flex-direction: column;
   background-color: rgba(0, 0, 0, 0.70);
@@ -45,6 +66,69 @@
 
 .vn-choice-button {
   margin-top: 8px;
+}
+
+.vn-backlog {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 24px;
+  bottom: 24px;
+  background-color: rgba(0, 0, 0, 0.85);
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.vn-backlog-header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vn-backlog-title {
+  color: rgb(255, 255, 255);
+  font-size: 18px;
+  -unity-font-style: bold;
+}
+
+.vn-backlog-scroll {
+  margin-top: 12px;
+  flex-grow: 1;
+}
+
+.vn-backlog-entry {
+  color: rgb(255, 255, 255);
+  font-size: 18px;
+  margin-top: 8px;
+}
+
+.vn-show-ui {
+  display: none;
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+}
+
+.vn-ui-hidden .vn-topbar {
+  display: none;
+}
+
+.vn-ui-hidden .vn-main {
+  display: none;
+}
+
+.vn-ui-hidden .vn-backlog {
+  display: none;
+}
+
+.vn-ui-hidden .vn-show-ui {
+  display: flex;
 }
 
 .vn-hidden {
