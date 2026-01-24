@@ -33,3 +33,23 @@
 - 讀取 Ink `.json` 建立 `Ink.Runtime.Story`
 - UI Toolkit 顯示：名字、文字、選項
 - Tag 除錯輸出：把 `ParsedTags` 變成 Console 訊息（`InkTagEventRouter`）
+
+## Tag 演出（最小：音訊）
+如果你的 Ink 會用 Tag（例如 `bgm` / `se`），你可以用 `InkTagAudioPlayer` 做最小音訊綁定：
+
+1. 在同一個 GameObject（例如 `VNPlayer`）加上元件：
+   - `InkTagEventRouter`
+   - `InkTagAudioPlayer`
+   - `AudioSource`（BGM 用，請把 `Loop` 打開）
+   - `AudioSource`（SE 用）
+2. 設定 `InkTagAudioPlayer` 欄位：
+   - `Tag Event Router`：拖同物件的 `InkTagEventRouter`
+   - `Bgm Source`：拖 BGM 的 `AudioSource`
+   - `Se Source`：拖 SE 的 `AudioSource`
+   - `Bgm Bindings`：新增一筆 `id="opening"`，`clip` 指到你的 BGM
+   - `Se Bindings`：新增一筆 `id="open"`，`clip` 指到你的 SE
+3. 按下 Play：
+   - 你會看到 `[OpsidanosInk][Tag] ...`（Tag log）
+   - 當 Tag 出現時，也會看到：
+     - `[OpsidanosInk][BGM] opening -> <clipName>`
+     - `[OpsidanosInk][SE] open -> <clipName>`

@@ -1,88 +1,250 @@
 .vn-root {
-  flex-direction: column;
+  position: relative;
   width: 100%;
   height: 100%;
-  padding-left: 24px;
-  padding-right: 24px;
-  padding-top: 24px;
-  padding-bottom: 24px;
 }
 
-.vn-topbar {
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: 12px;
+.vn-root Label {
+  font-size: 24px;
+  color: rgb(255, 255, 255);
 }
 
-.vn-topbar-button {
-  margin-left: 8px;
+.vn-root Button {
+  font-size: 22px;
+  color: rgb(255, 255, 255);
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background-color: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+}
+
+.vn-root Button:hover {
+  background-color: rgba(0, 0, 0, 0.70);
+}
+
+.vn-root Button:active {
+  background-color: rgba(255, 255, 255, 0.20);
 }
 
 .vn-toggle-on {
   background-color: rgba(255, 255, 255, 0.20);
 }
 
-.vn-main {
-  flex-direction: column;
+.base-color-layer,
+.background-layer,
+.character-layer,
+.cg-layer,
+.background-effect-layer,
+.story-effect-layer,
+.click-effect-layer,
+.minigame-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.base-color-layer {
+  background-color: rgb(0, 0, 0);
+}
+
+.background,
+.cg-image {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  -unity-background-scale-mode: scale-and-crop;
+}
+
+.character-layer {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-left: 96px;
+  padding-right: 96px;
+}
+
+.character-left,
+.character-center,
+.character-right {
+  height: 100%;
   flex-grow: 1;
   justify-content: flex-end;
 }
 
-.vn-dialogue-panel {
-  flex-direction: column;
-  background-color: rgba(0, 0, 0, 0.70);
-  padding-left: 16px;
-  padding-right: 16px;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
+.character-left {
+  align-items: flex-start;
 }
 
-.vn-speaker {
+.character-center {
+  align-items: center;
+}
+
+.character-right {
+  align-items: flex-end;
+}
+
+.dialogue-ui-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+  flex-direction: column;
+}
+
+.speaker-name-box {
+  align-self: flex-start;
+  background-color: rgba(0, 0, 0, 0.85);
+  padding-left: 30px;
+  padding-right: 30px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-width: 2px;
+  border-bottom-width: 0;
+  border-color: rgba(255, 255, 255, 0.20);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 200px;
+  max-width: 600px;
+  margin-bottom: 0;
+  transition-property: opacity;
+  transition-duration: 0.3s;
+}
+
+.speaker-name {
   color: rgb(255, 255, 255);
-  font-size: 18px;
+  font-size: 28px;
   -unity-font-style: bold;
 }
 
-.vn-body {
-  color: rgb(255, 255, 255);
-  font-size: 22px;
-  margin-top: 8px;
-}
-
-.vn-continue {
-  margin-top: 12px;
-  align-self: flex-end;
-}
-
-.vn-choices {
+.dialogue-panel {
   flex-direction: column;
-  margin-top: 16px;
+  height: 320px;
+  background-color: rgba(0, 0, 0, 0.85);
+  padding-left: 200px;
+  padding-right: 200px;
+  padding-top: 60px;
+  padding-bottom: 40px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.20);
+  border-radius: 10px;
+  transition-property: opacity;
+  transition-duration: 0.3s;
 }
 
-.vn-choice-button {
-  margin-top: 8px;
+.dialogue-text {
+  color: rgb(255, 255, 255);
+  font-size: 32px;
+}
+
+.vn-root Button.click-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  background-color: rgba(0, 0, 0, 0);
+  border-width: 0;
+  border-radius: 0;
+}
+
+.vn-root Button.click-area:hover {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.vn-root Button.click-area:active {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.choice-container {
+  position: absolute;
+  top: 370px;
+  left: 50%;
+  translate: -50% -50%;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.vn-root Button.vn-choice-button {
+  min-width: 800px;
+  min-height: 80px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-left: 50px;
+  padding-right: 50px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  background-color: rgba(0, 0, 0, 0.90);
+  border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.50);
+  border-radius: 40px;
+  font-size: 36px;
+  color: rgb(255, 255, 255);
+  transition-duration: 0.2s;
+}
+
+.vn-root Button.vn-choice-button:hover {
+  background-color: rgba(40, 40, 40, 0.90);
+  border-color: rgb(255, 215, 0);
+  color: rgb(255, 215, 0);
+  scale: 1.02;
+}
+
+.vn-root Button.vn-choice-button:active {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+
+.system-ui-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-top: 32px;
+}
+
+.vn-topbar {
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.vn-topbar-button {
+  margin-left: 12px;
 }
 
 .vn-backlog {
   position: absolute;
-  left: 24px;
-  right: 24px;
-  top: 24px;
-  bottom: 24px;
+  left: 32px;
+  right: 32px;
+  top: 32px;
+  bottom: 32px;
   background-color: rgba(0, 0, 0, 0.85);
-  padding-left: 16px;
-  padding-right: 16px;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  border-radius: 10px;
 }
 
 .vn-backlog-header {
@@ -93,33 +255,41 @@
 
 .vn-backlog-title {
   color: rgb(255, 255, 255);
-  font-size: 18px;
+  font-size: 28px;
   -unity-font-style: bold;
 }
 
 .vn-backlog-scroll {
-  margin-top: 12px;
+  margin-top: 16px;
   flex-grow: 1;
 }
 
 .vn-backlog-entry {
   color: rgb(255, 255, 255);
-  font-size: 18px;
-  margin-top: 8px;
+  font-size: 24px;
+  margin-top: 12px;
 }
 
 .vn-show-ui {
   display: none;
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  right: 32px;
+  bottom: 32px;
 }
 
-.vn-ui-hidden .vn-topbar {
+.vn-ui-hidden .system-ui-layer {
   display: none;
 }
 
-.vn-ui-hidden .vn-main {
+.vn-ui-hidden .dialogue-ui-layer {
+  display: none;
+}
+
+.vn-ui-hidden .choice-container {
+  display: none;
+}
+
+.vn-ui-hidden .click-area {
   display: none;
 }
 

@@ -1,20 +1,47 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
   <ui:Style src="../USS/VNPlayer.uss" />
   <ui:VisualElement name="VNRoot" class="vn-root">
-    <ui:VisualElement name="TopBar" class="vn-topbar">
-      <ui:Button name="BacklogButton" class="vn-topbar-button" text="回看" />
-      <ui:Button name="AutoButton" class="vn-topbar-button" text="自動：關" />
-      <ui:Button name="SkipButton" class="vn-topbar-button" text="快轉：關" />
-      <ui:Button name="HideButton" class="vn-topbar-button" text="隱藏 UI" />
+    <ui:VisualElement name="BaseColorLayer" class="base-color-layer" picking-mode="Ignore" />
+
+    <ui:VisualElement name="BackgroundLayer" class="background-layer" picking-mode="Ignore">
+      <ui:Image name="Background" class="background" picking-mode="Ignore" />
     </ui:VisualElement>
 
-    <ui:VisualElement name="MainContainer" class="vn-main">
-      <ui:VisualElement name="DialoguePanel" class="vn-dialogue-panel">
-        <ui:Label name="SpeakerLabel" class="vn-speaker" text="" />
-        <ui:Label name="BodyLabel" class="vn-body" text="" />
-        <ui:Button name="ContinueButton" class="vn-continue" text="下一句" />
+    <ui:VisualElement name="CharacterLayer" class="character-layer" picking-mode="Ignore">
+      <ui:VisualElement name="CharacterLeft" class="character-left" picking-mode="Ignore" />
+      <ui:VisualElement name="CharacterCenter" class="character-center" picking-mode="Ignore" />
+      <ui:VisualElement name="CharacterRight" class="character-right" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="CgLayer" class="cg-layer vn-hidden" picking-mode="Ignore">
+      <ui:Image name="CgImage" class="cg-image" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="BackgroundEffectLayer" class="background-effect-layer vn-hidden" picking-mode="Ignore" />
+
+    <ui:VisualElement name="DialogueUiLayer" class="dialogue-ui-layer" picking-mode="Ignore">
+      <ui:VisualElement name="SpeakerNameBox" class="speaker-name-box" picking-mode="Ignore">
+        <ui:Label name="SpeakerLabel" class="speaker-name" text="" picking-mode="Ignore" />
       </ui:VisualElement>
-      <ui:VisualElement name="ChoicesContainer" class="vn-choices vn-hidden" />
+
+      <ui:VisualElement name="DialoguePanel" class="dialogue-panel" picking-mode="Ignore">
+        <ui:Label name="BodyLabel" class="dialogue-text" text="" picking-mode="Ignore" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="StoryEffectLayer" class="story-effect-layer" picking-mode="Ignore" />
+
+    <ui:Button name="ContinueButton" class="click-area" text="" />
+
+    <ui:VisualElement name="ChoicesContainer" class="choice-container vn-hidden" />
+
+    <ui:VisualElement name="SystemUiLayer" class="system-ui-layer">
+      <ui:VisualElement name="TopBar" class="vn-topbar">
+        <ui:Button name="BacklogButton" class="vn-topbar-button" text="回看" />
+        <ui:Button name="AutoButton" class="vn-topbar-button" text="自動：關" />
+        <ui:Button name="SkipButton" class="vn-topbar-button" text="快轉：關" />
+        <ui:Button name="HideButton" class="vn-topbar-button" text="隱藏 UI" />
+      </ui:VisualElement>
     </ui:VisualElement>
 
     <ui:VisualElement name="BacklogPanel" class="vn-backlog vn-hidden">
@@ -26,5 +53,9 @@
     </ui:VisualElement>
 
     <ui:Button name="ShowUIButton" class="vn-show-ui" text="顯示 UI" />
+
+    <ui:VisualElement name="ClickEffectLayer" class="click-effect-layer vn-hidden" picking-mode="Ignore" />
+
+    <ui:VisualElement name="MinigameLayer" class="minigame-layer vn-hidden" />
   </ui:VisualElement>
 </ui:UXML>
