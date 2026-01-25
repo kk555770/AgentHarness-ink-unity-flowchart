@@ -135,6 +135,7 @@ GameObject:
   - component: {fileID: 767942250}
   - component: {fileID: 767942249}
   - component: {fileID: 767942248}
+  - component: {fileID: 767942251}
   m_Layer: 0
   m_Name: VNPlayer
   m_TagString: Untagged
@@ -442,6 +443,27 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &767942251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eabd649a56ff54e4cb772ee64f974569, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagBackgroundPlayer
+  tagEventRouter: {fileID: 767942244}
+  uiDocument: {fileID: 767942247}
+  backgroundElementName: Background
+  backgroundBindings:
+  - Id: room_01
+    Sprite: {fileID: 21300000, guid: 4bd178efcfadbcb4783fe3bb912ae488, type: 3}
+  - Id: outside
+    Sprite: {fileID: 21300000, guid: af955e84a47438e4a82aacf8846a0dc1, type: 3}
+  logBackground: 1
 --- !u!1 &1162676897
 GameObject:
   m_ObjectHideFlags: 0

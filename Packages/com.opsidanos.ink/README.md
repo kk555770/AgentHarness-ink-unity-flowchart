@@ -53,3 +53,17 @@
    - 當 Tag 出現時，也會看到：
      - `[OpsidanosInk][BGM] opening -> <clipName>`
      - `[OpsidanosInk][SE] open -> <clipName>`
+
+## Tag 演出（最小：背景）
+如果你的 Ink 會用 Tag（例如 `bg`），你可以用 `InkTagBackgroundPlayer` 做最小背景切換：
+
+1. 在同一個 GameObject（例如 `VNPlayer`）加上元件：
+   - `InkTagEventRouter`
+   - `InkTagBackgroundPlayer`
+2. 設定 `InkTagBackgroundPlayer` 欄位：
+   - `Tag Event Router`：拖同物件的 `InkTagEventRouter`
+   - `Ui Document`：拖同物件的 `UIDocument`
+   - `Background Element Name`：預設是 `Background`（對應 `VNPlayer.uxml` 的背景圖）
+   - `Background Bindings`：新增一筆或多筆 `id` → `sprite` 對照
+3. 按下 Play：
+   - 當 Tag 出現時會看到：`[OpsidanosInk][BG] <id> -> <spriteName>`
