@@ -136,6 +136,9 @@ GameObject:
   - component: {fileID: 767942249}
   - component: {fileID: 767942248}
   - component: {fileID: 767942251}
+  - component: {fileID: 767942253}
+  - component: {fileID: 767942252}
+  - component: {fileID: 767942254}
   m_Layer: 0
   m_Name: VNPlayer
   m_TagString: Untagged
@@ -460,10 +463,97 @@ MonoBehaviour:
   backgroundElementName: Background
   backgroundBindings:
   - Id: room_01
-    Sprite: {fileID: 21300000, guid: 4bd178efcfadbcb4783fe3bb912ae488, type: 3}
+    Texture: {fileID: 2800000, guid: bcb360444c500457d9d3bb0e03c6492a, type: 3}
   - Id: outside
-    Sprite: {fileID: 21300000, guid: af955e84a47438e4a82aacf8846a0dc1, type: 3}
+    Texture: {fileID: 2800000, guid: 96d7275791d914784a387e74f2dd75aa, type: 3}
   logBackground: 1
+--- !u!114 &767942252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c677d95fa039d497692247dfda1fe8e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCgPlayer
+  tagEventRouter: {fileID: 767942244}
+  uiDocument: {fileID: 767942247}
+  cgLayerElementName: CgLayer
+  cgImageElementName: CgImage
+  cgBindings:
+  - Id: alice_happy_cg
+    Texture: {fileID: 2800000, guid: 6a4627eab71a14ab997dcf17459174c0, type: 3}
+  logCg: 1
+--- !u!114 &767942253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ff918312c9c54c279c42008e5034bb4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCharacterPlayer
+  tagEventRouter: {fileID: 767942244}
+  uiDocument: {fileID: 767942247}
+  characterLeftElementName: CharacterLeft
+  characterCenterElementName: CharacterCenter
+  characterRightElementName: CharacterRight
+  characterBindings:
+  - Id: alice_normal
+    Texture: {fileID: 2800000, guid: 605eab5c18be24d309658b90da7d3cc7, type: 3}
+  - Id: alice_happy
+    Texture: {fileID: 2800000, guid: 0d9979a2e79444f2280348dbdd1c1605, type: 3}
+  - Id: alice_shy
+    Texture: {fileID: 2800000, guid: 03c0c4d19f8b84e129f90415ef6650cf, type: 3}
+  logCharacter: 1
+--- !u!114 &767942254
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2bc6da81176ca4358b1d59033cb17690, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCharacterStatePlayer
+  tagEventRouter: {fileID: 767942244}
+  uiDocument: {fileID: 767942247}
+  characterLayerElementName: CharacterLayer
+  characterLeftElementName: CharacterLeft
+  characterCenterElementName: CharacterCenter
+  characterRightElementName: CharacterRight
+  defaultFadeDurationSeconds: 0.3
+  defaultMoveDurationSeconds: 0.3
+  bindings:
+  - Actor: alice
+    Expression: normal
+    IsDefault: 1
+    Texture: {fileID: 2800000, guid: 605eab5c18be24d309658b90da7d3cc7, type: 3}
+  - Actor: alice
+    Expression: happy
+    IsDefault: 0
+    Texture: {fileID: 2800000, guid: 0d9979a2e79444f2280348dbdd1c1605, type: 3}
+  - Actor: alice
+    Expression: shy
+    IsDefault: 0
+    Texture: {fileID: 2800000, guid: 03c0c4d19f8b84e129f90415ef6650cf, type: 3}
+  - Actor: bs
+    Expression: stand
+    IsDefault: 1
+    Texture: {fileID: 2800000, guid: df70405802ad643b8a6b4f7f569a30c5, type: 3}
+  - Actor: ss
+    Expression: stand
+    IsDefault: 1
+    Texture: {fileID: 2800000, guid: e2b3b3cfb93934748822a3f885a16b4f, type: 3}
+  logCharacter: 1
 --- !u!1 &1162676897
 GameObject:
   m_ObjectHideFlags: 0

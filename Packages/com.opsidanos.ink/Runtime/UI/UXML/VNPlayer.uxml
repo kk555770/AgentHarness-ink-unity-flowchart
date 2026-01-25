@@ -4,17 +4,17 @@
     <ui:VisualElement name="BaseColorLayer" class="base-color-layer" picking-mode="Ignore" />
 
     <ui:VisualElement name="BackgroundLayer" class="background-layer" picking-mode="Ignore">
-      <ui:Image name="Background" class="background" picking-mode="Ignore" />
+      <ui:VisualElement name="Background" class="background vn-image" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="CharacterLayer" class="character-layer" picking-mode="Ignore">
-      <ui:VisualElement name="CharacterLeft" class="character-left" picking-mode="Ignore" />
-      <ui:VisualElement name="CharacterCenter" class="character-center" picking-mode="Ignore" />
-      <ui:VisualElement name="CharacterRight" class="character-right" picking-mode="Ignore" />
+      <ui:VisualElement name="CharacterLeft" class="character-left vn-image vn-image-bottom" picking-mode="Ignore" />
+      <ui:VisualElement name="CharacterCenter" class="character-center vn-image vn-image-bottom" picking-mode="Ignore" />
+      <ui:VisualElement name="CharacterRight" class="character-right vn-image vn-image-bottom" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="CgLayer" class="cg-layer vn-hidden" picking-mode="Ignore">
-      <ui:Image name="CgImage" class="cg-image" picking-mode="Ignore" />
+      <ui:VisualElement name="CgImage" class="cg-image vn-image" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="BackgroundEffectLayer" class="background-effect-layer vn-hidden" picking-mode="Ignore" />

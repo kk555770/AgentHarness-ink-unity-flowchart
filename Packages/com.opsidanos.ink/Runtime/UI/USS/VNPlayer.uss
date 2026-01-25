@@ -32,6 +32,19 @@
   background-color: rgba(255, 255, 255, 0.20);
 }
 
+.vn-image {
+  -unity-background-scale-mode: scale-to-fit;
+  background-position-x: 50%;
+  background-position-y: 50%;
+  background-repeat: no-repeat;
+  transform-origin: 50% 50%;
+}
+
+.vn-image-bottom {
+  background-position-y: 100%;
+  transform-origin: 50% 100%;
+}
+
 .base-color-layer,
 .background-layer,
 .character-layer,
@@ -58,7 +71,6 @@
   right: 0;
   top: 0;
   bottom: 0;
-  -unity-background-scale-mode: scale-and-crop;
 }
 
 .character-layer {
@@ -75,6 +87,20 @@
   height: 100%;
   flex-grow: 1;
   justify-content: flex-end;
+}
+
+.character-actors-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.character-actor {
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 
 .character-left {

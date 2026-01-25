@@ -1,10 +1,11 @@
 // ===== 變更開始 =====
-// 2026/01/25 Opsidanos (修改原因：新增 Tag → 背景切換綁定，讓 bg 可以直接驅動 UI Toolkit 背景)
+// 2026/01/25 Opsidanos (修改原因：新增 Tag → 背景切換綁定，並改用 Texture2D 以符合目前 BG 資源型別)
 // 預期結果：收到 bg tag 時切換 VNPlayer 背景圖，並輸出 log 方便驗證
 using System;
 using System.Collections.Generic;
 using OpsidanosInk.Runtime.Story;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UIElements;
 
 namespace OpsidanosInk.Runtime.Presentation
@@ -15,7 +16,8 @@ namespace OpsidanosInk.Runtime.Presentation
         private sealed class SpriteBinding
         {
             public string Id;
-            public Sprite Sprite;
+            [FormerlySerializedAs("Sprite")]
+            public Texture2D Texture;
         }
 
         [Header("Refs")]
@@ -87,9 +89,9 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            if (binding.Sprite == null)
+            if (binding.Texture == null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 的 BG id=\"{id}\" 尚未指定 Sprite。", this);
+                Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 的 BG id=\"{id}\" 尚未指定 Texture2D。", this);
                 return;
             }
 
@@ -99,11 +101,11 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            element.style.backgroundImage = new StyleBackground(binding.Sprite);
+            element.style.backgroundImage = new StyleBackground(binding.Texture);
 
             if (logBackground)
             {
-                Debug.Log($"[OpsidanosInk][BG] {id} -> {binding.Sprite.name}", this);
+                Debug.Log($"[OpsidanosInk][BG] {id} -> {binding.Texture.name}", this);
             }
         }
 

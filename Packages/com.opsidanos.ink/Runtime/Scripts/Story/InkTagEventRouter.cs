@@ -21,6 +21,19 @@ namespace OpsidanosInk.Runtime.Story
         public event Action<StoryOutput, InkTag> BgmTagReceived;
         public event Action<StoryOutput, InkTag> SeTagReceived;
         public event Action<StoryOutput, InkTag> ShakeTagReceived;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：新增 char/cg Tag 事件路由，讓立繪/CG 演出元件可訂閱)
+        // 預期結果：InkTagEventRouter 能把 char-left/center/right 與 cg tag 轉成事件，並列入 Tag log
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：新增 char JSON 狀態化 Tag 事件路由，讓角色層能一次刷新)
+        // 預期結果：InkTagEventRouter 能把 char:<json> 轉成事件，供新的角色狀態播放器訂閱
+        public event Action<StoryOutput, InkTag> CharacterTagReceived;
+        // ===== 變更結束 =====
+        public event Action<StoryOutput, InkTag> CharacterLeftTagReceived;
+        public event Action<StoryOutput, InkTag> CharacterCenterTagReceived;
+        public event Action<StoryOutput, InkTag> CharacterRightTagReceived;
+        public event Action<StoryOutput, InkTag> CgTagReceived;
+        // ===== 變更結束 =====
         public event Action<StoryOutput, InkTag> UnknownTagReceived;
 
         private void Awake()
@@ -134,6 +147,29 @@ namespace OpsidanosInk.Runtime.Story
                 case "shake":
                     ShakeTagReceived?.Invoke(output, tag);
                     return true;
+                // ===== 變更開始 =====
+                // 2026/01/25 Opsidanos (修改原因：加入 char/cg tag routing)
+                // 預期結果：Tag router 能正確把角色/CG 相關 tag 分流到對應事件
+                // ===== 變更開始 =====
+                // 2026/01/25 Opsidanos (修改原因：加入 char JSON 狀態化 tag routing)
+                // 預期結果：Tag router 能把 char:<json> 分流到新的角色狀態事件
+                case "char":
+                    CharacterTagReceived?.Invoke(output, tag);
+                    return true;
+                // ===== 變更結束 =====
+                case "char-left":
+                    CharacterLeftTagReceived?.Invoke(output, tag);
+                    return true;
+                case "char-center":
+                    CharacterCenterTagReceived?.Invoke(output, tag);
+                    return true;
+                case "char-right":
+                    CharacterRightTagReceived?.Invoke(output, tag);
+                    return true;
+                case "cg":
+                    CgTagReceived?.Invoke(output, tag);
+                    return true;
+                // ===== 變更結束 =====
                 default:
                     return false;
             }
@@ -146,4 +182,3 @@ namespace OpsidanosInk.Runtime.Story
     }
 }
 // ===== 變更結束 =====
-
