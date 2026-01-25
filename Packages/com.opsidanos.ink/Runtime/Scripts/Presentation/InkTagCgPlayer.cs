@@ -21,6 +21,11 @@ namespace OpsidanosInk.Runtime.Presentation
         [Header("Refs")]
         [SerializeField] private InkTagEventRouter tagEventRouter;
         [SerializeField] private UIDocument uiDocument;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：改用集中式 ResourceMap（JSON）做資源映射，避免每個元件各自維護 bindings)
+        // 預期結果：cg tag 只要提供 id，就能從同一份資源映射取得 Texture2D
+        [SerializeField] private InkResourceMap resourceMap;
+        // ===== 變更結束 =====
 
         [Header("UXML")]
         [SerializeField] private string cgLayerElementName = "CgLayer";
@@ -88,18 +93,35 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            TextureBinding binding = FindBinding(cgBindings, id);
-            if (binding == null)
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            Texture2D texture;
+            if (resourceMap != null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagCgPlayer 找不到 CG id=\"{id}\" 的對照設定。", this);
-                return;
+                if (!resourceMap.TryGetCgTexture(id, out texture))
+                {
+                    return;
+                }
             }
+            else
+            {
+                TextureBinding binding = FindBinding(cgBindings, id);
+                if (binding == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagCgPlayer 找不到 CG id=\"{id}\" 的對照設定。", this);
+                    return;
+                }
 
-            if (binding.Texture == null)
-            {
-                Debug.LogError($"[OpsidanosInk] InkTagCgPlayer 的 CG id=\"{id}\" 尚未指定 Texture2D。", this);
-                return;
+                if (binding.Texture == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagCgPlayer 的 CG id=\"{id}\" 尚未指定 Texture2D。", this);
+                    return;
+                }
+
+                texture = binding.Texture;
             }
+            // ===== 變更結束 =====
 
             VisualElement layer = GetCgLayerElement();
             if (layer == null)
@@ -113,12 +135,12 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            image.style.backgroundImage = new StyleBackground(binding.Texture);
+            image.style.backgroundImage = new StyleBackground(texture);
             layer.RemoveFromClassList("vn-hidden");
 
             if (logCg)
             {
-                Debug.Log($"[OpsidanosInk][CG] {id} -> {binding.Texture.name}", this);
+                Debug.Log($"[OpsidanosInk][CG] {id} -> {texture.name}", this);
             }
         }
 

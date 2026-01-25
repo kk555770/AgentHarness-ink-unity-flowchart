@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "bg": [
+    { "id": "room_01", "assetPath": "Assets/NewResources/Image/BG/room.png" },
+    { "id": "outside", "assetPath": "Assets/NewResources/Image/BG/street.png" }
+  ],
+  "bgm": [
+    { "id": "opening", "assetPath": "Assets/NewResources/Audio/BGM/ukulele_song.mp3" }
+  ],
+  "se": [
+    { "id": "open", "assetPath": "Assets/NewResources/Audio/Sound/click.wav" }
+  ],
+  "cg": [
+    { "id": "alice_happy_cg", "assetPath": "Assets/NewResources/Image/CG/alice_happy_cg.png" }
+  ],
+  "character": [
+    { "id": "alice_normal", "assetPath": "Assets/NewResources/Image/Characters/alice_normal.png" },
+    { "id": "alice_happy", "assetPath": "Assets/NewResources/Image/Characters/alice_happy.png" },
+    { "id": "alice_shy", "assetPath": "Assets/NewResources/Image/Characters/alice_shy.png" }
+  ],
+  "actors": [
+    {
+      "actor": "alice",
+      "defaultExpr": "normal",
+      "expressions": [
+        { "expr": "normal", "assetPath": "Assets/NewResources/Image/Characters/alice_normal.png" },
+        { "expr": "happy", "assetPath": "Assets/NewResources/Image/Characters/alice_happy.png" },
+        { "expr": "shy", "assetPath": "Assets/NewResources/Image/Characters/alice_shy.png" }
+      ]
+    },
+    {
+      "actor": "bs",
+      "defaultExpr": "stand",
+      "expressions": [
+        { "expr": "stand", "assetPath": "Assets/NewResources/Image/Characters/BS/BS_Stand.png" }
+      ]
+    },
+    {
+      "actor": "ss",
+      "defaultExpr": "stand",
+      "expressions": [
+        { "expr": "stand", "assetPath": "Assets/NewResources/Image/Characters/SS/SS_Stand.png" }
+      ]
+    }
+  ]
+}

@@ -139,6 +139,8 @@ GameObject:
   - component: {fileID: 767942253}
   - component: {fileID: 767942252}
   - component: {fileID: 767942254}
+  - component: {fileID: 767942255}
+  - component: {fileID: 767942256}
   m_Layer: 0
   m_Name: VNPlayer
   m_TagString: Untagged
@@ -192,6 +194,9 @@ MonoBehaviour:
   storyEngine: {fileID: 767942246}
   autoDelaySeconds: 1.2
   skipIntervalSeconds: 0.05
+  forceCompleteClickCooldownSeconds: 0.3
+  advanceBlockers:
+  - {fileID: 767942254}
 --- !u!114 &767942246
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -229,6 +234,20 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
+--- !u!114 &767942256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f166901527e4caea7dcbfa92fe58200, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkResourceMap
+  resourceMapJson: {fileID: 4900000, guid: 4532fbcfd5844908b684a27dabf31f84, type: 3}
+  logLoad: 0
 --- !u!114 &767942248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -242,6 +261,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagAudioPlayer
   tagEventRouter: {fileID: 767942244}
+  resourceMap: {fileID: 767942256}
   bgmSource: {fileID: 767942250}
   seSource: {fileID: 767942249}
   bgmBindings:
@@ -250,7 +270,7 @@ MonoBehaviour:
   seBindings:
   - Id: open
     Clip: {fileID: 8300000, guid: f9d6d741a6aeee84eab7823cb78a207c, type: 3}
-  logBgm: 1
+  logBgm: 0
   logSe: 1
 --- !u!82 &767942249
 AudioSource:
@@ -460,6 +480,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagBackgroundPlayer
   tagEventRouter: {fileID: 767942244}
   uiDocument: {fileID: 767942247}
+  resourceMap: {fileID: 767942256}
   backgroundElementName: Background
   backgroundBindings:
   - Id: room_01
@@ -481,6 +502,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCgPlayer
   tagEventRouter: {fileID: 767942244}
   uiDocument: {fileID: 767942247}
+  resourceMap: {fileID: 767942256}
   cgLayerElementName: CgLayer
   cgImageElementName: CgImage
   cgBindings:
@@ -501,6 +523,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCharacterPlayer
   tagEventRouter: {fileID: 767942244}
   uiDocument: {fileID: 767942247}
+  resourceMap: {fileID: 767942256}
   characterLeftElementName: CharacterLeft
   characterCenterElementName: CharacterCenter
   characterRightElementName: CharacterRight
@@ -526,11 +549,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagCharacterStatePlayer
   tagEventRouter: {fileID: 767942244}
   uiDocument: {fileID: 767942247}
+  resourceMap: {fileID: 767942256}
   characterLayerElementName: CharacterLayer
   characterLeftElementName: CharacterLeft
   characterCenterElementName: CharacterCenter
   characterRightElementName: CharacterRight
-  defaultFadeDurationSeconds: 0.3
+  defaultAppearDurationSeconds: 0.3
+  defaultDisappearDurationSeconds: 0.3
   defaultMoveDurationSeconds: 0.3
   bindings:
   - Actor: alice
@@ -554,6 +579,25 @@ MonoBehaviour:
     IsDefault: 1
     Texture: {fileID: 2800000, guid: e2b3b3cfb93934748822a3f885a16b4f, type: 3}
   logCharacter: 1
+--- !u!114 &767942255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6edfbb2b33114413999b430c475d833, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkTagShakePlayer
+  tagEventRouter: {fileID: 767942244}
+  uiDocument: {fileID: 767942247}
+  shakeTargetElementName: Background
+  defaultDurationSeconds: 0.3
+  defaultStrengthPixels: 16
+  useUnscaledTime: 1
+  logShake: 1
 --- !u!1 &1162676897
 GameObject:
   m_ObjectHideFlags: 0

@@ -6,6 +6,7 @@
 * [角色狀態測試（char JSON）] -> char_test
 * [往左走（舊範例）] -> left
 * [往右走（舊範例）] -> right
+* [畫面抖動測試（shake）] -> shake_test
 
 === char_test ===
 第一句：alice 在中間（normal），bs 在左邊。 # speaker:旁白 # char:\{\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"alice\",\"expr\":\"normal\"\}\}
@@ -16,6 +17,12 @@
 第六句：先讓 alice 消失（disappear=0.5），再讓 ss 移動到中間（move=0.7）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":0.7,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"disappear\"]\},\{\"actions\":[\"move\"]\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"ss\"\}\}
 第七句：bs 瞬間移動到右邊（move=0），同時 ss 消失（disappear=0.5）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":0,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"move\",\"disappear\"]\}]\},\"right\":\{\"actor\":\"bs\"\}\}
 第八句：全部清空。 # speaker:旁白 # char:clear
+-> END
+
+=== shake_test ===
+第一下：抖一下。 # speaker:旁白 # shake
+第二下：再抖一下。 # speaker:旁白 # shake
+第三下：結束。 # speaker:旁白
 -> END
 
 === left ===

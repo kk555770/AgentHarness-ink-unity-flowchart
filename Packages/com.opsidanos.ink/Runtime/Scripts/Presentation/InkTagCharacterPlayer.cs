@@ -21,6 +21,11 @@ namespace OpsidanosInk.Runtime.Presentation
         [Header("Refs")]
         [SerializeField] private InkTagEventRouter tagEventRouter;
         [SerializeField] private UIDocument uiDocument;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：改用集中式 ResourceMap（JSON）做資源映射，避免每個元件各自維護 bindings)
+        // 預期結果：char-left/center/right tag 只要提供 id，就能從同一份資源映射取得 Texture2D
+        [SerializeField] private InkResourceMap resourceMap;
+        // ===== 變更結束 =====
 
         [Header("UXML")]
         [SerializeField] private string characterLeftElementName = "CharacterLeft";
@@ -119,24 +124,41 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            TextureBinding binding = FindBinding(characterBindings, id);
-            if (binding == null)
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            Texture2D texture;
+            if (resourceMap != null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagCharacterPlayer 找不到 Char id=\"{id}\" 的對照設定。", this);
-                return;
+                if (!resourceMap.TryGetCharacterTexture(id, out texture))
+                {
+                    return;
+                }
             }
-
-            if (binding.Texture == null)
+            else
             {
-                Debug.LogError($"[OpsidanosInk] InkTagCharacterPlayer 的 Char id=\"{id}\" 尚未指定 Texture2D。", this);
-                return;
-            }
+                TextureBinding binding = FindBinding(characterBindings, id);
+                if (binding == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagCharacterPlayer 找不到 Char id=\"{id}\" 的對照設定。", this);
+                    return;
+                }
 
-            slotElement.style.backgroundImage = new StyleBackground(binding.Texture);
+                if (binding.Texture == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagCharacterPlayer 的 Char id=\"{id}\" 尚未指定 Texture2D。", this);
+                    return;
+                }
+
+                texture = binding.Texture;
+            }
+            // ===== 變更結束 =====
+
+            slotElement.style.backgroundImage = new StyleBackground(texture);
 
             if (logCharacter)
             {
-                Debug.Log($"[OpsidanosInk][Char] {slotName} {id} -> {binding.Texture.name}", this);
+                Debug.Log($"[OpsidanosInk][Char] {slotName} {id} -> {texture.name}", this);
             }
         }
 

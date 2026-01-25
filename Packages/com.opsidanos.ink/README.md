@@ -68,6 +68,39 @@
 3. 按下 Play：
    - 當 Tag 出現時會看到：`[OpsidanosInk][BG] <id> -> <textureName>`
 
+## 資源映射（推薦：ResourceMap JSON）
+如果你不想在每個 Tag Player 都填一堆 bindings（id → Texture/Clip），可以用一個集中式的 `InkResourceMap`：
+
+1. 準備一份 JSON（Demo 已提供）：
+   - `Assets/OpsidanosInk/Demo/resource_map.json`
+2. 在同一個 GameObject（例如 `VNPlayer`）加上元件：
+   - `InkResourceMap`
+3. 設定 `InkResourceMap` 欄位：
+   - `Resource Map Json`：指定 `resource_map.json`
+4. 把各 Tag Player 的 `Resource Map` 指向同一個 `InkResourceMap`：
+   - `InkTagAudioPlayer` / `InkTagBackgroundPlayer` / `InkTagCgPlayer` / `InkTagCharacterPlayer` / `InkTagCharacterStatePlayer`
+5. 按下 Play：
+   - 之後 `bg/bgm/se/cg/char` 只要給 `id`（或 actor/expr），就會從同一份 JSON 取得對應資源
+
+注意：
+- 目前 `assetPath` 載入只支援 Editor（Play Mode）。若你做成 Player build，會印 Error 提醒你改用 Addressables/Resources。
+
+## Tag 演出（最小：畫面抖動）
+如果你的 Ink 會用 Tag（例如 `shake`），你可以用 `InkTagShakePlayer` 做最小畫面抖動：
+
+1. 在同一個 GameObject（例如 `VNPlayer`）加上元件：
+   - `InkTagEventRouter`
+   - `InkTagShakePlayer`
+2. 設定 `InkTagShakePlayer` 欄位：
+   - `Tag Event Router`：拖同物件的 `InkTagEventRouter`
+   - `Ui Document`：拖同物件的 `UIDocument`
+   - `Shake Target Element Name`：預設是 `Background`（只會抖背景，不會抖對話框/選項）
+   - `Default Duration Seconds` / `Default Strength Pixels`：調整抖動時間與幅度
+3. 在 Ink 裡寫：
+   - `# shake`
+4. 按下 Play：
+   - 當 Tag 出現時會看到：`[OpsidanosInk][Shake] OutputId=...`
+
 ## Tag 演出（推薦：角色狀態 char JSON）
 如果你的 Ink 需要控制立繪，建議使用「狀態化」的 `char` JSON：每一句話用一份 JSON 一次描述 `left/center/right`，避免殘留。
 

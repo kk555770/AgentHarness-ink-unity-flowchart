@@ -19,6 +19,11 @@ namespace OpsidanosInk.Runtime.Presentation
 
         [Header("Refs")]
         [SerializeField] private InkTagEventRouter tagEventRouter;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：改用集中式 ResourceMap（JSON）做資源映射，避免每個元件各自維護 bindings)
+        // 預期結果：bgm/se tag 只要提供 id，就能從同一份資源映射取得 AudioClip
+        [SerializeField] private InkResourceMap resourceMap;
+        // ===== 變更結束 =====
         [SerializeField] private AudioSource bgmSource;
         [SerializeField] private AudioSource seSource;
 
@@ -85,31 +90,47 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             string id = tag.Value;
-
-            ClipBinding binding = FindBinding(bgmBindings, id);
-            if (binding == null)
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            AudioClip clip;
+            if (resourceMap != null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 找不到 BGM id=\"{id}\" 的對照設定。", this);
+                if (!resourceMap.TryGetBgmClip(id, out clip))
+                {
+                    return;
+                }
+            }
+            else
+            {
+                ClipBinding binding = FindBinding(bgmBindings, id);
+                if (binding == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 找不到 BGM id=\"{id}\" 的對照設定。", this);
+                    return;
+                }
+
+                if (binding.Clip == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 的 BGM id=\"{id}\" 尚未指定 AudioClip。", this);
+                    return;
+                }
+
+                clip = binding.Clip;
+            }
+            // ===== 變更結束 =====
+
+            if (bgmSource.clip == clip && bgmSource.isPlaying)
+            {
                 return;
             }
 
-            if (binding.Clip == null)
-            {
-                Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 的 BGM id=\"{id}\" 尚未指定 AudioClip。", this);
-                return;
-            }
-
-            if (bgmSource.clip == binding.Clip && bgmSource.isPlaying)
-            {
-                return;
-            }
-
-            bgmSource.clip = binding.Clip;
+            bgmSource.clip = clip;
             bgmSource.Play();
 
             if (logBgm)
             {
-                Debug.Log($"[OpsidanosInk][BGM] {id} -> {binding.Clip.name}", this);
+                Debug.Log($"[OpsidanosInk][BGM] {id} -> {clip.name}", this);
             }
         }
 
@@ -122,25 +143,41 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             string id = tag.Value;
-
-            ClipBinding binding = FindBinding(seBindings, id);
-            if (binding == null)
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            AudioClip clip;
+            if (resourceMap != null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 找不到 SE id=\"{id}\" 的對照設定。", this);
-                return;
+                if (!resourceMap.TryGetSeClip(id, out clip))
+                {
+                    return;
+                }
             }
-
-            if (binding.Clip == null)
+            else
             {
-                Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 的 SE id=\"{id}\" 尚未指定 AudioClip。", this);
-                return;
-            }
+                ClipBinding binding = FindBinding(seBindings, id);
+                if (binding == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 找不到 SE id=\"{id}\" 的對照設定。", this);
+                    return;
+                }
 
-            seSource.PlayOneShot(binding.Clip);
+                if (binding.Clip == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagAudioPlayer 的 SE id=\"{id}\" 尚未指定 AudioClip。", this);
+                    return;
+                }
+
+                clip = binding.Clip;
+            }
+            // ===== 變更結束 =====
+
+            seSource.PlayOneShot(clip);
 
             if (logSe)
             {
-                Debug.Log($"[OpsidanosInk][SE] {id} -> {binding.Clip.name}", this);
+                Debug.Log($"[OpsidanosInk][SE] {id} -> {clip.name}", this);
             }
         }
 

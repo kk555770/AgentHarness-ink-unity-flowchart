@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using OpsidanosInk.Runtime.Story;
+using OpsidanosInk.Runtime.UI;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UIElements;
@@ -12,7 +13,7 @@ using UnityEngine.UIElements.Experimental;
 
 namespace OpsidanosInk.Runtime.Presentation
 {
-    public sealed class InkTagCharacterStatePlayer : MonoBehaviour
+    public sealed class InkTagCharacterStatePlayer : MonoBehaviour, IAdvanceBlocker
     {
         [Serializable]
         private sealed class ActorExpressionTextureBinding
@@ -93,6 +94,11 @@ namespace OpsidanosInk.Runtime.Presentation
         [Header("Refs")]
         [SerializeField] private InkTagEventRouter tagEventRouter;
         [SerializeField] private UIDocument uiDocument;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：改用集中式 ResourceMap（JSON）做資源映射，避免每個元件各自維護 bindings)
+        // 預期結果：char JSON 的 actor/expr 只要提供名稱，就能從同一份資源映射取得 Texture2D
+        [SerializeField] private InkResourceMap resourceMap;
+        // ===== 變更結束 =====
 
         [Header("UXML")]
         [SerializeField] private string characterLayerElementName = "CharacterLayer";
@@ -125,6 +131,46 @@ namespace OpsidanosInk.Runtime.Presentation
 
         private Coroutine playRoutine;
         private int playVersion;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：支援快速連點時「強制刷新到終點」，需要記住目前這句的目標狀態並能停止 UI Toolkit 動畫)
+        // 預期結果：點擊推進時若角色動畫尚未結束，可立即套用終點狀態並停止所有動畫，避免下一句疊加造成錯亂
+        private SlotState pendingTargetLeft;
+        private SlotState pendingTargetCenter;
+        private SlotState pendingTargetRight;
+        private bool hasPendingTarget;
+        private readonly List<IValueAnimation> activeAnimations = new List<IValueAnimation>();
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：讓 Presenter 能判斷角色演出是否還在跑)
+        // 預期結果：當 coroutine 或動畫仍在跑時 IsBusy=true，Presenter 會先 ForceComplete 再允許推進
+        public bool IsBusy
+        {
+            get
+            {
+                if (playRoutine != null)
+                {
+                    return true;
+                }
+
+                for (int i = 0; i < activeAnimations.Count; i++)
+                {
+                    IValueAnimation animation = activeAnimations[i];
+                    if (animation != null && animation.isRunning)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        public void ForceComplete()
+        {
+            ForceCompleteToEnd();
+        }
+        // ===== 變更結束 =====
 
         private void Awake()
         {
@@ -172,6 +218,15 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：若上一句的角色演出還沒結束，先強制刷新到終點再開始新一句)
+            // 預期結果：快速推進時不會讓兩句的角色動畫疊在一起，狀態保持一致
+            if (IsBusy)
+            {
+                ForceCompleteToEnd();
+            }
+            // ===== 變更結束 =====
+
+            // ===== 變更開始 =====
             // 2026/01/25 Opsidanos (修改原因：steps 新增 raise/raiseActors，需要改用 TransitionStep 並在播放時套用)
             // 預期結果：每個 steps 可用 raise=false 關閉自動置頂；也可用 raiseActors 在無動作時單純調整層級
             if (!TryParseCharTag(output, tag.Value, out SlotState left, out SlotState center, out SlotState right, out float appearDuration, out float moveDuration, out float disappearDuration, out List<TransitionStep> steps))
@@ -181,6 +236,16 @@ namespace OpsidanosInk.Runtime.Presentation
             // ===== 變更結束 =====
 
             playVersion++;
+
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：記錄目前這句的目標狀態，讓 ForceComplete 可以把演出刷新到終點)
+            // 預期結果：Presenter 觸發 ForceComplete 時，角色會直接到最後位置與最後表情（並移除應消失者）
+            pendingTargetLeft = left;
+            pendingTargetCenter = center;
+            pendingTargetRight = right;
+            hasPendingTarget = true;
+            StopActiveAnimations();
+            // ===== 變更結束 =====
 
             if (playRoutine != null)
             {
@@ -205,6 +270,7 @@ namespace OpsidanosInk.Runtime.Presentation
             VisualElement layer = GetCharacterLayerElement();
             if (layer == null)
             {
+                EndTransitionIfCurrent(version);
                 yield break;
             }
 
@@ -214,6 +280,7 @@ namespace OpsidanosInk.Runtime.Presentation
 
             if (leftElement == null || centerElement == null || rightElement == null)
             {
+                EndTransitionIfCurrent(version);
                 yield break;
             }
 
@@ -568,8 +635,235 @@ namespace OpsidanosInk.Runtime.Presentation
                     $"[OpsidanosInk][CharState] OutputId={output.OutputId} L={ToDebugState(targetLeft)} C={ToDebugState(targetCenter)} R={ToDebugState(targetRight)} appear={appearDuration:0.###} move={moveDuration:0.###} disappear={disappearDuration:0.###}",
                     this);
             }
+
+            EndTransitionIfCurrent(version);
         }
 
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：支援快速連點：把角色演出強制刷新到終點，並停止所有動畫)
+        // 預期結果：上一句的角色會立刻到終點狀態（位置/透明度/是否移除/表情），下一句不會再看到錯亂或重複 appear
+        private void ForceCompleteToEnd()
+        {
+            if (!IsBusy)
+            {
+                return;
+            }
+
+            if (!hasPendingTarget)
+            {
+                Debug.LogError("[OpsidanosInk] InkTagCharacterStatePlayer 被要求 ForceComplete，但找不到 pending 目標狀態。", this);
+            }
+
+            if (playRoutine != null)
+            {
+                StopCoroutine(playRoutine);
+                playRoutine = null;
+            }
+
+            StopActiveAnimations();
+
+            ApplyFinalState(hasPendingTarget ? pendingTargetLeft : currentLeft, hasPendingTarget ? pendingTargetCenter : currentCenter, hasPendingTarget ? pendingTargetRight : currentRight);
+
+            currentLeft = hasPendingTarget ? pendingTargetLeft : currentLeft;
+            currentCenter = hasPendingTarget ? pendingTargetCenter : currentCenter;
+            currentRight = hasPendingTarget ? pendingTargetRight : currentRight;
+
+            hasPendingTarget = false;
+        }
+
+        private void ApplyFinalState(SlotState targetLeft, SlotState targetCenter, SlotState targetRight)
+        {
+            VisualElement layer = GetCharacterLayerElement();
+            if (layer == null)
+            {
+                Debug.LogError("[OpsidanosInk] InkTagCharacterStatePlayer 找不到角色層，無法 ForceComplete。", this);
+                return;
+            }
+
+            VisualElement leftElement = GetCharacterLeftElement();
+            VisualElement centerElement = GetCharacterCenterElement();
+            VisualElement rightElement = GetCharacterRightElement();
+
+            if (leftElement == null || centerElement == null || rightElement == null)
+            {
+                Debug.LogError("[OpsidanosInk] InkTagCharacterStatePlayer 找不到角色槽位，無法 ForceComplete。", this);
+                return;
+            }
+
+            EnsureActorLayer(layer);
+            ClearSlotVisual(leftElement);
+            ClearSlotVisual(centerElement);
+            ClearSlotVisual(rightElement);
+
+            Rect leftRect = GetSlotRect(leftElement);
+            Rect centerRect = GetSlotRect(centerElement);
+            Rect rightRect = GetSlotRect(rightElement);
+
+            var currentByActor = new Dictionary<string, Slot>(StringComparer.Ordinal);
+            var currentStateByActor = new Dictionary<string, SlotState>(StringComparer.Ordinal);
+            var targetByActor = new Dictionary<string, Slot>(StringComparer.Ordinal);
+            var targetStateByActor = new Dictionary<string, SlotState>(StringComparer.Ordinal);
+
+            BuildByActor(currentByActor, currentLeft, Slot.Left);
+            BuildByActor(currentByActor, currentCenter, Slot.Center);
+            BuildByActor(currentByActor, currentRight, Slot.Right);
+
+            BuildStateByActor(currentStateByActor, currentLeft);
+            BuildStateByActor(currentStateByActor, currentCenter);
+            BuildStateByActor(currentStateByActor, currentRight);
+
+            BuildByActor(targetByActor, targetLeft, Slot.Left);
+            BuildByActor(targetByActor, targetCenter, Slot.Center);
+            BuildByActor(targetByActor, targetRight, Slot.Right);
+
+            BuildStateByActor(targetStateByActor, targetLeft);
+            BuildStateByActor(targetStateByActor, targetCenter);
+            BuildStateByActor(targetStateByActor, targetRight);
+
+            EnsureActorElementsForCurrentState(currentByActor, currentStateByActor, leftRect, centerRect, rightRect);
+
+            var appearActors = new List<string>();
+            var stayActors = new List<string>();
+            var moveActors = new List<string>();
+
+            foreach (KeyValuePair<string, Slot> pair in targetByActor)
+            {
+                string actor = pair.Key;
+                Slot toSlot = pair.Value;
+
+                if (currentByActor.TryGetValue(actor, out Slot fromSlot))
+                {
+                    if (fromSlot == toSlot)
+                    {
+                        stayActors.Add(actor);
+                    }
+                    else
+                    {
+                        moveActors.Add(actor);
+                    }
+
+                    continue;
+                }
+
+                appearActors.Add(actor);
+            }
+
+            var disappearActors = new List<string>();
+            foreach (KeyValuePair<string, Slot> pair in currentByActor)
+            {
+                if (targetByActor.ContainsKey(pair.Key))
+                {
+                    continue;
+                }
+
+                disappearActors.Add(pair.Key);
+            }
+
+            for (int i = 0; i < stayActors.Count; i++)
+            {
+                ApplyTargetTexture(stayActors[i], targetStateByActor);
+            }
+
+            for (int i = 0; i < moveActors.Count; i++)
+            {
+                ApplyTargetTexture(moveActors[i], targetStateByActor);
+            }
+
+            for (int i = 0; i < appearActors.Count; i++)
+            {
+                string actor = appearActors[i];
+                if (!targetByActor.TryGetValue(actor, out Slot toSlot))
+                {
+                    continue;
+                }
+
+                if (!targetStateByActor.TryGetValue(actor, out SlotState state))
+                {
+                    continue;
+                }
+
+                Texture2D texture = ResolveTexture(actor, state.Expression);
+
+                if (!actorElements.TryGetValue(actor, out VisualElement actorElement))
+                {
+                    actorElement = CreateActorElement(actor, texture);
+                    actorLayerElement.Add(actorElement);
+                    actorElements[actor] = actorElement;
+                }
+                else
+                {
+                    actorElement.style.backgroundImage = new StyleBackground(texture);
+                }
+
+                SetRect(actorElement, GetRectForSlot(toSlot, leftRect, centerRect, rightRect));
+                actorElement.style.opacity = 1f;
+            }
+
+            for (int i = 0; i < moveActors.Count; i++)
+            {
+                string actor = moveActors[i];
+                if (!targetByActor.TryGetValue(actor, out Slot toSlot))
+                {
+                    continue;
+                }
+
+                if (!actorElements.TryGetValue(actor, out VisualElement actorElement))
+                {
+                    continue;
+                }
+
+                Rect toRect = GetRectForSlot(toSlot, leftRect, centerRect, rightRect);
+                SetRect(actorElement, toRect);
+                actorElement.style.opacity = 1f;
+            }
+
+            for (int i = 0; i < disappearActors.Count; i++)
+            {
+                string actor = disappearActors[i];
+                if (!actorElements.TryGetValue(actor, out VisualElement actorElement))
+                {
+                    continue;
+                }
+
+                actorElement.style.opacity = 0f;
+                actorElement.RemoveFromHierarchy();
+                actorElements.Remove(actor);
+            }
+
+            SyncActorElementsToSlotOrder(targetLeft, targetCenter, targetRight);
+        }
+
+        private void StopActiveAnimations()
+        {
+            for (int i = 0; i < activeAnimations.Count; i++)
+            {
+                IValueAnimation animation = activeAnimations[i];
+                if (animation == null)
+                {
+                    continue;
+                }
+
+                if (animation.isRunning)
+                {
+                    animation.Stop();
+                }
+            }
+
+            activeAnimations.Clear();
+        }
+
+        private void EndTransitionIfCurrent(int version)
+        {
+            if (version != playVersion)
+            {
+                return;
+            }
+
+            playRoutine = null;
+            hasPendingTarget = false;
+            StopActiveAnimations();
+        }
+        // ===== 變更結束 =====
         private bool TryParseCharTag(
             StoryOutput output,
             string json,
@@ -934,6 +1228,20 @@ namespace OpsidanosInk.Runtime.Presentation
 
         private Texture2D ResolveTexture(string actor, string expression)
         {
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            if (resourceMap != null)
+            {
+                if (resourceMap.TryGetActorExpressionTexture(actor, expression, out Texture2D texture, out _))
+                {
+                    return texture;
+                }
+
+                return null;
+            }
+            // ===== 變更結束 =====
+
             ActorExpressionTextureBinding binding = FindBinding(actor, expression);
             if (binding == null)
             {
@@ -1269,7 +1577,7 @@ namespace OpsidanosInk.Runtime.Presentation
             element.style.height = rect.height;
         }
 
-        private static void AnimateOpacity(VisualElement element, float opacity, float durationSeconds)
+        private void AnimateOpacity(VisualElement element, float opacity, float durationSeconds)
         {
             if (durationSeconds <= 0f)
             {
@@ -1278,10 +1586,14 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             int durationMs = Mathf.RoundToInt(durationSeconds * 1000f);
-            element.experimental.animation.Start(new StyleValues { opacity = opacity }, durationMs);
+            IValueAnimation animation = element.experimental.animation.Start(new StyleValues { opacity = opacity }, durationMs);
+            if (animation != null)
+            {
+                activeAnimations.Add(animation);
+            }
         }
 
-        private static void AnimateRect(VisualElement element, Rect rect, float durationSeconds)
+        private void AnimateRect(VisualElement element, Rect rect, float durationSeconds)
         {
             if (durationSeconds <= 0f)
             {
@@ -1290,7 +1602,11 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             int durationMs = Mathf.RoundToInt(durationSeconds * 1000f);
-            element.experimental.animation.Start(new StyleValues { left = rect.x, top = rect.y, width = rect.width, height = rect.height }, durationMs);
+            IValueAnimation animation = element.experimental.animation.Start(new StyleValues { left = rect.x, top = rect.y, width = rect.width, height = rect.height }, durationMs);
+            if (animation != null)
+            {
+                activeAnimations.Add(animation);
+            }
         }
 
         private static string ToDebugState(SlotState state)

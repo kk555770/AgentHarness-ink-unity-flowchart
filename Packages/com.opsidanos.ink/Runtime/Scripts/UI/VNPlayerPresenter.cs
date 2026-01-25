@@ -4,9 +4,13 @@
 // ===== 變更開始 =====
 // 2026/01/22 Opsidanos (修改原因：補齊玩家模式 MVP 操作：回看/Auto/Skip/隱藏 UI，並避免 Start 順序造成第一次輸出不顯示)
 // 預期結果：玩家能在 Runtime 操作回看/自動/快轉/隱藏 UI；Play 後第一句就能正常顯示
+// ===== 變更開始 =====
+// 2026/01/25 Opsidanos (修改原因：修正快速連點造成「上一句演出未結束就進下一句」的狀態錯亂；加入強制完成與點擊冷卻)
+// 預期結果：動畫/打字機未完成時點擊只會強制刷新到終點，且有 0.3 秒冷卻避免立刻跳下一句；完成後再點才推進
 using System.Collections;
 using System.Collections.Generic;
 using OpsidanosInk.Runtime.Story;
+using OpsidanosInk.Runtime.UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -36,6 +40,14 @@ namespace OpsidanosInk.Runtime.UI
         [SerializeField] private float autoDelaySeconds = 1.2f;
         [SerializeField] private float skipIntervalSeconds = 0.05f;
 
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：支援快速連點：Busy 時先 ForceComplete，並加入點擊冷卻避免直接跳過)
+        // 預期結果：點一下只會把當句演出跑到最後；0.3 秒內再點不會推進；超過後再點才推進下一句
+        [Header("Advance Control")]
+        [SerializeField] private float forceCompleteClickCooldownSeconds = 0.3f;
+        [SerializeField] private List<MonoBehaviour> advanceBlockers = new List<MonoBehaviour>();
+        // ===== 變更結束 =====
+
         private VisualElement vnRoot;
         private VisualElement backlogPanel;
         private ScrollView backlogScrollView;
@@ -60,6 +72,12 @@ namespace OpsidanosInk.Runtime.UI
         private bool isSkipEnabled;
         private bool isUiHidden;
         private Coroutine autoSkipCoroutine;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：記錄點擊冷卻時間與可用的 blocker 介面)
+        // 預期結果：強制完成後，短時間內點擊不會直接推進，避免快速連點跳過內容
+        private float clickCooldownUntilUnscaled;
+        private readonly List<IAdvanceBlocker> resolvedAdvanceBlockers = new List<IAdvanceBlocker>();
+        // ===== 變更結束 =====
 
         private void Awake()
         {
@@ -120,6 +138,12 @@ namespace OpsidanosInk.Runtime.UI
             skipButton.clicked += OnClickToggleSkip;
             hideButton.clicked += OnClickHideUI;
             showUIButton.clicked += OnClickShowUI;
+
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：把 Inspector 指定的 MonoBehaviour 解析成 IAdvanceBlocker，避免執行時才發現型別不對)
+            // 預期結果：若設定錯誤會明確印 Error；正確時 Presenter 能統一處理 Busy/ForceComplete
+            ResolveAdvanceBlockers();
+            // ===== 變更結束 =====
 
             RefreshToggleButtons();
         }
@@ -182,8 +206,41 @@ namespace OpsidanosInk.Runtime.UI
 
         private void OnClickContinue()
         {
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：快速連點時先強制完成演出，再允許推進；並加入點擊冷卻避免立刻跳過)
+            // 預期結果：Busy 時點擊只會 ForceComplete；冷卻結束後再點才 Continue
+            if (IsClickInCooldown())
+            {
+                return;
+            }
+
+            if (TryForceCompleteIfBusy(isClick: true))
+            {
+                return;
+            }
+
             storyEngine.Continue();
+            // ===== 變更結束 =====
         }
+
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：選項點擊也要遵守同一套「Busy → ForceComplete → 冷卻」規則)
+        // 預期結果：快速連點不會讓選項直接跳過上一句演出，避免狀態錯亂
+        private void OnClickChoice(int choiceIndex)
+        {
+            if (IsClickInCooldown())
+            {
+                return;
+            }
+
+            if (TryForceCompleteIfBusy(isClick: true))
+            {
+                return;
+            }
+
+            storyEngine.ChooseChoice(choiceIndex);
+        }
+        // ===== 變更結束 =====
 
         private void OnClickToggleBacklog()
         {
@@ -272,10 +329,14 @@ namespace OpsidanosInk.Runtime.UI
                 for (int i = 0; i < output.Choices.Count; i++)
                 {
                     ChoiceOutput choice = output.Choices[i];
-                    var button = new Button(() => storyEngine.ChooseChoice(choice.Index))
+                    // ===== 變更開始 =====
+                    // 2026/01/25 Opsidanos (修改原因：選項按鈕改走 OnClickChoice，統一處理 Busy/冷卻)
+                    // 預期結果：選項點擊也不會因為快速連點而跳過演出
+                    var button = new Button(() => OnClickChoice(choice.Index))
                     {
                         text = choice.Text
                     };
+                    // ===== 變更結束 =====
                     button.AddToClassList("vn-choice-button");
                     choicesContainer.Add(button);
                 }
@@ -451,12 +512,112 @@ namespace OpsidanosInk.Runtime.UI
                     break;
                 }
 
-                storyEngine.Continue();
+                // ===== 變更開始 =====
+                // 2026/01/25 Opsidanos (修改原因：Auto/Skip 推進也需要先處理 Busy，避免演出尚未結束就推進造成錯亂)
+                // 預期結果：Busy 時先 ForceComplete；下一次迴圈再推進
+                if (!TryForceCompleteIfBusy(isClick: false))
+                {
+                    storyEngine.Continue();
+                }
+                // ===== 變更結束 =====
             }
 
             autoSkipCoroutine = null;
         }
+
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：集中管理 Click 冷卻與 Busy 判斷，避免到處複製邏輯)
+        // 預期結果：規則一致：Busy → ForceComplete；若是點擊觸發 ForceComplete，會進入短暫冷卻
+        private bool IsClickInCooldown()
+        {
+            if (forceCompleteClickCooldownSeconds <= 0f)
+            {
+                return false;
+            }
+
+            return Time.unscaledTime < clickCooldownUntilUnscaled;
+        }
+
+        private bool TryForceCompleteIfBusy(bool isClick)
+        {
+            if (resolvedAdvanceBlockers.Count == 0)
+            {
+                return false;
+            }
+
+            bool anyBusy = false;
+
+            for (int i = 0; i < resolvedAdvanceBlockers.Count; i++)
+            {
+                IAdvanceBlocker blocker = resolvedAdvanceBlockers[i];
+                if (blocker == null)
+                {
+                    continue;
+                }
+
+                if (blocker.IsBusy)
+                {
+                    anyBusy = true;
+                }
+            }
+
+            if (!anyBusy)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < resolvedAdvanceBlockers.Count; i++)
+            {
+                IAdvanceBlocker blocker = resolvedAdvanceBlockers[i];
+                if (blocker == null)
+                {
+                    continue;
+                }
+
+                if (blocker.IsBusy)
+                {
+                    blocker.ForceComplete();
+                }
+            }
+
+            if (isClick && forceCompleteClickCooldownSeconds > 0f)
+            {
+                clickCooldownUntilUnscaled = Time.unscaledTime + forceCompleteClickCooldownSeconds;
+            }
+
+            return true;
+        }
+
+        private void ResolveAdvanceBlockers()
+        {
+            resolvedAdvanceBlockers.Clear();
+
+            if (advanceBlockers == null || advanceBlockers.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < advanceBlockers.Count; i++)
+            {
+                MonoBehaviour behaviour = advanceBlockers[i];
+                if (behaviour == null)
+                {
+                    Debug.LogError("[OpsidanosInk] VNPlayerPresenter 的 advanceBlockers 出現空值，請檢查 Inspector。", this);
+                    continue;
+                }
+
+                if (behaviour is IAdvanceBlocker blocker)
+                {
+                    resolvedAdvanceBlockers.Add(blocker);
+                    continue;
+                }
+
+                Debug.LogError($"[OpsidanosInk] VNPlayerPresenter 的 advanceBlockers 只接受 IAdvanceBlocker，但你放入的是：{behaviour.GetType().Name}", this);
+            }
+        }
+        // ===== 變更結束 =====
     }
 }
+// ===== 變更結束 =====
 // ===== 變更結束 =====
 // ===== 變更結束 =====

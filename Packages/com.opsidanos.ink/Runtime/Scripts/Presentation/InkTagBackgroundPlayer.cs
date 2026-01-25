@@ -23,6 +23,11 @@ namespace OpsidanosInk.Runtime.Presentation
         [Header("Refs")]
         [SerializeField] private InkTagEventRouter tagEventRouter;
         [SerializeField] private UIDocument uiDocument;
+        // ===== 變更開始 =====
+        // 2026/01/25 Opsidanos (修改原因：改用集中式 ResourceMap（JSON）做資源映射，避免每個元件各自維護 bindings)
+        // 預期結果：bg tag 只要提供 id，就能從同一份資源映射取得 Texture2D
+        [SerializeField] private InkResourceMap resourceMap;
+        // ===== 變更結束 =====
 
         [Header("UXML")]
         [SerializeField] private string backgroundElementName = "Background";
@@ -82,18 +87,35 @@ namespace OpsidanosInk.Runtime.Presentation
 
             string id = tag.Value;
 
-            SpriteBinding binding = FindBinding(backgroundBindings, id);
-            if (binding == null)
+            // ===== 變更開始 =====
+            // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
+            // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
+            Texture2D texture;
+            if (resourceMap != null)
             {
-                Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 找不到 BG id=\"{id}\" 的對照設定。", this);
-                return;
+                if (!resourceMap.TryGetBackgroundTexture(id, out texture))
+                {
+                    return;
+                }
             }
+            else
+            {
+                SpriteBinding binding = FindBinding(backgroundBindings, id);
+                if (binding == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 找不到 BG id=\"{id}\" 的對照設定。", this);
+                    return;
+                }
 
-            if (binding.Texture == null)
-            {
-                Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 的 BG id=\"{id}\" 尚未指定 Texture2D。", this);
-                return;
+                if (binding.Texture == null)
+                {
+                    Debug.LogError($"[OpsidanosInk] InkTagBackgroundPlayer 的 BG id=\"{id}\" 尚未指定 Texture2D。", this);
+                    return;
+                }
+
+                texture = binding.Texture;
             }
+            // ===== 變更結束 =====
 
             VisualElement element = GetBackgroundElement();
             if (element == null)
@@ -101,11 +123,11 @@ namespace OpsidanosInk.Runtime.Presentation
                 return;
             }
 
-            element.style.backgroundImage = new StyleBackground(binding.Texture);
+            element.style.backgroundImage = new StyleBackground(texture);
 
             if (logBackground)
             {
-                Debug.Log($"[OpsidanosInk][BG] {id} -> {binding.Texture.name}", this);
+                Debug.Log($"[OpsidanosInk][BG] {id} -> {texture.name}", this);
             }
         }
 
