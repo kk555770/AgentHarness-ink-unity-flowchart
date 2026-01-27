@@ -37,8 +37,20 @@ namespace OpsidanosInk.Runtime.UI
         [SerializeField] private InkStoryEngine storyEngine;
 
         [Header("Auto / Skip")]
-        [SerializeField] private float autoDelaySeconds = 1.2f;
+        // ===== 變更開始 =====
+        // 2026/01/26 Opsidanos (修改原因：Auto 規則改成「打字機+動畫完成後再等 1 秒」才推進，且點擊期間會作廢這次 Auto)
+        // 預期結果：Auto 不再因為固定間隔或點擊冷卻而跳過內容；玩家點擊會接管推進，不會被 Auto 偷偷再推一次
+        [SerializeField] private float autoDelaySeconds = 1f;
+        // ===== 變更結束 =====
         [SerializeField] private float skipIntervalSeconds = 0.05f;
+
+        // ===== 變更開始 =====
+        // 2026/01/26 Opsidanos (修改原因：加入打字機效果與可調參數)
+        // 預期結果：對話文字逐字顯示；點擊 ForceComplete 時可立刻顯示完整文字
+        [Header("Typewriter")]
+        [SerializeField] private bool typewriterEnabled = true;
+        [SerializeField] private float typewriterCharsPerSecond = 45f;
+        // ===== 變更結束 =====
 
         // ===== 變更開始 =====
         // 2026/01/25 Opsidanos (修改原因：支援快速連點：Busy 時先 ForceComplete，並加入點擊冷卻避免直接跳過)
@@ -77,6 +89,22 @@ namespace OpsidanosInk.Runtime.UI
         // 預期結果：強制完成後，短時間內點擊不會直接推進，避免快速連點跳過內容
         private float clickCooldownUntilUnscaled;
         private readonly List<IAdvanceBlocker> resolvedAdvanceBlockers = new List<IAdvanceBlocker>();
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/01/26 Opsidanos (修改原因：打字機狀態 + Auto 1 秒等待狀態，並避免 Auto/點擊同一幀重複推進)
+        // 預期結果：Busy 同時包含打字機與人物動畫；Auto 等待期間若點擊會作廢；不會因同一幀重複觸發而連跳
+        private Coroutine typewriterRoutine;
+        private int typewriterOutputId;
+        private string typewriterFullText;
+        private int typewriterVisibleCharCount;
+
+        private bool isAutoAdvanceCountdownActive;
+        private int autoAdvanceCountdownOutputId;
+        private float autoAdvanceCountdownUntilUnscaled;
+        private int autoAdvanceSuppressedOutputId = -1;
+
+        private int lastAdvanceFrame = -1;
         // ===== 變更結束 =====
 
         private void Awake()
@@ -207,6 +235,12 @@ namespace OpsidanosInk.Runtime.UI
         private void OnClickContinue()
         {
             // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：Auto 等待期間若點擊，這一次 Auto 直接作廢，改由點擊規則接管)
+            // 預期結果：玩家點擊時不會被 Auto 偷偷再推一次；就算點擊被冷卻擋住，也會讓 Auto 停下來
+            SuppressAutoAdvanceIfCountdownActive();
+            // ===== 變更結束 =====
+
+            // ===== 變更開始 =====
             // 2026/01/25 Opsidanos (修改原因：快速連點時先強制完成演出，再允許推進；並加入點擊冷卻避免立刻跳過)
             // 預期結果：Busy 時點擊只會 ForceComplete；冷卻結束後再點才 Continue
             if (IsClickInCooldown())
@@ -216,10 +250,25 @@ namespace OpsidanosInk.Runtime.UI
 
             if (TryForceCompleteIfBusy(isClick: true))
             {
+                // ===== 變更開始 =====
+                // 2026/01/26 Opsidanos (修改原因：Auto 開啟時，點擊 ForceComplete 後要立刻開始算 1 秒，若期間沒點擊才自動推進)
+                // 預期結果：點一下補完後放著不動，Auto 會自然接著播放；若再點一下就交給點擊推進，不會被 Auto 再推一次
+                StartAutoAdvanceCountdownIfPossible();
+                // ===== 變更結束 =====
                 return;
             }
 
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：點擊推進要重置 Auto 計時，並避免 Auto/點擊同一幀重複推進)
+            // 預期結果：點擊進下一句後不會沿用上一句的 Auto 倒數；不會同一幀連跳兩句
+            if (!TryMarkAdvancedThisFrame())
+            {
+                return;
+            }
+
+            ResetAutoAdvanceState();
             storyEngine.Continue();
+            // ===== 變更結束 =====
             // ===== 變更結束 =====
         }
 
@@ -228,6 +277,12 @@ namespace OpsidanosInk.Runtime.UI
         // 預期結果：快速連點不會讓選項直接跳過上一句演出，避免狀態錯亂
         private void OnClickChoice(int choiceIndex)
         {
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：Auto 等待期間若點擊，這一次 Auto 直接作廢，改由點擊規則接管)
+            // 預期結果：玩家點選時不會被 Auto 再推一次；就算點擊被冷卻擋住，也會讓 Auto 停下來
+            SuppressAutoAdvanceIfCountdownActive();
+            // ===== 變更結束 =====
+
             if (IsClickInCooldown())
             {
                 return;
@@ -235,10 +290,25 @@ namespace OpsidanosInk.Runtime.UI
 
             if (TryForceCompleteIfBusy(isClick: true))
             {
+                // ===== 變更開始 =====
+                // 2026/01/26 Opsidanos (修改原因：Auto 開啟時，點擊 ForceComplete 後要立刻開始算 1 秒)
+                // 預期結果：點一下補完後放著不動，Auto 會自然接著播放
+                StartAutoAdvanceCountdownIfPossible();
+                // ===== 變更結束 =====
                 return;
             }
 
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：點擊推進要重置 Auto 計時，並避免 Auto/點擊同一幀重複推進)
+            // 預期結果：點選分支後不會沿用上一句的 Auto 倒數；不會同一幀連跳
+            if (!TryMarkAdvancedThisFrame())
+            {
+                return;
+            }
+
+            ResetAutoAdvanceState();
             storyEngine.ChooseChoice(choiceIndex);
+            // ===== 變更結束 =====
         }
         // ===== 變更結束 =====
 
@@ -264,12 +334,22 @@ namespace OpsidanosInk.Runtime.UI
             {
                 isAutoEnabled = false;
                 RefreshToggleButtons();
+                // ===== 變更開始 =====
+                // 2026/01/26 Opsidanos (修改原因：Auto 關閉時要清掉等待狀態，避免下次開啟立刻跳句)
+                // 預期結果：Auto 再次開啟時會重新從「完成後等 1 秒」開始計時
+                ResetAutoAdvanceState();
+                // ===== 變更結束 =====
                 return;
             }
 
             isSkipEnabled = false;
             isAutoEnabled = true;
             RefreshToggleButtons();
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：Auto 開啟時先清掉舊狀態，避免沿用上一句倒數)
+            // 預期結果：Auto 行為一致且可預期
+            ResetAutoAdvanceState();
+            // ===== 變更結束 =====
             StartAutoSkipIfNeeded();
         }
 
@@ -285,6 +365,11 @@ namespace OpsidanosInk.Runtime.UI
             isAutoEnabled = false;
             isSkipEnabled = true;
             RefreshToggleButtons();
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：切換成 Skip 時清掉 Auto 等待狀態)
+            // 預期結果：Skip 不會被 Auto 的倒數狀態干擾
+            ResetAutoAdvanceState();
+            // ===== 變更結束 =====
             StartAutoSkipIfNeeded();
         }
 
@@ -301,16 +386,22 @@ namespace OpsidanosInk.Runtime.UI
         private void OnStoryOutput(StoryOutput output)
         {
             lastOutput = output;
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：每次進入新一句都要重置 Auto 等待狀態，避免沿用上一句倒數)
+            // 預期結果：Auto 倒數永遠只對應目前這一句
+            ResetAutoAdvanceState();
+            // ===== 變更結束 =====
 
             if (speakerLabel != null)
             {
                 speakerLabel.text = string.IsNullOrWhiteSpace(output.Speaker) ? "" : output.Speaker;
             }
 
-            if (bodyLabel != null)
-            {
-                bodyLabel.text = output.LineText ?? "";
-            }
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：加入打字機效果（逐字顯示對話）)
+            // 預期結果：對話文字會逐字跑出；Busy 時點一下可直接顯示完整文字
+            StartTypewriter(output);
+            // ===== 變更結束 =====
 
             if (output.HasEnded || output.Choices.Count > 0)
             {
@@ -480,27 +571,19 @@ namespace OpsidanosInk.Runtime.UI
             {
                 if (isBacklogOpen || isUiHidden)
                 {
+                    // ===== 變更開始 =====
+                    // 2026/01/26 Opsidanos (修改原因：Auto/Skip 被 UI 狀態暫停時要清掉等待狀態)
+                    // 預期結果：回到正常狀態後，不會沿用舊倒數造成突然跳句
+                    ResetAutoAdvanceState();
+                    // ===== 變更結束 =====
                     yield return null;
                     continue;
                 }
 
-                float waitSeconds = isSkipEnabled ? skipIntervalSeconds : autoDelaySeconds;
-                if (waitSeconds > 0f)
-                {
-                    yield return new WaitForSeconds(waitSeconds);
-                }
-                else
-                {
-                    yield return null;
-                }
-
-                if (!(isAutoEnabled || isSkipEnabled))
-                {
-                    break;
-                }
-
                 if (lastOutput == null)
                 {
+                    ResetAutoAdvanceState();
+                    yield return null;
                     continue;
                 }
 
@@ -509,16 +592,96 @@ namespace OpsidanosInk.Runtime.UI
                     isAutoEnabled = false;
                     isSkipEnabled = false;
                     RefreshToggleButtons();
+                    ResetAutoAdvanceState();
                     break;
                 }
 
-                // ===== 變更開始 =====
-                // 2026/01/25 Opsidanos (修改原因：Auto/Skip 推進也需要先處理 Busy，避免演出尚未結束就推進造成錯亂)
-                // 預期結果：Busy 時先 ForceComplete；下一次迴圈再推進
-                if (!TryForceCompleteIfBusy(isClick: false))
+                if (isSkipEnabled)
                 {
+                    float waitSeconds = skipIntervalSeconds;
+                    if (waitSeconds > 0f)
+                    {
+                        yield return new WaitForSecondsRealtime(waitSeconds);
+                    }
+                    else
+                    {
+                        yield return null;
+                    }
+
+                    if (!isSkipEnabled)
+                    {
+                        continue;
+                    }
+
+                    // ===== 變更開始 =====
+                    // 2026/01/26 Opsidanos (修改原因：Skip 模式也需要把打字機/動畫視為 Busy，Busy 時先 ForceComplete)
+                    // 預期結果：Skip 不會因為打字機或人物動畫尚未結束而造成狀態錯亂
+                    if (!TryForceCompleteIfBusy(isClick: false))
+                    {
+                        if (!TryMarkAdvancedThisFrame())
+                        {
+                            continue;
+                        }
+
+                        ResetAutoAdvanceState();
+                        storyEngine.Continue();
+                    }
+                    // ===== 變更結束 =====
+
+                    continue;
+                }
+
+                if (!isAutoEnabled)
+                {
+                    continue;
+                }
+
+                // ===== 變更開始 =====
+                // 2026/01/26 Opsidanos (修改原因：Auto 規則改成「打字機+動畫完成後，再等 1 秒」才推進；等待期間若點擊則作廢)
+                // 預期結果：Auto 播放自然且不會與點擊互搶；點擊會接管推進，Auto 不會再偷推一次
+                if (IsAnyBusy())
+                {
+                    isAutoAdvanceCountdownActive = false;
+                    yield return null;
+                    continue;
+                }
+
+                if (autoAdvanceSuppressedOutputId == lastOutput.OutputId)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                if (!isAutoAdvanceCountdownActive || autoAdvanceCountdownOutputId != lastOutput.OutputId)
+                {
+                    if (autoDelaySeconds <= 0f)
+                    {
+                        autoAdvanceCountdownUntilUnscaled = Time.unscaledTime;
+                    }
+                    else
+                    {
+                        autoAdvanceCountdownUntilUnscaled = Time.unscaledTime + autoDelaySeconds;
+                    }
+
+                    isAutoAdvanceCountdownActive = true;
+                    autoAdvanceCountdownOutputId = lastOutput.OutputId;
+                }
+
+                if (Time.unscaledTime >= autoAdvanceCountdownUntilUnscaled)
+                {
+                    isAutoAdvanceCountdownActive = false;
+
+                    if (!TryMarkAdvancedThisFrame())
+                    {
+                        yield return null;
+                        continue;
+                    }
+
+                    ResetAutoAdvanceState();
                     storyEngine.Continue();
                 }
+
+                yield return null;
                 // ===== 變更結束 =====
             }
 
@@ -540,12 +703,23 @@ namespace OpsidanosInk.Runtime.UI
 
         private bool TryForceCompleteIfBusy(bool isClick)
         {
-            if (resolvedAdvanceBlockers.Count == 0)
+            // ===== 變更開始 =====
+            // 2026/01/26 Opsidanos (修改原因：Busy 需要包含打字機與人物動畫；ForceComplete 也要能補完打字機)
+            // 預期結果：打字機跑到一半時點一下會立刻顯示完整文字，且不會直接進下一句
+            bool anyBusy = false;
+
+            if (IsTypewriterBusy())
             {
-                return false;
+                anyBusy = true;
             }
 
-            bool anyBusy = false;
+            if (resolvedAdvanceBlockers.Count == 0)
+            {
+                if (!anyBusy)
+                {
+                    return false;
+                }
+            }
 
             for (int i = 0; i < resolvedAdvanceBlockers.Count; i++)
             {
@@ -565,6 +739,8 @@ namespace OpsidanosInk.Runtime.UI
             {
                 return false;
             }
+
+            ForceCompleteTypewriter();
 
             for (int i = 0; i < resolvedAdvanceBlockers.Count; i++)
             {
@@ -586,7 +762,213 @@ namespace OpsidanosInk.Runtime.UI
             }
 
             return true;
+            // ===== 變更結束 =====
         }
+
+        // ===== 變更開始 =====
+        // 2026/01/26 Opsidanos (修改原因：打字機與 Auto 狀態管理)
+        // 預期結果：Auto/點擊/Skip 不互相衝突；打字機可被補完；Auto 等待期間點擊會作廢
+        private void ResetAutoAdvanceState()
+        {
+            isAutoAdvanceCountdownActive = false;
+            autoAdvanceCountdownOutputId = 0;
+            autoAdvanceCountdownUntilUnscaled = 0f;
+            autoAdvanceSuppressedOutputId = -1;
+        }
+
+        private void SuppressAutoAdvanceIfCountdownActive()
+        {
+            if (!isAutoEnabled)
+            {
+                return;
+            }
+
+            if (!isAutoAdvanceCountdownActive)
+            {
+                return;
+            }
+
+            if (lastOutput == null)
+            {
+                return;
+            }
+
+            if (autoAdvanceCountdownOutputId != lastOutput.OutputId)
+            {
+                return;
+            }
+
+            isAutoAdvanceCountdownActive = false;
+            autoAdvanceSuppressedOutputId = lastOutput.OutputId;
+        }
+
+        private void StartAutoAdvanceCountdownIfPossible()
+        {
+            if (!isAutoEnabled)
+            {
+                return;
+            }
+
+            if (lastOutput == null)
+            {
+                return;
+            }
+
+            if (lastOutput.HasEnded || lastOutput.Choices.Count > 0)
+            {
+                return;
+            }
+
+            if (IsAnyBusy())
+            {
+                return;
+            }
+
+            isAutoAdvanceCountdownActive = true;
+            autoAdvanceCountdownOutputId = lastOutput.OutputId;
+            autoAdvanceSuppressedOutputId = -1;
+            autoAdvanceCountdownUntilUnscaled = Time.unscaledTime + Mathf.Max(0f, autoDelaySeconds);
+        }
+
+        private bool TryMarkAdvancedThisFrame()
+        {
+            if (Time.frameCount == lastAdvanceFrame)
+            {
+                return false;
+            }
+
+            lastAdvanceFrame = Time.frameCount;
+            return true;
+        }
+
+        private bool IsAnyBusy()
+        {
+            if (IsTypewriterBusy())
+            {
+                return true;
+            }
+
+            for (int i = 0; i < resolvedAdvanceBlockers.Count; i++)
+            {
+                IAdvanceBlocker blocker = resolvedAdvanceBlockers[i];
+                if (blocker == null)
+                {
+                    continue;
+                }
+
+                if (blocker.IsBusy)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void StartTypewriter(StoryOutput output)
+        {
+            if (bodyLabel == null)
+            {
+                return;
+            }
+
+            StopTypewriterRoutine();
+
+            typewriterFullText = output.LineText ?? "";
+            typewriterVisibleCharCount = 0;
+            typewriterOutputId = output.OutputId;
+
+            if (!typewriterEnabled || string.IsNullOrEmpty(typewriterFullText) || typewriterCharsPerSecond <= 0f)
+            {
+                bodyLabel.text = typewriterFullText;
+                typewriterVisibleCharCount = typewriterFullText.Length;
+                return;
+            }
+
+            bodyLabel.text = "";
+            typewriterRoutine = StartCoroutine(TypewriterCoroutine(typewriterOutputId, typewriterFullText));
+        }
+
+        private IEnumerator TypewriterCoroutine(int outputId, string fullText)
+        {
+            float visibleFloat = 0f;
+
+            while (true)
+            {
+                if (lastOutput == null || lastOutput.OutputId != outputId)
+                {
+                    break;
+                }
+
+                if (typewriterVisibleCharCount >= fullText.Length)
+                {
+                    break;
+                }
+
+                visibleFloat += typewriterCharsPerSecond * Time.unscaledDeltaTime;
+                int nextCount = Mathf.Clamp(Mathf.FloorToInt(visibleFloat), 0, fullText.Length);
+
+                if (nextCount != typewriterVisibleCharCount)
+                {
+                    typewriterVisibleCharCount = nextCount;
+                    bodyLabel.text = fullText.Substring(0, typewriterVisibleCharCount);
+                }
+
+                yield return null;
+            }
+
+            typewriterRoutine = null;
+
+            if (lastOutput != null && lastOutput.OutputId == outputId)
+            {
+                typewriterVisibleCharCount = fullText.Length;
+                bodyLabel.text = fullText;
+            }
+        }
+
+        private void StopTypewriterRoutine()
+        {
+            if (typewriterRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(typewriterRoutine);
+            typewriterRoutine = null;
+        }
+
+        private bool IsTypewriterBusy()
+        {
+            if (typewriterRoutine == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(typewriterFullText))
+            {
+                return false;
+            }
+
+            return typewriterVisibleCharCount < typewriterFullText.Length;
+        }
+
+        private void ForceCompleteTypewriter()
+        {
+            if (bodyLabel == null)
+            {
+                return;
+            }
+
+            if (!IsTypewriterBusy())
+            {
+                return;
+            }
+
+            StopTypewriterRoutine();
+            typewriterVisibleCharCount = typewriterFullText.Length;
+            bodyLabel.text = typewriterFullText;
+        }
+        // ===== 變更結束 =====
 
         private void ResolveAdvanceBlockers()
         {

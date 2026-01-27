@@ -192,8 +192,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.UI.VNPlayerPresenter
   uiDocument: {fileID: 767942247}
   storyEngine: {fileID: 767942246}
-  autoDelaySeconds: 1.2
+  autoDelaySeconds: 1
   skipIntervalSeconds: 0.05
+  typewriterEnabled: 1
+  typewriterCharsPerSecond: 45
   forceCompleteClickCooldownSeconds: 0.3
   advanceBlockers:
   - {fileID: 767942254}
