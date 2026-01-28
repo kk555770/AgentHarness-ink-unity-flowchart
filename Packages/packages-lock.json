@@ -20,7 +20,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.inkle.ink-unity-integration": "1.2.1"
+        "com.inkle.ink-unity-integration": "1.2.1",
+        "com.unity.addressables": "2.7.6"
       }
     },
     "com.unity.addressables": {

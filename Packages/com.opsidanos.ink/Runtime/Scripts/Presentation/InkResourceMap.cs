@@ -1,9 +1,12 @@
 // ===== 變更開始 =====
 // 2026/01/25 Opsidanos (修改原因：把資源映射集中成一份 JSON（TextAsset），讓 Flow Chart 未來能用管線化方式輸出並被 Runtime 讀取)
-// 預期結果：bg/bgm/se/cg/char 的 id 對照不再分散在各元件 Inspector；只要更新一份 JSON 就能驅動整個演出系統
+// 2026/01/28 Opsidanos (修改原因：ResourceMap 支援 Addressables address，讓 Player build 也能載入演出資源)
+// 預期結果：bg/bgm/se/cg/char 的 id 對照不再分散在各元件 Inspector；Editor 用 assetPath；Player build 用 Addressables address
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,7 +19,7 @@ namespace OpsidanosInk.Runtime.Presentation
         [Serializable]
         private sealed class ResourceMapPayload
         {
-            public int version = 1;
+            public int version = 2;
             public TextureBinding[] bg;
             public AudioBinding[] bgm;
             public AudioBinding[] se;
@@ -30,6 +33,7 @@ namespace OpsidanosInk.Runtime.Presentation
         {
             public string id;
             public string assetPath;
+            public string address;
         }
 
         [Serializable]
@@ -37,6 +41,7 @@ namespace OpsidanosInk.Runtime.Presentation
         {
             public string id;
             public string assetPath;
+            public string address;
         }
 
         [Serializable]
@@ -52,12 +57,19 @@ namespace OpsidanosInk.Runtime.Presentation
         {
             public string expr;
             public string assetPath;
+            public string address;
+        }
+
+        private sealed class ResourceLocation
+        {
+            public string AssetPath;
+            public string Address;
         }
 
         private sealed class ActorEntry
         {
             public string DefaultExpr;
-            public Dictionary<string, string> ExprPathByExpr;
+            public Dictionary<string, ResourceLocation> ExprLocationByExpr;
         }
 
         [Header("Refs")]
@@ -67,47 +79,67 @@ namespace OpsidanosInk.Runtime.Presentation
         [SerializeField] private bool logLoad;
 
         private bool isLoaded;
-        private Dictionary<string, string> backgroundPathById;
-        private Dictionary<string, string> cgPathById;
-        private Dictionary<string, string> characterPathById;
-        private Dictionary<string, string> bgmPathById;
-        private Dictionary<string, string> sePathById;
+        private Dictionary<string, ResourceLocation> backgroundLocationById;
+        private Dictionary<string, ResourceLocation> cgLocationById;
+        private Dictionary<string, ResourceLocation> characterLocationById;
+        private Dictionary<string, ResourceLocation> bgmLocationById;
+        private Dictionary<string, ResourceLocation> seLocationById;
         private Dictionary<string, ActorEntry> actorById;
 
-        private readonly Dictionary<string, Texture2D> textureCacheByAssetPath =
+        private readonly Dictionary<string, Texture2D> textureCacheByLoadKey =
             new Dictionary<string, Texture2D>(StringComparer.Ordinal);
 
-        private readonly Dictionary<string, AudioClip> audioCacheByAssetPath =
+        private readonly Dictionary<string, AudioClip> audioCacheByLoadKey =
             new Dictionary<string, AudioClip>(StringComparer.Ordinal);
+
+#if !UNITY_EDITOR
+        private readonly Dictionary<string, AsyncOperationHandle> addressableHandleByLoadKey =
+            new Dictionary<string, AsyncOperationHandle>(StringComparer.Ordinal);
+#endif
 
         private void Awake()
         {
             EnsureLoaded();
         }
 
+        private void OnDestroy()
+        {
+#if !UNITY_EDITOR
+            foreach (AsyncOperationHandle handle in addressableHandleByLoadKey.Values)
+            {
+                if (handle.IsValid())
+                {
+                    Addressables.Release(handle);
+                }
+            }
+
+            addressableHandleByLoadKey.Clear();
+#endif
+        }
+
         public bool TryGetBackgroundTexture(string id, out Texture2D texture)
         {
-            return TryGetTexture(backgroundPathById, "bg", id, out texture);
+            return TryGetTexture(backgroundLocationById, "bg", id, out texture);
         }
 
         public bool TryGetCgTexture(string id, out Texture2D texture)
         {
-            return TryGetTexture(cgPathById, "cg", id, out texture);
+            return TryGetTexture(cgLocationById, "cg", id, out texture);
         }
 
         public bool TryGetCharacterTexture(string id, out Texture2D texture)
         {
-            return TryGetTexture(characterPathById, "character", id, out texture);
+            return TryGetTexture(characterLocationById, "character", id, out texture);
         }
 
         public bool TryGetBgmClip(string id, out AudioClip clip)
         {
-            return TryGetAudioClip(bgmPathById, "bgm", id, out clip);
+            return TryGetAudioClip(bgmLocationById, "bgm", id, out clip);
         }
 
         public bool TryGetSeClip(string id, out AudioClip clip)
         {
-            return TryGetAudioClip(sePathById, "se", id, out clip);
+            return TryGetAudioClip(seLocationById, "se", id, out clip);
         }
 
         public bool TryGetActorExpressionTexture(string actor, string expression, out Texture2D texture, out string resolvedExpression)
@@ -151,24 +183,31 @@ namespace OpsidanosInk.Runtime.Presentation
 
             resolvedExpression = exprKey;
 
-            if (entry.ExprPathByExpr == null || !entry.ExprPathByExpr.TryGetValue(exprKey, out string assetPath) || string.IsNullOrWhiteSpace(assetPath))
+            if (entry.ExprLocationByExpr == null ||
+                !entry.ExprLocationByExpr.TryGetValue(exprKey, out ResourceLocation location) ||
+                location == null)
             {
                 Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 actor=\"{actorKey}\" expr=\"{exprKey}\" 的貼圖對照。", this);
                 return false;
             }
 
-            if (textureCacheByAssetPath.TryGetValue(assetPath, out texture) && texture != null)
+            if (!TryGetLoadKey(location, "actorExpr", $"{actorKey}/{exprKey}", out string loadKey))
+            {
+                return false;
+            }
+
+            if (textureCacheByLoadKey.TryGetValue(loadKey, out texture) && texture != null)
             {
                 return true;
             }
 
-            texture = LoadAsset<Texture2D>("actorExpr", $"{actorKey}/{exprKey}", assetPath);
+            texture = LoadAsset<Texture2D>("actorExpr", $"{actorKey}/{exprKey}", location);
             if (texture == null)
             {
                 return false;
             }
 
-            textureCacheByAssetPath[assetPath] = texture;
+            textureCacheByLoadKey[loadKey] = texture;
             return true;
         }
 
@@ -179,11 +218,11 @@ namespace OpsidanosInk.Runtime.Presentation
                 return true;
             }
 
-            backgroundPathById = new Dictionary<string, string>(StringComparer.Ordinal);
-            cgPathById = new Dictionary<string, string>(StringComparer.Ordinal);
-            characterPathById = new Dictionary<string, string>(StringComparer.Ordinal);
-            bgmPathById = new Dictionary<string, string>(StringComparer.Ordinal);
-            sePathById = new Dictionary<string, string>(StringComparer.Ordinal);
+            backgroundLocationById = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal);
+            cgLocationById = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal);
+            characterLocationById = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal);
+            bgmLocationById = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal);
+            seLocationById = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal);
             actorById = new Dictionary<string, ActorEntry>(StringComparer.Ordinal);
 
             if (resourceMapJson == null)
@@ -209,11 +248,11 @@ namespace OpsidanosInk.Runtime.Presentation
                 return false;
             }
 
-            AddTextureBindings(backgroundPathById, payload.bg, "bg");
-            AddTextureBindings(cgPathById, payload.cg, "cg");
-            AddTextureBindings(characterPathById, payload.character, "character");
-            AddAudioBindings(bgmPathById, payload.bgm, "bgm");
-            AddAudioBindings(sePathById, payload.se, "se");
+            AddTextureBindings(backgroundLocationById, payload.bg, "bg");
+            AddTextureBindings(cgLocationById, payload.cg, "cg");
+            AddTextureBindings(characterLocationById, payload.character, "character");
+            AddAudioBindings(bgmLocationById, payload.bgm, "bgm");
+            AddAudioBindings(seLocationById, payload.se, "se");
             AddActors(payload.actors);
 
             isLoaded = true;
@@ -221,14 +260,14 @@ namespace OpsidanosInk.Runtime.Presentation
             if (logLoad)
             {
                 Debug.Log(
-                    $"[OpsidanosInk][ResourceMap] loaded version={payload.version} bg={backgroundPathById.Count} cg={cgPathById.Count} char={characterPathById.Count} bgm={bgmPathById.Count} se={sePathById.Count} actors={actorById.Count}",
+                    $"[OpsidanosInk][ResourceMap] loaded version={payload.version} bg={backgroundLocationById.Count} cg={cgLocationById.Count} char={characterLocationById.Count} bgm={bgmLocationById.Count} se={seLocationById.Count} actors={actorById.Count}",
                     this);
             }
 
             return true;
         }
 
-        private void AddTextureBindings(Dictionary<string, string> target, TextureBinding[] bindings, string kind)
+        private void AddTextureBindings(Dictionary<string, ResourceLocation> target, TextureBinding[] bindings, string kind)
         {
             if (bindings == null || bindings.Length == 0)
             {
@@ -263,11 +302,17 @@ namespace OpsidanosInk.Runtime.Presentation
                     continue;
                 }
 
-                target.Add(id, binding.assetPath.Trim());
+                target.Add(
+                    id,
+                    new ResourceLocation
+                    {
+                        AssetPath = binding.assetPath.Trim(),
+                        Address = string.IsNullOrWhiteSpace(binding.address) ? null : binding.address.Trim()
+                    });
             }
         }
 
-        private void AddAudioBindings(Dictionary<string, string> target, AudioBinding[] bindings, string kind)
+        private void AddAudioBindings(Dictionary<string, ResourceLocation> target, AudioBinding[] bindings, string kind)
         {
             if (bindings == null || bindings.Length == 0)
             {
@@ -302,7 +347,13 @@ namespace OpsidanosInk.Runtime.Presentation
                     continue;
                 }
 
-                target.Add(id, binding.assetPath.Trim());
+                target.Add(
+                    id,
+                    new ResourceLocation
+                    {
+                        AssetPath = binding.assetPath.Trim(),
+                        Address = string.IsNullOrWhiteSpace(binding.address) ? null : binding.address.Trim()
+                    });
             }
         }
 
@@ -338,7 +389,7 @@ namespace OpsidanosInk.Runtime.Presentation
                 var entry = new ActorEntry
                 {
                     DefaultExpr = string.IsNullOrWhiteSpace(actor.defaultExpr) ? null : actor.defaultExpr.Trim(),
-                    ExprPathByExpr = new Dictionary<string, string>(StringComparer.Ordinal)
+                    ExprLocationByExpr = new Dictionary<string, ResourceLocation>(StringComparer.Ordinal)
                 };
 
                 if (actor.expressions == null || actor.expressions.Length == 0)
@@ -364,7 +415,7 @@ namespace OpsidanosInk.Runtime.Presentation
                     }
 
                     string exprId = expr.expr.Trim();
-                    if (entry.ExprPathByExpr.ContainsKey(exprId))
+                    if (entry.ExprLocationByExpr.ContainsKey(exprId))
                     {
                         Debug.LogError($"[OpsidanosInk] InkResourceMap.actors actor=\"{actorId}\" 出現重複 expr：\"{exprId}\"。", this);
                         continue;
@@ -376,10 +427,16 @@ namespace OpsidanosInk.Runtime.Presentation
                         continue;
                     }
 
-                    entry.ExprPathByExpr.Add(exprId, expr.assetPath.Trim());
+                    entry.ExprLocationByExpr.Add(
+                        exprId,
+                        new ResourceLocation
+                        {
+                            AssetPath = expr.assetPath.Trim(),
+                            Address = string.IsNullOrWhiteSpace(expr.address) ? null : expr.address.Trim()
+                        });
                 }
 
-                if (!string.IsNullOrWhiteSpace(entry.DefaultExpr) && !entry.ExprPathByExpr.ContainsKey(entry.DefaultExpr))
+                if (!string.IsNullOrWhiteSpace(entry.DefaultExpr) && !entry.ExprLocationByExpr.ContainsKey(entry.DefaultExpr))
                 {
                     Debug.LogError($"[OpsidanosInk] InkResourceMap.actors actor=\"{actorId}\" 的 defaultExpr=\"{entry.DefaultExpr}\" 找不到對應 expression。", this);
                 }
@@ -388,7 +445,31 @@ namespace OpsidanosInk.Runtime.Presentation
             }
         }
 
-        private bool TryGetTexture(Dictionary<string, string> pathById, string kind, string id, out Texture2D texture)
+        private bool TryGetLoadKey(ResourceLocation location, string kind, string id, out string loadKey)
+        {
+#if UNITY_EDITOR
+            loadKey = location == null ? null : location.AssetPath;
+            if (string.IsNullOrWhiteSpace(loadKey))
+            {
+                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{id}\" 的 assetPath。", this);
+                return false;
+            }
+#else
+            loadKey = location == null ? null : location.Address;
+            if (string.IsNullOrWhiteSpace(loadKey))
+            {
+                Debug.LogError(
+                    $"[OpsidanosInk] InkResourceMap 在 Player build 載入失敗：kind={kind} id=\"{id}\" 的 address 為空。請在 resource_map.json 填入 address，並把該資源設為 Addressable。",
+                    this);
+                return false;
+            }
+#endif
+
+            loadKey = loadKey.Trim();
+            return true;
+        }
+
+        private bool TryGetTexture(Dictionary<string, ResourceLocation> locationById, string kind, string id, out Texture2D texture)
         {
             texture = null;
 
@@ -405,28 +486,33 @@ namespace OpsidanosInk.Runtime.Presentation
 
             string key = id.Trim();
 
-            if (pathById == null || !pathById.TryGetValue(key, out string assetPath) || string.IsNullOrWhiteSpace(assetPath))
+            if (locationById == null || !locationById.TryGetValue(key, out ResourceLocation location) || location == null)
             {
-                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{key}\" 的 assetPath。", this);
+                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{key}\" 的對照。", this);
                 return false;
             }
 
-            if (textureCacheByAssetPath.TryGetValue(assetPath, out texture) && texture != null)
+            if (!TryGetLoadKey(location, kind, key, out string loadKey))
+            {
+                return false;
+            }
+
+            if (textureCacheByLoadKey.TryGetValue(loadKey, out texture) && texture != null)
             {
                 return true;
             }
 
-            texture = LoadAsset<Texture2D>(kind, key, assetPath);
+            texture = LoadAsset<Texture2D>(kind, key, location);
             if (texture == null)
             {
                 return false;
             }
 
-            textureCacheByAssetPath[assetPath] = texture;
+            textureCacheByLoadKey[loadKey] = texture;
             return true;
         }
 
-        private bool TryGetAudioClip(Dictionary<string, string> pathById, string kind, string id, out AudioClip clip)
+        private bool TryGetAudioClip(Dictionary<string, ResourceLocation> locationById, string kind, string id, out AudioClip clip)
         {
             clip = null;
 
@@ -443,41 +529,79 @@ namespace OpsidanosInk.Runtime.Presentation
 
             string key = id.Trim();
 
-            if (pathById == null || !pathById.TryGetValue(key, out string assetPath) || string.IsNullOrWhiteSpace(assetPath))
+            if (locationById == null || !locationById.TryGetValue(key, out ResourceLocation location) || location == null)
             {
-                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{key}\" 的 assetPath。", this);
+                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{key}\" 的對照。", this);
                 return false;
             }
 
-            if (audioCacheByAssetPath.TryGetValue(assetPath, out clip) && clip != null)
+            if (!TryGetLoadKey(location, kind, key, out string loadKey))
+            {
+                return false;
+            }
+
+            if (audioCacheByLoadKey.TryGetValue(loadKey, out clip) && clip != null)
             {
                 return true;
             }
 
-            clip = LoadAsset<AudioClip>(kind, key, assetPath);
+            clip = LoadAsset<AudioClip>(kind, key, location);
             if (clip == null)
             {
                 return false;
             }
 
-            audioCacheByAssetPath[assetPath] = clip;
+            audioCacheByLoadKey[loadKey] = clip;
             return true;
         }
 
-        private T LoadAsset<T>(string kind, string id, string assetPath) where T : UnityEngine.Object
+        private T LoadAsset<T>(string kind, string id, ResourceLocation location) where T : UnityEngine.Object
         {
 #if UNITY_EDITOR
+            if (location == null || string.IsNullOrWhiteSpace(location.AssetPath))
+            {
+                Debug.LogError($"[OpsidanosInk] InkResourceMap 找不到 {kind} id=\"{id}\" 的 assetPath。", this);
+                return null;
+            }
+
+            string assetPath = location.AssetPath.Trim();
             T asset = AssetDatabase.LoadAssetAtPath<T>(assetPath);
             if (asset == null)
             {
-                Debug.LogError($"[OpsidanosInk] InkResourceMap 載入資源失敗：kind={kind} id=\"{id}\" path=\"{assetPath}\" type={typeof(T).Name}", this);
+                Debug.LogError($"[OpsidanosInk] InkResourceMap 載入資源失敗：kind={kind} id=\"{id}\" assetPath=\"{assetPath}\" type={typeof(T).Name}", this);
                 return null;
             }
 
             return asset;
 #else
-            Debug.LogError($"[OpsidanosInk] InkResourceMap 在 Player build 目前無法用 assetPath 載入資源（需要 Addressables/Resources）。kind={kind} id=\"{id}\" path=\"{assetPath}\"", this);
-            return null;
+            if (location == null || string.IsNullOrWhiteSpace(location.Address))
+            {
+                Debug.LogError(
+                    $"[OpsidanosInk] InkResourceMap 在 Player build 載入失敗：kind={kind} id=\"{id}\" 的 address 為空。請在 resource_map.json 填入 address，並把該資源設為 Addressable。",
+                    this);
+                return null;
+            }
+
+            string address = location.Address.Trim();
+
+            AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(address);
+            T asset = handle.WaitForCompletion();
+            if (handle.Status != AsyncOperationStatus.Succeeded || asset == null)
+            {
+                string errorMessage = handle.OperationException != null ? handle.OperationException.Message : "Unknown";
+                Debug.LogError(
+                    $"[OpsidanosInk] InkResourceMap 透過 Addressables 載入資源失敗：kind={kind} id=\"{id}\" address=\"{address}\" type={typeof(T).Name} error={errorMessage}",
+                    this);
+                Addressables.Release(handle);
+                return null;
+            }
+
+            if (!addressableHandleByLoadKey.ContainsKey(address))
+            {
+                addressableHandleByLoadKey.Add(address, handle);
+            }
+
+            return asset;
 #endif
         }
     }

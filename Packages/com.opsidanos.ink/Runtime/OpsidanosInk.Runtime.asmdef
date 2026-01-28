@@ -1,9 +1,10 @@
 {
     "name": "OpsidanosInk.Runtime",
     "references": [
-        "Ink-Libraries"
+        "Ink-Libraries",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": []
 }
-

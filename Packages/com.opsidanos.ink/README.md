@@ -83,7 +83,14 @@
    - 之後 `bg/bgm/se/cg/char` 只要給 `id`（或 actor/expr），就會從同一份 JSON 取得對應資源
 
 注意：
-- 目前 `assetPath` 載入只支援 Editor（Play Mode）。若你做成 Player build，會印 Error 提醒你改用 Addressables/Resources。
+- `resource_map.json` 的每筆資源現在有兩個欄位：
+  - `assetPath`：Editor（Play Mode）用 `AssetDatabase` 載入（不需要 Addressables）
+  - `address`：Player build 用 Addressables 載入（一定要填）
+- 若要做 Player build，你需要：
+  1. 把 `resource_map.json` 用到的資源都設成 Addressable
+  2. 資源的 Address（地址）要和 `resource_map.json` 的 `address` 一樣（最簡單：直接用資源路徑當地址）
+  3. 先建置 Addressables：`Addressables > Build > New Build > Default Build Script`
+  4. （只想設定 Demo）你也可以直接點選 Unity 選單：`OpsidanosInk > Addressables > 套用 Demo ResourceMap（自動勾 Addressable）`
 
 ## Tag 演出（最小：畫面抖動）
 如果你的 Ink 會用 Tag（例如 `shake`），你可以用 `InkTagShakePlayer` 做最小畫面抖動：
