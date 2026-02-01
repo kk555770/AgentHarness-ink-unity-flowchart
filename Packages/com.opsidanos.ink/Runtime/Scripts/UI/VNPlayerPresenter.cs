@@ -9,6 +9,7 @@
 // 預期結果：動畫/打字機未完成時點擊只會強制刷新到終點，且有 0.3 秒冷卻避免立刻跳下一句；完成後再點才推進
 using System.Collections;
 using System.Collections.Generic;
+using OpsidanosInk.Runtime.Save;
 using OpsidanosInk.Runtime.Story;
 using OpsidanosInk.Runtime.UI;
 using UnityEngine;
@@ -35,6 +36,11 @@ namespace OpsidanosInk.Runtime.UI
         [Header("Refs")]
         [SerializeField] private UIDocument uiDocument;
         [SerializeField] private InkStoryEngine storyEngine;
+        // ===== 變更開始 =====
+        // 2026/01/30 Opsidanos (修改原因：接上存檔/讀檔/倒帶系統，讓 UI 按鈕能呼叫)
+        // 預期結果：點擊「存檔/讀檔/倒帶」時能正確呼叫 InkSaveSystem
+        [SerializeField] private InkSaveSystem saveSystem;
+        // ===== 變更結束 =====
 
         [Header("Auto / Skip")]
         // ===== 變更開始 =====
@@ -74,6 +80,13 @@ namespace OpsidanosInk.Runtime.UI
         private Button autoButton;
         private Button skipButton;
         private Button hideButton;
+        // ===== 變更開始 =====
+        // 2026/01/30 Opsidanos (修改原因：新增存檔/讀檔/倒帶按鈕)
+        // 預期結果：VNPlayer.uxml 有對應按鈕時，Presenter 能找到並綁定事件
+        private Button saveButton;
+        private Button loadButton;
+        private Button rollbackButton;
+        // ===== 變更結束 =====
         private Button showUIButton;
 
         private readonly List<BacklogEntry> backlogEntries = new List<BacklogEntry>();
@@ -138,6 +151,13 @@ namespace OpsidanosInk.Runtime.UI
             autoButton = root.Q<Button>("AutoButton");
             skipButton = root.Q<Button>("SkipButton");
             hideButton = root.Q<Button>("HideButton");
+            // ===== 變更開始 =====
+            // 2026/01/30 Opsidanos (修改原因：讀取新的存檔/讀檔/倒帶按鈕)
+            // 預期結果：若 UXML 缺少按鈕會直接報錯，避免按鈕有顯示但功能失效
+            saveButton = root.Q<Button>("SaveButton");
+            loadButton = root.Q<Button>("LoadButton");
+            rollbackButton = root.Q<Button>("RollbackButton");
+            // ===== 變更結束 =====
             showUIButton = root.Q<Button>("ShowUIButton");
 
             if (vnRoot == null ||
@@ -152,6 +172,13 @@ namespace OpsidanosInk.Runtime.UI
                 autoButton == null ||
                 skipButton == null ||
                 hideButton == null ||
+                // ===== 變更開始 =====
+                // 2026/01/30 Opsidanos (修改原因：檢查新按鈕是否存在)
+                // 預期結果：避免 UXML 遺漏造成 NullReference
+                saveButton == null ||
+                loadButton == null ||
+                rollbackButton == null ||
+                // ===== 變更結束 =====
                 showUIButton == null)
             {
                 Debug.LogError("[OpsidanosInk] VNPlayer.uxml 缺少必要的元素。", this);
@@ -165,6 +192,13 @@ namespace OpsidanosInk.Runtime.UI
             autoButton.clicked += OnClickToggleAuto;
             skipButton.clicked += OnClickToggleSkip;
             hideButton.clicked += OnClickHideUI;
+            // ===== 變更開始 =====
+            // 2026/01/30 Opsidanos (修改原因：綁定存檔/讀檔/倒帶按鈕事件)
+            // 預期結果：按鈕點下去會呼叫 InkSaveSystem
+            saveButton.clicked += OnClickSave;
+            loadButton.clicked += OnClickLoad;
+            rollbackButton.clicked += OnClickRollback;
+            // ===== 變更結束 =====
             showUIButton.clicked += OnClickShowUI;
 
             // ===== 變更開始 =====
@@ -226,6 +260,25 @@ namespace OpsidanosInk.Runtime.UI
                 hideButton.clicked -= OnClickHideUI;
             }
 
+            // ===== 變更開始 =====
+            // 2026/01/30 Opsidanos (修改原因：補上存檔/讀檔/倒帶按鈕的反註冊，避免重複綁定)
+            // 預期結果：物件重建/切場景時不會留下重複 callback
+            if (saveButton != null)
+            {
+                saveButton.clicked -= OnClickSave;
+            }
+
+            if (loadButton != null)
+            {
+                loadButton.clicked -= OnClickLoad;
+            }
+
+            if (rollbackButton != null)
+            {
+                rollbackButton.clicked -= OnClickRollback;
+            }
+            // ===== 變更結束 =====
+
             if (showUIButton != null)
             {
                 showUIButton.clicked -= OnClickShowUI;
@@ -271,6 +324,43 @@ namespace OpsidanosInk.Runtime.UI
             // ===== 變更結束 =====
             // ===== 變更結束 =====
         }
+
+        // ===== 變更開始 =====
+        // 2026/01/30 Opsidanos (修改原因：提供存檔/讀檔/倒帶按鈕行為)
+        // 預期結果：玩家能在 UI 上直接存檔、讀檔、倒帶
+        private void OnClickSave()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.SaveToSlot();
+        }
+
+        private void OnClickLoad()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.LoadFromSlot();
+        }
+
+        private void OnClickRollback()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.RollbackOnce();
+        }
+        // ===== 變更結束 =====
 
         // ===== 變更開始 =====
         // 2026/01/25 Opsidanos (修改原因：選項點擊也要遵守同一套「Busy → ForceComplete → 冷卻」規則)

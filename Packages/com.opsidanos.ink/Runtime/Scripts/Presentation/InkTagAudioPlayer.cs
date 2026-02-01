@@ -90,6 +90,24 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             string id = tag.Value;
+
+            // ===== 變更開始 =====
+            // 2026/01/30 Opsidanos (修改原因：存讀檔需要能停止 BGM，避免讀檔後殘留上一段音樂)
+            // 預期結果：收到 bgm:stop 時會停止並清空 BGM；讀檔回到沒有 BGM 的句子時不會繼續播放舊 BGM
+            if (string.Equals(id, "stop", StringComparison.Ordinal))
+            {
+                bgmSource.Stop();
+                bgmSource.clip = null;
+
+                if (logBgm)
+                {
+                    Debug.Log("[OpsidanosInk][BGM] stop", this);
+                }
+
+                return;
+            }
+            // ===== 變更結束 =====
+
             // ===== 變更開始 =====
             // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
             // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證

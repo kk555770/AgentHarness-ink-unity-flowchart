@@ -27,6 +27,9 @@
 # Packed Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 
+# Addressables 編譯後會自動產生的檔案（不進版控）
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/link.xml*
+
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*

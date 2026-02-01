@@ -64,6 +64,54 @@ namespace OpsidanosInk.Runtime.Story
             EmitNext();
         }
 
+        // ===== 變更開始 =====
+        // 2026/01/30 Opsidanos (修改原因：提供存檔/讀檔/倒帶需要的 Ink state 存取 API，並允許外部重新送出「既有輸出」用於還原畫面)
+        // 預期結果：外部系統能存讀 story.state JSON；讀檔/倒帶時能不推進故事就刷新 UI 與 Tag 演出
+        public bool TryGetStoryStateJson(out string storyStateJson)
+        {
+            storyStateJson = null;
+
+            if (story == null)
+            {
+                Debug.LogError("[OpsidanosInk] Story 尚未初始化，無法取得存檔狀態。", this);
+                return false;
+            }
+
+            storyStateJson = story.state.ToJson();
+            return true;
+        }
+
+        public bool TryLoadStoryStateJson(string storyStateJson)
+        {
+            if (story == null)
+            {
+                Debug.LogError("[OpsidanosInk] Story 尚未初始化，無法載入存檔狀態。", this);
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(storyStateJson))
+            {
+                Debug.LogError("[OpsidanosInk] 收到空白的 storyStateJson，無法載入。", this);
+                return false;
+            }
+
+            story.state.LoadJson(storyStateJson);
+            hasEnded = !story.canContinue && story.currentChoices.Count == 0;
+            return true;
+        }
+
+        public void EmitExternalOutput(StoryOutput output)
+        {
+            if (output == null)
+            {
+                Debug.LogError("[OpsidanosInk] InkStoryEngine.EmitExternalOutput 收到 null 的 StoryOutput。", this);
+                return;
+            }
+
+            OutputGenerated?.Invoke(output);
+        }
+        // ===== 變更結束 =====
+
         private void EmitNext()
         {
             if (hasEnded)
@@ -118,7 +166,11 @@ namespace OpsidanosInk.Runtime.Story
                 choices.Add(new ChoiceOutput(choice.index, choice.text.Trim()));
             }
 
-            OutputGenerated?.Invoke(new StoryOutput(nextOutputId++, speaker, lineText, outputHasEnded, rawTags, parsedTags, choices));
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：標記一般推進輸出來源，供倒退時套用相反規則判斷)
+            // 預期結果：正常 Continue/Choose 產生的輸出皆為 Normal
+            OutputGenerated?.Invoke(new StoryOutput(nextOutputId++, speaker, lineText, outputHasEnded, rawTags, parsedTags, choices, StoryOutputSource.Normal));
+            // ===== 變更結束 =====
         }
 
         private static string TryGetSpeakerFromTags(List<InkTag> tags)

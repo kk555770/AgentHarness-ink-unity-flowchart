@@ -124,6 +124,12 @@ namespace OpsidanosInk.Runtime.Presentation
         private VisualElement characterRightElement;
         private VisualElement actorLayerElement;
         private readonly Dictionary<string, VisualElement> actorElements = new Dictionary<string, VisualElement>(StringComparer.Ordinal);
+        // ===== 變更開始 =====
+        // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時要套用相反的 char 層級規則，需要一個可用來插隊的 anchor，並記住目前輸出來源)
+        // 預期結果：Normal 維持現有置頂；Restore 會用 anchor 讓先做的動作在上面（含 ForceComplete）
+        private VisualElement rollbackLayerAnchorElement;
+        private StoryOutputSource activeOutputSource = StoryOutputSource.Normal;
+        // ===== 變更結束 =====
 
         private SlotState currentLeft;
         private SlotState currentCenter;
@@ -218,6 +224,12 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：記錄目前輸出來源，讓 ForceComplete 也能套用相同的層級規則)
+            // 預期結果：Normal/Restore 都能一致套用（不會只改到 coroutine 那條路）
+            activeOutputSource = output != null ? output.Source : StoryOutputSource.Normal;
+            // ===== 變更結束 =====
+
+            // ===== 變更開始 =====
             // 2026/01/25 Opsidanos (修改原因：若上一句的角色演出還沒結束，先強制刷新到終點再開始新一句)
             // 預期結果：快速推進時不會讓兩句的角色動畫疊在一起，狀態保持一致
             if (IsBusy)
@@ -285,6 +297,11 @@ namespace OpsidanosInk.Runtime.Presentation
             }
 
             EnsureActorLayer(layer);
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時需要套用相反的 char 層級規則，先在整個 transition 內記住模式)
+            // 預期結果：isRestore=true 時，動作中置頂與結束重排都會走相反規則
+            bool isRestore = output != null && output.Source == StoryOutputSource.Restore;
+            // ===== 變更結束 =====
             ClearSlotVisual(leftElement);
             ClearSlotVisual(centerElement);
             ClearSlotVisual(rightElement);
@@ -321,7 +338,11 @@ namespace OpsidanosInk.Runtime.Presentation
             BuildStateByActor(targetStateByActor, targetRight);
 
             EnsureActorElementsForCurrentState(currentByActor, currentStateByActor, leftRect, centerRect, rightRect);
-            SyncActorElementsToSlotOrder(currentLeft, currentCenter, currentRight);
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時，固定重排也要相反，避免一開始就用錯順序)
+            // 預期結果：Restore 時以相反順序重排（右→中→左）
+            SyncActorElementsToSlotOrder(currentLeft, currentCenter, currentRight, isRestore);
+            // ===== 變更結束 =====
 
             var appearActors = new List<string>();
             var stayActors = new List<string>();
@@ -395,6 +416,17 @@ namespace OpsidanosInk.Runtime.Presentation
             {
                 Debug.LogError($"[OpsidanosInk] char.transition.steps 排程為空（沒有任何可執行動作）。OutputId={output.OutputId}", this);
             }
+
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：倒退/讀檔（Restore）時，動作中置頂規則要相反：先做的在上面)
+            // 預期結果：Restore 時用 anchor 插隊；Normal 維持原本 BringToFront()
+            HashSet<string> rollbackRaisedActors = isRestore ? new HashSet<string>(StringComparer.Ordinal) : null;
+            if (isRestore)
+            {
+                EnsureRollbackLayerAnchor();
+                rollbackLayerAnchorElement.BringToFront();
+            }
+            // ===== 變更結束 =====
 
             for (int stepIndex = 0; stepIndex < schedule.Count; stepIndex++)
             {
@@ -470,7 +502,18 @@ namespace OpsidanosInk.Runtime.Presentation
                     AddActorsToList(actorsToRaise, doMove ? moveActors : null);
                     AddActorsToList(actorsToRaise, doDisappear ? disappearActors : null);
                 }
-                BringActorsToFrontPreserveOrder(actorsToRaise);
+                // ===== 變更開始 =====
+                // 2026/02/01 Opsidanos (修改原因：倒退/讀檔要讓「先做的」留在上面，所以不能每一步都 BringToFront)
+                // 預期結果：Normal：後做的在上；Restore：先做的在上（同一個角色不會被後續步驟往下拖）
+                if (isRestore)
+                {
+                    PlaceActorsInFrontOfRollbackAnchorPreserveOrder(actorsToRaise, rollbackRaisedActors);
+                }
+                else
+                {
+                    BringActorsToFrontPreserveOrder(actorsToRaise);
+                }
+                // ===== 變更結束 =====
 
                 // 同步開始：appear / move / disappear（可以同時發生）
                 if (doAppear && appearActors.Count > 0)
@@ -617,13 +660,25 @@ namespace OpsidanosInk.Runtime.Presentation
 
                         actorElement.RemoveFromHierarchy();
                         actorElements.Remove(actor);
+                        // ===== 變更開始 =====
+                        // 2026/02/01 Opsidanos (修改原因：倒退模式下，如果角色已消失，後續若又出現需要允許再次插隊)
+                        // 預期結果：角色消失後，rollbackRaisedActors 不會卡住該 actor 的後續 raise
+                        if (rollbackRaisedActors != null)
+                        {
+                            rollbackRaisedActors.Remove(actor);
+                        }
+                        // ===== 變更結束 =====
                     }
                 }
             }
             // ===== 變更結束 =====
 
             // 整串 steps 結束後，重置角色層級（回到基準 1，不影響下一串）
-            SyncActorElementsToSlotOrder(targetLeft, targetCenter, targetRight);
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時，結束後固定重排要相反)
+            // 預期結果：Normal：左→中→右；Restore：右→中→左
+            SyncActorElementsToSlotOrder(targetLeft, targetCenter, targetRight, isRestore);
+            // ===== 變更結束 =====
 
             currentLeft = targetLeft;
             currentCenter = targetCenter;
@@ -830,7 +885,12 @@ namespace OpsidanosInk.Runtime.Presentation
                 actorElements.Remove(actor);
             }
 
-            SyncActorElementsToSlotOrder(targetLeft, targetCenter, targetRight);
+            // ===== 變更開始 =====
+            // 2026/02/01 Opsidanos (修改原因：ForceComplete 也要套用倒退/讀檔的相反重排規則，避免點擊後順序跳回正常)
+            // 預期結果：Restore 時：右→中→左；Normal 時：左→中→右
+            bool reverseSlotOrder = activeOutputSource == StoryOutputSource.Restore;
+            SyncActorElementsToSlotOrder(targetLeft, targetCenter, targetRight, reverseSlotOrder);
+            // ===== 變更結束 =====
         }
 
         private void StopActiveAnimations()
@@ -1355,6 +1415,83 @@ namespace OpsidanosInk.Runtime.Presentation
             }
         }
 
+        // ===== 變更開始 =====
+        // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時需要一個固定存在的 anchor，才能把「後做的」插到更下面)
+        // 預期結果：Restore 模式可用 PlaceInFront(anchor) 達成「先做的在上面」
+        private void EnsureRollbackLayerAnchor()
+        {
+            if (actorLayerElement == null)
+            {
+                return;
+            }
+
+            if (rollbackLayerAnchorElement != null && rollbackLayerAnchorElement.parent == actorLayerElement)
+            {
+                return;
+            }
+
+            rollbackLayerAnchorElement = new VisualElement
+            {
+                name = "CharacterRollbackLayerAnchor",
+                pickingMode = PickingMode.Ignore
+            };
+
+            rollbackLayerAnchorElement.style.display = DisplayStyle.None;
+            actorLayerElement.Add(rollbackLayerAnchorElement);
+        }
+
+        private void PlaceActorsInFrontOfRollbackAnchorPreserveOrder(List<string> actors, HashSet<string> alreadyRaised)
+        {
+            if (actors == null || actors.Count == 0)
+            {
+                return;
+            }
+
+            if (actorLayerElement == null || rollbackLayerAnchorElement == null)
+            {
+                return;
+            }
+
+            var indexed = new List<(string Actor, int Index)>();
+
+            for (int i = 0; i < actors.Count; i++)
+            {
+                string actor = actors[i];
+                if (alreadyRaised != null && alreadyRaised.Contains(actor))
+                {
+                    continue;
+                }
+
+                if (!actorElements.TryGetValue(actor, out VisualElement element))
+                {
+                    continue;
+                }
+
+                int index = GetChildIndex(actorLayerElement, element);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                indexed.Add((actor, index));
+            }
+
+            indexed.Sort((a, b) => a.Index.CompareTo(b.Index));
+
+            for (int i = indexed.Count - 1; i >= 0; i--)
+            {
+                string actor = indexed[i].Actor;
+                if (!actorElements.TryGetValue(actor, out VisualElement element))
+                {
+                    continue;
+                }
+
+                element.PlaceInFront(rollbackLayerAnchorElement);
+                alreadyRaised?.Add(actor);
+            }
+        }
+        // ===== 變更結束 =====
+
         private void BringActorsToFrontPreserveOrder(List<string> actors)
         {
             if (actors == null || actors.Count == 0)
@@ -1416,28 +1553,52 @@ namespace OpsidanosInk.Runtime.Presentation
             return -1;
         }
 
-        private void SyncActorElementsToSlotOrder(SlotState left, SlotState center, SlotState right)
+        // ===== 變更開始 =====
+        // 2026/02/01 Opsidanos (修改原因：倒退/讀檔時，動作結束後的固定重排也要相反)
+        // 預期結果：Normal：左→中→右（右邊最上）；Restore：右→中→左（左邊最上）
+        private void SyncActorElementsToSlotOrder(SlotState left, SlotState center, SlotState right, bool reverseSlotOrder)
         {
             if (actorLayerElement == null)
             {
                 return;
             }
 
-            if (!left.IsEmpty && actorElements.TryGetValue(left.Actor, out VisualElement leftElement))
+            if (!reverseSlotOrder)
             {
-                leftElement.BringToFront();
+                if (!left.IsEmpty && actorElements.TryGetValue(left.Actor, out VisualElement leftElement))
+                {
+                    leftElement.BringToFront();
+                }
+
+                if (!center.IsEmpty && actorElements.TryGetValue(center.Actor, out VisualElement centerElement))
+                {
+                    centerElement.BringToFront();
+                }
+
+                if (!right.IsEmpty && actorElements.TryGetValue(right.Actor, out VisualElement rightElement))
+                {
+                    rightElement.BringToFront();
+                }
+
+                return;
             }
 
-            if (!center.IsEmpty && actorElements.TryGetValue(center.Actor, out VisualElement centerElement))
+            if (!right.IsEmpty && actorElements.TryGetValue(right.Actor, out VisualElement rightElementReverse))
             {
-                centerElement.BringToFront();
+                rightElementReverse.BringToFront();
             }
 
-            if (!right.IsEmpty && actorElements.TryGetValue(right.Actor, out VisualElement rightElement))
+            if (!center.IsEmpty && actorElements.TryGetValue(center.Actor, out VisualElement centerElementReverse))
             {
-                rightElement.BringToFront();
+                centerElementReverse.BringToFront();
+            }
+
+            if (!left.IsEmpty && actorElements.TryGetValue(left.Actor, out VisualElement leftElementReverse))
+            {
+                leftElementReverse.BringToFront();
             }
         }
+        // ===== 變更結束 =====
 
         private static void ClearSlotVisual(VisualElement slotElement)
         {

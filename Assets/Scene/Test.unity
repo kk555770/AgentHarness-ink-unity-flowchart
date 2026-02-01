@@ -141,6 +141,7 @@ GameObject:
   - component: {fileID: 767942254}
   - component: {fileID: 767942255}
   - component: {fileID: 767942256}
+  - component: {fileID: 767942257}
   m_Layer: 0
   m_Name: VNPlayer
   m_TagString: Untagged
@@ -192,6 +193,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.UI.VNPlayerPresenter
   uiDocument: {fileID: 767942247}
   storyEngine: {fileID: 767942246}
+  saveSystem: {fileID: 767942257}
   autoDelaySeconds: 1
   skipIntervalSeconds: 0.05
   typewriterEnabled: 1
@@ -236,20 +238,6 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
---- !u!114 &767942256
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 767942242}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0f166901527e4caea7dcbfa92fe58200, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkResourceMap
-  resourceMapJson: {fileID: 4900000, guid: 4532fbcfd5844908b684a27dabf31f84, type: 3}
-  logLoad: 0
 --- !u!114 &767942248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -600,6 +588,35 @@ MonoBehaviour:
   defaultStrengthPixels: 16
   useUnscaledTime: 1
   logShake: 1
+--- !u!114 &767942256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f166901527e4caea7dcbfa92fe58200, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Presentation.InkResourceMap
+  resourceMapJson: {fileID: 4900000, guid: 4532fbcfd5844908b684a27dabf31f84, type: 3}
+  logLoad: 0
+--- !u!114 &767942257
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 767942242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4689fd9a89e14d5b985ccd6d0c738926, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: OpsidanosInk.Runtime::OpsidanosInk.Runtime.Save.InkSaveSystem
+  storyEngine: {fileID: 767942246}
+  rollbackCapacity: 50
+  logSaveLoad: 1
 --- !u!1 &1162676897
 GameObject:
   m_ObjectHideFlags: 0

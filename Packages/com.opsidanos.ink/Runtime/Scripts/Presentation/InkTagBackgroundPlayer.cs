@@ -88,6 +88,28 @@ namespace OpsidanosInk.Runtime.Presentation
             string id = tag.Value;
 
             // ===== 變更開始 =====
+            // 2026/01/31 Opsidanos (修改原因：存讀檔需要能把背景還原為「空白」，所以增加 bg:clear 支援；並修正變數命名衝突造成的編譯錯誤)
+            // 預期結果：收到 bg:clear 時背景圖會被清空，且此檔案可正常編譯
+            if (string.Equals(id, "clear", StringComparison.Ordinal))
+            {
+                VisualElement background = GetBackgroundElement();
+                if (background == null)
+                {
+                    return;
+                }
+
+                background.style.backgroundImage = new StyleBackground((Texture2D)null);
+
+                if (logBackground)
+                {
+                    Debug.Log("[OpsidanosInk][BG] clear", this);
+                }
+
+                return;
+            }
+            // ===== 變更結束 =====
+
+            // ===== 變更開始 =====
             // 2026/01/25 Opsidanos (修改原因：支援 ResourceMap；若未指定 ResourceMap 則沿用舊 bindings（相容）)
             // 預期結果：有指定 ResourceMap 時以 ResourceMap 為準；沒有時仍可用舊 bindings 驗證
             Texture2D texture;

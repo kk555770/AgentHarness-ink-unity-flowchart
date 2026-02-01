@@ -16,6 +16,7 @@
    - `UIDocument`
    - `InkStoryEngine`
    - `VNPlayerPresenter`
+   - （可選）`InkSaveSystem`（存檔/讀檔/倒帶）
    - （可選）`InkTagEventRouter`（顯示 Tag 除錯輸出用）
 5. 設定元件欄位：
    - `UIDocument`
@@ -25,6 +26,7 @@
    - `VNPlayerPresenter`
      - `Ui Document`：拖 `VNPlayer` 自己的 `UIDocument`
      - `Story Engine`：拖 `VNPlayer` 自己的 `InkStoryEngine`
+     - `Save System`：拖 `VNPlayer` 自己的 `InkSaveSystem`（若你有加）
    - （可選）`InkTagEventRouter`
      - `Story Engine`：拖 `VNPlayer` 自己的 `InkStoryEngine`
 6. 按下 Play，你會看到文字與選項
@@ -177,3 +179,19 @@
   - 例：`# char:\{\"left\":\{\"actor\":\"bs\"\}\}`
 
 > 注意：`char.mode="patch"` 目前尚未支援，請先用預設 replace（沒寫到的槽位視為 null）。
+
+## 存檔 / 讀檔 / 倒帶（Rollback）
+如果你想讓玩家模式有最小的存檔功能，可以使用 `InkSaveSystem`：
+
+1. 在同一個 GameObject（例如 `VNPlayer`）加上元件：
+   - `InkSaveSystem`
+2. 設定 `InkSaveSystem` 欄位：
+   - `Story Engine`：拖同物件的 `InkStoryEngine`
+   - `Rollback Capacity`：最多能倒帶幾句（預設 50）
+3. 設定 `VNPlayerPresenter` 欄位：
+   - `Save System`：拖同物件的 `InkSaveSystem`
+4. 按下 Play：
+   - 右上角 TopBar 會看到：`存檔` / `讀檔` / `倒帶`
+
+注意：
+- 目前的「存檔槽位」是存在記憶體裡：停止 Play Mode 後就會消失（之後要做多槽/寫入檔案再擴充）

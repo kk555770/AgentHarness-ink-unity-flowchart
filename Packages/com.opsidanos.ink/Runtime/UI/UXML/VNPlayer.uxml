@@ -41,6 +41,9 @@
         <ui:Button name="AutoButton" class="vn-topbar-button" text="自動：關" />
         <ui:Button name="SkipButton" class="vn-topbar-button" text="快轉：關" />
         <ui:Button name="HideButton" class="vn-topbar-button" text="隱藏 UI" />
+        <ui:Button name="SaveButton" class="vn-topbar-button" text="存檔" />
+        <ui:Button name="LoadButton" class="vn-topbar-button" text="讀檔" />
+        <ui:Button name="RollbackButton" class="vn-topbar-button" text="倒帶" />
       </ui:VisualElement>
     </ui:VisualElement>
 
