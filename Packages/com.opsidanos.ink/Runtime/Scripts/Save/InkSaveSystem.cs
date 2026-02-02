@@ -166,6 +166,12 @@ namespace OpsidanosInk.Runtime.Save
                     return;
                 }
 
+                // ===== 變更開始 =====
+                // 2026/02/01 Opsidanos (修改原因：倒退/讀檔只還原畫面，卻沒同步 currentPresentation，導致後續快照被污染)
+                // 預期結果：倒退/讀檔後再推進，背景/CG/角色等狀態不會被錯誤沿用；倒帶會在正確句子切換
+                ApplyRestoredPresentationToCurrent(target.presentation);
+                // ===== 變更結束 =====
+
                 if (resetRollbackBuffer)
                 {
                     rollbackBuffer.Clear();
@@ -185,6 +191,21 @@ namespace OpsidanosInk.Runtime.Save
                 suppressCapture = false;
             }
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/01 Opsidanos (修改原因：Restore 期間 suppressCapture 會跳過 OnStoryOutput，必須手動同步 currentPresentation)
+        // 預期結果：Restore 後 currentPresentation 會與畫面狀態一致，避免下一句快照把舊狀態寫回去
+        private void ApplyRestoredPresentationToCurrent(PresentationSnapshot restored)
+        {
+            currentPresentation.bgId = NormalizeValueOrFallback(restored.bgId, "clear");
+            currentPresentation.bgmId = NormalizeValueOrFallback(restored.bgmId, "stop");
+            currentPresentation.cgValue = NormalizeValueOrFallback(restored.cgValue, "clear");
+            currentPresentation.charValue = NormalizeValueOrFallback(restored.charValue, "clear");
+            currentPresentation.charLeftId = NormalizeValueOrFallback(restored.charLeftId, "clear");
+            currentPresentation.charCenterId = NormalizeValueOrFallback(restored.charCenterId, "clear");
+            currentPresentation.charRightId = NormalizeValueOrFallback(restored.charRightId, "clear");
+        }
+        // ===== 變更結束 =====
 
         private static InkSaveData BuildSaveData(StoryOutput output, string storyStateJson, PresentationSnapshot presentation)
         {
