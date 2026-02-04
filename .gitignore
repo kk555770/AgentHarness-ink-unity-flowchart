@@ -74,6 +74,9 @@ Bin/
 # Unity UPM Samples 會使用 `Samples~` 資料夾，不能被 `*~` 忽略
 !Packages/**/Samples~/
 !Packages/**/Samples~/**
+# 但 macOS 會自動產生 `.DS_Store`，不應該進版控（避免 `git status` 一直跳）
+Packages/**/Samples~/**/.DS_Store
+Packages/**/Samples~/**/.DS_Store?
 .idea/
 codex-hello-loop/
 PlanningWithFiles/

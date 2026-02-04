@@ -1,0 +1,10 @@
+{
+    "name": "OpsidanosInk.PlayModeTests",
+    "references": [
+        "OpsidanosInk.Runtime"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
+
