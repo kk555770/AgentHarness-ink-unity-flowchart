@@ -15,6 +15,9 @@
 # Unity 個人設定（很常變，不進版控）
 /UserSettings/EditorUserSettings.asset
 
+# Unity 專案設定（跑測試會改到，暫時不進版控）
+/ProjectSettings/EditorSettings.asset
+
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
 /[Mm]emoryCaptures/
