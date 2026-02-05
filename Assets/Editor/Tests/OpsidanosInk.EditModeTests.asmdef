@@ -1,0 +1,13 @@
+{
+  "name": "OpsidanosInk.EditModeTests",
+  "references": [
+    "OpsidanosInk.Runtime",
+    "Ink-Libraries"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
