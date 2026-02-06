@@ -70,7 +70,69 @@ namespace OpsidanosInk.Tests
             Assert.AreEqual("clear", loaded.presentation.charCenterId);
             Assert.AreEqual("clear", loaded.presentation.charRightId);
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增多槽容器序列化測試，避免 manualSlots/autoSlot 版型被改壞)
+        // 預期結果：InkSaveBankData 可正確 ToJson/FromJson，且槽位資料不遺失
+        [Test]
+        public void InkSaveBankData_RoundTrip_JsonUtility()
+        {
+            var bank = new InkSaveBankData
+            {
+                version = 1,
+                manualSlots = new[]
+                {
+                    new InkSaveSlotData
+                    {
+                        version = 1,
+                        activeRollbackIndex = 0,
+                        rollbackHistory = new[]
+                        {
+                            new InkSaveData { version = 1, inkStateJson = "{\"slot\":1}" }
+                        }
+                    },
+                    null,
+                    new InkSaveSlotData
+                    {
+                        version = 1,
+                        activeRollbackIndex = 0,
+                        rollbackHistory = new[]
+                        {
+                            new InkSaveData { version = 1, inkStateJson = "{\"slot\":3}" }
+                        }
+                    }
+                },
+                autoSlot = new InkSaveSlotData
+                {
+                    version = 1,
+                    activeRollbackIndex = 0,
+                    rollbackHistory = new[]
+                    {
+                        new InkSaveData { version = 1, inkStateJson = "{\"slot\":\"auto\"}" }
+                    }
+                }
+            };
+
+            string json = JsonUtility.ToJson(bank);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(json), "InkSaveBankData ToJson 不應該產生空字串。");
+
+            InkSaveBankData loaded = JsonUtility.FromJson<InkSaveBankData>(json);
+            Assert.NotNull(loaded, "InkSaveBankData FromJson 不應該回傳 null。");
+            Assert.AreEqual(1, loaded.version);
+            Assert.NotNull(loaded.manualSlots, "manualSlots 不可為 null。");
+            Assert.AreEqual(3, loaded.manualSlots.Length);
+            Assert.NotNull(loaded.manualSlots[0], "manualSlots[0] 不可為 null。");
+            Assert.AreEqual("{\"slot\":1}", loaded.manualSlots[0].rollbackHistory[0].inkStateJson);
+            Assert.NotNull(loaded.manualSlots[1], "manualSlots[1] 會被 JsonUtility 還原成預設物件。");
+            Assert.IsTrue(
+                loaded.manualSlots[1].rollbackHistory == null || loaded.manualSlots[1].rollbackHistory.Length == 0,
+                "manualSlots[1] 應該沒有有效 rollbackHistory。");
+            Assert.NotNull(loaded.manualSlots[2], "manualSlots[2] 不可為 null。");
+            Assert.AreEqual("{\"slot\":3}", loaded.manualSlots[2].rollbackHistory[0].inkStateJson);
+            Assert.NotNull(loaded.autoSlot, "autoSlot 不可為 null。");
+            Assert.AreEqual("{\"slot\":\"auto\"}", loaded.autoSlot.rollbackHistory[0].inkStateJson);
+        }
+        // ===== 變更結束 =====
     }
 }
 // ===== 變更結束 =====
-

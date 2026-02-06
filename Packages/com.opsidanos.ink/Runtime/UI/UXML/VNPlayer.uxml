@@ -43,6 +43,14 @@
         <ui:Button name="HideButton" class="vn-topbar-button" text="隱藏 UI" />
         <ui:Button name="SaveButton" class="vn-topbar-button" text="存檔" />
         <ui:Button name="LoadButton" class="vn-topbar-button" text="讀檔" />
+        <ui:Button name="SaveSlot1Button" class="vn-topbar-button" text="存1" />
+        <ui:Button name="LoadSlot1Button" class="vn-topbar-button" text="讀1" />
+        <ui:Button name="SaveSlot2Button" class="vn-topbar-button" text="存2" />
+        <ui:Button name="LoadSlot2Button" class="vn-topbar-button" text="讀2" />
+        <ui:Button name="SaveSlot3Button" class="vn-topbar-button" text="存3" />
+        <ui:Button name="LoadSlot3Button" class="vn-topbar-button" text="讀3" />
+        <ui:Button name="SaveAutoSlotButton" class="vn-topbar-button" text="自存" />
+        <ui:Button name="LoadAutoSlotButton" class="vn-topbar-button" text="自讀" />
         <ui:Button name="RollbackButton" class="vn-topbar-button" text="倒帶" />
       </ui:VisualElement>
     </ui:VisualElement>

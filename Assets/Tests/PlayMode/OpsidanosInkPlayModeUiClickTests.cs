@@ -1,8 +1,12 @@
 // ===== 變更開始 =====
 // 2026/02/05 Opsidanos (修改原因：新增 PlayMode 的 UI 點擊測試，確保 VNPlayer.uxml 的按鈕接線與狀態切換正常)
 // 預期結果：在 Unity Test Runner（PlayMode）會真的「點」Backlog/Auto/Skip/Hide/Show 按鈕並驗證 UI 狀態
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
+using OpsidanosInk.Runtime.Save;
+using OpsidanosInk.Runtime.Story;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -149,6 +153,280 @@ namespace OpsidanosInk.Tests
             Assert.IsFalse(vnRoot.ClassListContains("vn-ui-hidden"), "點 ShowUIButton 後應該取消隱藏 UI。");
             Assert.AreEqual(DisplayStyle.None, showUIButton.resolvedStyle.display, "取消隱藏後 ShowUIButton 應該不顯示（display:none）。");
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增多槽與 Auto 槽按鈕的 UI 點擊驗證，確保按鈕真的接到對應 API)
+        // 預期結果：透過 UI 點擊存/讀不同槽位時，讀回的 Ink state 與各槽位存檔時一致
+        [UnityTest]
+        public IEnumerator SlotButtons_可觸發對應槽位存讀()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+
+            VisualElement root = uiDocument.rootVisualElement;
+            Button saveSlot1Button = root.Q<Button>("SaveSlot1Button");
+            Button loadSlot1Button = root.Q<Button>("LoadSlot1Button");
+            Button saveSlot2Button = root.Q<Button>("SaveSlot2Button");
+            Button loadSlot2Button = root.Q<Button>("LoadSlot2Button");
+            Button saveAutoSlotButton = root.Q<Button>("SaveAutoSlotButton");
+            Button loadAutoSlotButton = root.Q<Button>("LoadAutoSlotButton");
+
+            Assert.IsNotNull(saveSlot1Button, "找不到 SaveSlot1Button。");
+            Assert.IsNotNull(loadSlot1Button, "找不到 LoadSlot1Button。");
+            Assert.IsNotNull(saveSlot2Button, "找不到 SaveSlot2Button。");
+            Assert.IsNotNull(loadSlot2Button, "找不到 LoadSlot2Button。");
+            Assert.IsNotNull(saveAutoSlotButton, "找不到 SaveAutoSlotButton。");
+            Assert.IsNotNull(loadAutoSlotButton, "找不到 LoadAutoSlotButton。");
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> outputHandler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += outputHandler;
+
+            try
+            {
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateSlot1), "應該能取得槽位 1 存檔狀態。");
+                SimulateLeftClick(saveSlot1Button);
+                yield return null;
+
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateSlot2), "應該能取得槽位 2 存檔狀態。");
+                SimulateLeftClick(saveSlot2Button);
+                yield return null;
+
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAuto), "應該能取得 Auto 槽存檔狀態。");
+                SimulateLeftClick(saveAutoSlotButton);
+                yield return null;
+
+                int beforeLoadCount = outputs.Count;
+                SimulateLeftClick(loadSlot2Button);
+                yield return WaitForNewOutput(outputs, beforeLoadCount, 3f, "點讀2後應送出 Restore 輸出");
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string loadedSlot2), "點讀2後應能取得狀態。");
+                Assert.AreEqual(stateSlot2, loadedSlot2, "讀2後應回到槽位 2 狀態。");
+
+                beforeLoadCount = outputs.Count;
+                SimulateLeftClick(loadSlot1Button);
+                yield return WaitForNewOutput(outputs, beforeLoadCount, 3f, "點讀1後應送出 Restore 輸出");
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string loadedSlot1), "點讀1後應能取得狀態。");
+                Assert.AreEqual(stateSlot1, loadedSlot1, "讀1後應回到槽位 1 狀態。");
+
+                beforeLoadCount = outputs.Count;
+                SimulateLeftClick(loadAutoSlotButton);
+                yield return WaitForNewOutput(outputs, beforeLoadCount, 3f, "點自讀後應送出 Restore 輸出");
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string loadedAuto), "點自讀後應能取得狀態。");
+                Assert.AreEqual(stateAuto, loadedAuto, "自讀後應回到 Auto 槽狀態。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= outputHandler;
+            }
+        }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：驗證 RollbackButton 快速連按時，會排隊逐步倒帶，不會卡在中間)
+        // 預期結果：連按多次 Rollback 後，狀態會穩定回到可倒帶最前句
+        [UnityTest]
+        public IEnumerator RollbackButton_快速連按_會排隊倒帶到最前句()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkSaveSystem saveSystem = GetRequiredComponent<InkSaveSystem>(vnPlayer, "InkSaveSystem");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> handler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += handler;
+
+            try
+            {
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out _), "應該能取得第一句狀態。");
+
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                yield return AdvanceStoryOneStep(storyEngine, outputs);
+                Assert.GreaterOrEqual(saveSystem.AvailableRollbackSteps, 3, "建立測試資料後，應至少有 3 步可倒帶。");
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateBeforeRapidRollback), "快速倒帶前應能取得狀態。");
+
+                Button rollbackButton = uiDocument.rootVisualElement.Q<Button>("RollbackButton");
+                Assert.IsNotNull(rollbackButton, "找不到 RollbackButton。");
+
+                int rollbackClicks = Mathf.Min(3, saveSystem.AvailableRollbackSteps);
+                int expectedRemainingSteps = saveSystem.AvailableRollbackSteps - rollbackClicks;
+                for (int i = 0; i < rollbackClicks; i++)
+                {
+                    SimulateLeftClick(rollbackButton);
+                }
+
+                float start = Time.realtimeSinceStartup;
+                while (saveSystem.AvailableRollbackSteps > expectedRemainingSteps)
+                {
+                    if (Time.realtimeSinceStartup - start > 5f)
+                    {
+                        Assert.Fail("等待快速連按 Rollback 收斂逾時。");
+                    }
+
+                    yield return null;
+                }
+
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterRollback), "倒帶後應該能取得狀態。");
+                Assert.AreNotEqual(stateBeforeRapidRollback, stateAfterRollback, "快速連按 Rollback 後，狀態應該改變。");
+                Assert.AreEqual(expectedRemainingSteps, saveSystem.AvailableRollbackSteps, "快速連按 Rollback 後，可倒帶步數應與預期一致。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= handler;
+            }
+        }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：補上更高壓的實測，覆蓋「讀檔後 + 超量連按 rollback」情境)
+        // 預期結果：Load 後連按 rollback 超過可倒帶步數，仍可穩定回到最前句，且不產生 rollbackBuffer 不足 Error
+        [UnityTest]
+        public IEnumerator RollbackButton_高壓連按_讀檔後仍可回到存檔前且無錯誤()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkSaveSystem saveSystem = GetRequiredComponent<InkSaveSystem>(vnPlayer, "InkSaveSystem");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> outputHandler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += outputHandler;
+
+            string savePointState = null;
+
+            try
+            {
+                int safety = 20;
+                while (safety-- > 0)
+                {
+                    if (outputs.Count > 0 && outputs[outputs.Count - 1].HasEnded)
+                    {
+                        break;
+                    }
+
+                    yield return AdvanceStoryOneStep(storyEngine, outputs);
+
+                    if (savePointState == null && outputs.Count >= 5)
+                    {
+                        Assert.IsTrue(storyEngine.TryGetStoryStateJson(out savePointState), "應該能取得存檔點狀態。");
+                        saveSystem.SaveToSlot();
+                    }
+                }
+
+                Assert.IsNotNull(savePointState, "高壓測試前，必須先建立存檔點。");
+
+                int beforeLoadCount = outputs.Count;
+                saveSystem.LoadFromSlot();
+                yield return WaitForNewOutput(outputs, beforeLoadCount, 3f, "LoadFromSlot 應該送出一筆輸出。");
+
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterLoad), "讀檔後應能取得狀態。");
+                Assert.AreEqual(savePointState, stateAfterLoad, "讀檔後應回到存檔點。");
+                Assert.GreaterOrEqual(saveSystem.AvailableRollbackSteps, 1, "讀檔後至少應該還有 1 步可倒帶。");
+
+                Button rollbackButton = uiDocument.rootVisualElement.Q<Button>("RollbackButton");
+                Assert.IsNotNull(rollbackButton, "找不到 RollbackButton。");
+
+                var rollbackErrors = new List<string>();
+                Application.LogCallback logHandler = (condition, stackTrace, type) =>
+                {
+                    if (type != LogType.Error)
+                    {
+                        return;
+                    }
+
+                    if (condition != null && condition.Contains("InkSaveSystem 無法倒帶"))
+                    {
+                        rollbackErrors.Add(condition);
+                    }
+                };
+
+                int overClickCount = saveSystem.AvailableRollbackSteps + 30;
+                Application.logMessageReceived += logHandler;
+                try
+                {
+                    for (int i = 0; i < overClickCount; i++)
+                    {
+                        SimulateLeftClick(rollbackButton);
+                    }
+
+                    float start = Time.realtimeSinceStartup;
+                    while (saveSystem.AvailableRollbackSteps > 0)
+                    {
+                        if (Time.realtimeSinceStartup - start > 15f)
+                        {
+                            Assert.Fail("高壓 rollback 等待收斂逾時。");
+                        }
+
+                        yield return null;
+                    }
+                }
+                finally
+                {
+                    Application.logMessageReceived -= logHandler;
+                }
+
+                Assert.AreEqual(0, rollbackErrors.Count, "高壓 rollback 不應出現 rollbackBuffer 不足 Error。");
+                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterStressRollback), "高壓 rollback 後應能取得狀態。");
+                Assert.AreNotEqual(savePointState, stateAfterStressRollback, "高壓 rollback 後，狀態應該已離開存檔點。");
+                Assert.AreEqual(0, saveSystem.AvailableRollbackSteps, "高壓 rollback 後應收斂到最前句（無可倒帶步數）。");
+                Assert.IsFalse(saveSystem.CanRollback, "高壓 rollback 後不應再可倒帶。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= outputHandler;
+            }
+        }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：Rollback 快速連按測試需要可重用的推進步驟 helper)
+        // 預期結果：每次呼叫都會產生一筆新輸出，若遇到選項就選第 1 個繼續推進
+        private static IEnumerator AdvanceStoryOneStep(InkStoryEngine storyEngine, List<StoryOutput> outputs)
+        {
+            int before = outputs.Count;
+            storyEngine.Continue();
+            yield return WaitForNewOutput(outputs, before, 3f, "Continue() 後應產生新輸出");
+
+            StoryOutput last = outputs[outputs.Count - 1];
+            if (last.Choices == null || last.Choices.Count <= 0)
+            {
+                yield break;
+            }
+
+            before = outputs.Count;
+            storyEngine.ChooseChoice(last.Choices[0].Index);
+            yield return WaitForNewOutput(outputs, before, 3f, "ChooseChoice(0) 後應產生新輸出");
+        }
+
+        private static IEnumerator WaitForNewOutput(List<StoryOutput> outputs, int previousCount, float timeoutSeconds, string reason)
+        {
+            float start = Time.realtimeSinceStartup;
+            while (outputs.Count <= previousCount)
+            {
+                if (Time.realtimeSinceStartup - start > timeoutSeconds)
+                {
+                    Assert.Fail($"等待輸出逾時：{reason}");
+                }
+
+                yield return null;
+            }
+        }
+        // ===== 變更結束 =====
 
         private static IEnumerator LoadTestScene()
         {

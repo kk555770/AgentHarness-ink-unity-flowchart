@@ -5,6 +5,30 @@ using System;
 
 namespace OpsidanosInk.Runtime.Save
 {
+    // ===== 變更開始 =====
+    // 2026/02/06 Opsidanos (修改原因：存檔需要保留「整條倒帶歷史 + 目前位置」，讀檔後才能倒帶到存檔點之前)
+    // 預期結果：Load 後 rollbackBuffer 會回到存檔當下的歷史，不再只剩單點快照
+    [Serializable]
+    public sealed class InkSaveSlotData
+    {
+        public int version = 1;
+        public int activeRollbackIndex;
+        public InkSaveData[] rollbackHistory;
+    }
+    // ===== 變更結束 =====
+
+    // ===== 變更開始 =====
+    // 2026/02/06 Opsidanos (修改原因：多槽存檔需要一個可序列化的容器，承載手動槽與 Auto 槽)
+    // 預期結果：之後若需要持久化到檔案，可直接序列化整個存檔銀行資料
+    [Serializable]
+    public sealed class InkSaveBankData
+    {
+        public int version = 1;
+        public InkSaveSlotData[] manualSlots;
+        public InkSaveSlotData autoSlot;
+    }
+    // ===== 變更結束 =====
+
     [Serializable]
     public sealed class InkSaveData
     {
@@ -51,4 +75,3 @@ namespace OpsidanosInk.Runtime.Save
     }
 }
 // ===== 變更結束 =====
-

@@ -20,7 +20,20 @@ namespace OpsidanosInk.Runtime.Save
         [SerializeField] private bool logSaveLoad = true;
 
         private readonly List<InkSaveData> rollbackBuffer = new List<InkSaveData>();
-        private InkSaveData saveSlot;
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：Phase 3-1 需要支援多槽存讀 + Auto 槽，不能再只用單一 saveSlot)
+        // 預期結果：手動 3 槽與 Auto 槽可獨立存讀，且保留既有 SaveToSlot/LoadFromSlot 相容行為
+        private const int ManualSlotCount = 3;
+        private readonly InkSaveSlotData[] manualSlots = new InkSaveSlotData[ManualSlotCount];
+        private InkSaveSlotData autoSlot;
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：提供 UI/流程可判斷的倒帶能力資訊，避免倒帶到底時一直噴錯)
+        // 預期結果：上層可先判斷是否可倒帶、還剩幾步，並可做排隊控制
+        public int AvailableRollbackSteps => Mathf.Max(rollbackBuffer.Count - 1, 0);
+        public bool CanRollback => rollbackBuffer.Count > 1;
+        // ===== 變更結束 =====
 
         private readonly PresentationSnapshot currentPresentation = new PresentationSnapshot
         {
@@ -93,44 +106,137 @@ namespace OpsidanosInk.Runtime.Save
 
         public void SaveToSlot()
         {
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：保留舊 API，相容既有按鈕與流程)
+            // 預期結果：舊 SaveToSlot 仍可使用，行為等同存到手動槽位 1
+            SaveToManualSlot(1);
+            // ===== 變更結束 =====
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增手動多槽存檔 API)
+        // 預期結果：可指定 1~3 槽位存檔，槽位資料互不覆蓋
+        public void SaveToManualSlot(int slotNumber)
+        {
             if (!TryGetLatestSnapshot(out InkSaveData latestSnapshot))
             {
                 Debug.LogError("[OpsidanosInk] InkSaveSystem 無法存檔：目前還沒有任何可存的輸出。", this);
                 return;
             }
 
-            saveSlot = CloneSaveData(latestSnapshot);
+            if (!TryNormalizeManualSlotIndex(slotNumber, out int manualSlotIndex))
+            {
+                return;
+            }
+
+            manualSlots[manualSlotIndex] = CreateCurrentSlotData();
 
             if (logSaveLoad)
             {
-                int outputId = saveSlot.output != null ? saveSlot.output.outputId : -1;
-                Debug.Log($"[OpsidanosInk][Save] 存檔完成 OutputId={outputId}", this);
+                int outputId = latestSnapshot.output != null ? latestSnapshot.output.outputId : -1;
+                Debug.Log($"[OpsidanosInk][Save][ManualSlot{slotNumber}] 存檔完成 OutputId={outputId}", this);
             }
         }
+        // ===== 變更結束 =====
 
         public void LoadFromSlot()
         {
-            if (saveSlot == null)
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：保留舊 API，相容既有按鈕與流程)
+            // 預期結果：舊 LoadFromSlot 仍可使用，行為等同讀取手動槽位 1
+            LoadFromManualSlot(1);
+            // ===== 變更結束 =====
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增手動多槽讀檔 API)
+        // 預期結果：可指定 1~3 槽位讀檔，且讀檔後仍可倒帶到存檔點之前
+        public void LoadFromManualSlot(int slotNumber)
+        {
+            if (!TryNormalizeManualSlotIndex(slotNumber, out int manualSlotIndex))
             {
-                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀檔：目前沒有存檔資料。", this);
                 return;
             }
 
-            Restore(saveSlot, resetRollbackBuffer: true, logPrefix: "[OpsidanosInk][Load]");
+            InkSaveSlotData targetSlot = manualSlots[manualSlotIndex];
+            if (targetSlot == null)
+            {
+                Debug.LogError($"[OpsidanosInk] InkSaveSystem 無法讀檔：手動槽位 {slotNumber} 目前沒有存檔資料。", this);
+                return;
+            }
+
+            if (!TryRestoreRollbackHistoryFromSlot(targetSlot, out InkSaveData target))
+            {
+                return;
+            }
+
+            Restore(target, resetRollbackBuffer: false, logPrefix: $"[OpsidanosInk][Load][ManualSlot{slotNumber}]");
         }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增 Auto 槽存讀 API)
+        // 預期結果：Auto 槽可獨立存讀，不覆蓋手動槽資料
+        public void SaveToAutoSlot()
+        {
+            if (!TryGetLatestSnapshot(out InkSaveData latestSnapshot))
+            {
+                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法自動存檔：目前還沒有任何可存的輸出。", this);
+                return;
+            }
+
+            autoSlot = CreateCurrentSlotData();
+
+            if (logSaveLoad)
+            {
+                int outputId = latestSnapshot.output != null ? latestSnapshot.output.outputId : -1;
+                Debug.Log($"[OpsidanosInk][Save][AutoSlot] 存檔完成 OutputId={outputId}", this);
+            }
+        }
+
+        public void LoadFromAutoSlot()
+        {
+            if (autoSlot == null)
+            {
+                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀取自動存檔：Auto 槽位目前沒有資料。", this);
+                return;
+            }
+
+            if (!TryRestoreRollbackHistoryFromSlot(autoSlot, out InkSaveData target))
+            {
+                return;
+            }
+
+            Restore(target, resetRollbackBuffer: false, logPrefix: "[OpsidanosInk][Load][AutoSlot]");
+        }
+        // ===== 變更結束 =====
 
         public void RollbackOnce()
         {
+            if (TryRollbackOnce())
+            {
+                return;
+            }
+
+            Debug.LogError("[OpsidanosInk] InkSaveSystem 無法倒帶：rollbackBuffer 不足（至少需要 2 份快照）。", this);
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：提供不噴紅字的倒帶 API，給 UI 佇列使用)
+        // 預期結果：快速連按倒帶時可穩定排隊，且到最前句時不會一直刷 Error
+        public bool TryRollbackOnce()
+        {
             if (rollbackBuffer.Count <= 1)
             {
-                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法倒帶：rollbackBuffer 不足（至少需要 2 份快照）。", this);
-                return;
+                return false;
             }
 
             rollbackBuffer.RemoveAt(rollbackBuffer.Count - 1);
             InkSaveData target = rollbackBuffer[rollbackBuffer.Count - 1];
             Restore(target, resetRollbackBuffer: false, logPrefix: "[OpsidanosInk][Rollback]");
+            return true;
         }
+        // ===== 變更結束 =====
 
         private void Restore(InkSaveData target, bool resetRollbackBuffer, string logPrefix)
         {
@@ -289,6 +395,107 @@ namespace OpsidanosInk.Runtime.Save
             return new StoryOutput(output.outputId, output.speaker, output.lineText, output.hasEnded, rawTags, parsedTags, choices, StoryOutputSource.Restore);
             // ===== 變更結束 =====
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：存檔/讀檔要能保留並還原整條 rollback 歷史)
+        // 預期結果：讀檔後 rollbackBuffer 會回到存檔那一刻的狀態，並可繼續向前倒帶
+        private static InkSaveData[] CloneRollbackHistory(List<InkSaveData> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return Array.Empty<InkSaveData>();
+            }
+
+            var snapshots = new InkSaveData[source.Count];
+            for (int i = 0; i < source.Count; i++)
+            {
+                snapshots[i] = CloneSaveData(source[i]);
+            }
+
+            return snapshots;
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：多槽存讀需要共用槽位資料建構與槽位索引驗證)
+        // 預期結果：手動槽位編號驗證一致，並統一產生可讀回倒帶歷史的槽位資料
+        private InkSaveSlotData CreateCurrentSlotData()
+        {
+            return new InkSaveSlotData
+            {
+                version = 1,
+                activeRollbackIndex = rollbackBuffer.Count - 1,
+                rollbackHistory = CloneRollbackHistory(rollbackBuffer)
+            };
+        }
+
+        private bool TryNormalizeManualSlotIndex(int slotNumber, out int manualSlotIndex)
+        {
+            manualSlotIndex = slotNumber - 1;
+            if (manualSlotIndex >= 0 && manualSlotIndex < ManualSlotCount)
+            {
+                return true;
+            }
+
+            Debug.LogError($"[OpsidanosInk] InkSaveSystem 無效的手動槽位：{slotNumber}。允許範圍為 1 ~ {ManualSlotCount}。", this);
+            return false;
+        }
+        // ===== 變更結束 =====
+
+        private bool TryRestoreRollbackHistoryFromSlot(InkSaveSlotData slot, out InkSaveData target)
+        {
+            target = null;
+            if (slot == null)
+            {
+                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀檔：存檔槽位為 null。", this);
+                return false;
+            }
+
+            if (slot.rollbackHistory == null || slot.rollbackHistory.Length == 0)
+            {
+                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀檔：rollbackHistory 為空。", this);
+                return false;
+            }
+
+            rollbackBuffer.Clear();
+            for (int i = 0; i < slot.rollbackHistory.Length; i++)
+            {
+                InkSaveData snapshot = CloneSaveData(slot.rollbackHistory[i]);
+                if (snapshot == null)
+                {
+                    continue;
+                }
+
+                rollbackBuffer.Add(snapshot);
+            }
+
+            if (rollbackBuffer.Count == 0)
+            {
+                Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀檔：rollbackHistory 全部為無效快照。", this);
+                return false;
+            }
+
+            if (rollbackBuffer.Count > rollbackCapacity)
+            {
+                int overCount = rollbackBuffer.Count - rollbackCapacity;
+                rollbackBuffer.RemoveRange(0, overCount);
+            }
+
+            int activeIndex = Mathf.Clamp(slot.activeRollbackIndex, 0, rollbackBuffer.Count - 1);
+            if (activeIndex < rollbackBuffer.Count - 1)
+            {
+                rollbackBuffer.RemoveRange(activeIndex + 1, rollbackBuffer.Count - activeIndex - 1);
+            }
+
+            target = rollbackBuffer[rollbackBuffer.Count - 1];
+            if (target != null)
+            {
+                return true;
+            }
+
+            Debug.LogError("[OpsidanosInk] InkSaveSystem 無法讀檔：activeRollbackIndex 指向的快照為 null。", this);
+            return false;
+        }
+        // ===== 變更結束 =====
 
         private void UpdatePresentationFromTags(List<InkTag> tags)
         {

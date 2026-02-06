@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b843b8ce61dc4385af151cd9d294dbf, type: 3}
+  m_Name: NewInkFlowChart
+  m_EditorClassIdentifier: OpsidanosInk.FlowChartEditor::OpsidanosInk.Editor.InkFlowChartData
+  version: 1
+  nodes:
+  - id: node_33d507ec4f1f4e658478204610be2a26
+    title: "\uFF38"
+    nodeType: 0
+    rect:
+      serializedVersion: 2
+      x: 633
+      y: 269
+      width: 280
+      height: 200
+    body: "\uFF11\uFF12\uFF13\x03"
+    nextNodeIds:
+    - "\uFF39"
+  - id: node_f91198fa17ea430797fe422d4445e5a8
+    title: "\uFF39"
+    nodeType: 0
+    rect:
+      serializedVersion: 2
+      x: 1109
+      y: 279
+      width: 280
+      height: 200
+    body: "\uFF14\uFF15\uFF16\x03"
+    nextNodeIds:
+    - "\uFF3A"
+  - id: node_85786788e9cf44a9985a317b4d55c94f
+    title: "\uFF3A"
+    nodeType: 0
+    rect:
+      serializedVersion: 2
+      x: 1495
+      y: 347
+      width: 280
+      height: 200
+    body: "\uFF17\uFF18\uFF19"
+    nextNodeIds:
+    - "\uFF38"

@@ -1,0 +1,57 @@
+﻿{
+    "version": 1,
+    "sourceInkFileName": "NewInkFlowChart.ink",
+    "nodes": [
+        {
+            "id": "node_33d507ec4f1f4e658478204610be2a26",
+            "title": "Ｘ",
+            "nodeType": 0,
+            "rect": {
+                "serializedVersion": "2",
+                "x": 633.0,
+                "y": 269.0,
+                "width": 280.0,
+                "height": 200.0
+            },
+            "body": "１２３",
+            "nextNodeIds": [
+                "node_f91198fa17ea430797fe422d4445e5a8"
+            ],
+            "knotName": "k_node_33d507ec4f1f4e658478204610be2a26"
+        },
+        {
+            "id": "node_f91198fa17ea430797fe422d4445e5a8",
+            "title": "Ｙ",
+            "nodeType": 0,
+            "rect": {
+                "serializedVersion": "2",
+                "x": 1109.0,
+                "y": 279.0,
+                "width": 280.0,
+                "height": 200.0
+            },
+            "body": "４５６",
+            "nextNodeIds": [
+                "node_85786788e9cf44a9985a317b4d55c94f"
+            ],
+            "knotName": "k_node_f91198fa17ea430797fe422d4445e5a8"
+        },
+        {
+            "id": "node_85786788e9cf44a9985a317b4d55c94f",
+            "title": "Ｚ",
+            "nodeType": 0,
+            "rect": {
+                "serializedVersion": "2",
+                "x": 1495.0,
+                "y": 347.0,
+                "width": 280.0,
+                "height": 200.0
+            },
+            "body": "７８９",
+            "nextNodeIds": [
+                "node_33d507ec4f1f4e658478204610be2a26"
+            ],
+            "knotName": "k_node_85786788e9cf44a9985a317b4d55c94f"
+        }
+    ]
+}

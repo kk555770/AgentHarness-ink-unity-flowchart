@@ -86,6 +86,18 @@ namespace OpsidanosInk.Runtime.UI
         private Button saveButton;
         private Button loadButton;
         private Button rollbackButton;
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：Phase 3-1 新增手動 1~3 槽與 Auto 槽按鈕)
+        // 預期結果：Presenter 能綁定並處理所有新槽位按鈕點擊
+        private Button saveSlot1Button;
+        private Button loadSlot1Button;
+        private Button saveSlot2Button;
+        private Button loadSlot2Button;
+        private Button saveSlot3Button;
+        private Button loadSlot3Button;
+        private Button saveAutoSlotButton;
+        private Button loadAutoSlotButton;
+        // ===== 變更結束 =====
         // ===== 變更結束 =====
         private Button showUIButton;
 
@@ -97,6 +109,12 @@ namespace OpsidanosInk.Runtime.UI
         private bool isSkipEnabled;
         private bool isUiHidden;
         private Coroutine autoSkipCoroutine;
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：快速連按倒帶時，需要把多次點擊排隊，避免動作重疊)
+        // 預期結果：Rollback 會一步一步執行，不會「還沒到終點就進下一步」
+        private Coroutine rollbackCoroutine;
+        private int pendingRollbackRequests;
+        // ===== 變更結束 =====
         // ===== 變更開始 =====
         // 2026/01/25 Opsidanos (修改原因：記錄點擊冷卻時間與可用的 blocker 介面)
         // 預期結果：強制完成後，短時間內點擊不會直接推進，避免快速連點跳過內容
@@ -157,6 +175,18 @@ namespace OpsidanosInk.Runtime.UI
             saveButton = root.Q<Button>("SaveButton");
             loadButton = root.Q<Button>("LoadButton");
             rollbackButton = root.Q<Button>("RollbackButton");
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：讀取多槽與 Auto 槽按鈕)
+            // 預期結果：若 UXML 缺少任一新按鈕，啟動時立即報錯，避免功能默默失效
+            saveSlot1Button = root.Q<Button>("SaveSlot1Button");
+            loadSlot1Button = root.Q<Button>("LoadSlot1Button");
+            saveSlot2Button = root.Q<Button>("SaveSlot2Button");
+            loadSlot2Button = root.Q<Button>("LoadSlot2Button");
+            saveSlot3Button = root.Q<Button>("SaveSlot3Button");
+            loadSlot3Button = root.Q<Button>("LoadSlot3Button");
+            saveAutoSlotButton = root.Q<Button>("SaveAutoSlotButton");
+            loadAutoSlotButton = root.Q<Button>("LoadAutoSlotButton");
+            // ===== 變更結束 =====
             // ===== 變更結束 =====
             showUIButton = root.Q<Button>("ShowUIButton");
 
@@ -178,6 +208,14 @@ namespace OpsidanosInk.Runtime.UI
                 saveButton == null ||
                 loadButton == null ||
                 rollbackButton == null ||
+                saveSlot1Button == null ||
+                loadSlot1Button == null ||
+                saveSlot2Button == null ||
+                loadSlot2Button == null ||
+                saveSlot3Button == null ||
+                loadSlot3Button == null ||
+                saveAutoSlotButton == null ||
+                loadAutoSlotButton == null ||
                 // ===== 變更結束 =====
                 showUIButton == null)
             {
@@ -198,6 +236,18 @@ namespace OpsidanosInk.Runtime.UI
             saveButton.clicked += OnClickSave;
             loadButton.clicked += OnClickLoad;
             rollbackButton.clicked += OnClickRollback;
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：綁定多槽與 Auto 槽按鈕事件)
+            // 預期結果：玩家可直接透過 UI 指定槽位存讀
+            saveSlot1Button.clicked += OnClickSaveSlot1;
+            loadSlot1Button.clicked += OnClickLoadSlot1;
+            saveSlot2Button.clicked += OnClickSaveSlot2;
+            loadSlot2Button.clicked += OnClickLoadSlot2;
+            saveSlot3Button.clicked += OnClickSaveSlot3;
+            loadSlot3Button.clicked += OnClickLoadSlot3;
+            saveAutoSlotButton.clicked += OnClickSaveAutoSlot;
+            loadAutoSlotButton.clicked += OnClickLoadAutoSlot;
+            // ===== 變更結束 =====
             // ===== 變更結束 =====
             showUIButton.clicked += OnClickShowUI;
 
@@ -226,6 +276,11 @@ namespace OpsidanosInk.Runtime.UI
             }
 
             StopAutoSkipCoroutine();
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：物件停用時，倒帶佇列也要停止，避免殘留請求在重新啟用後誤觸發)
+            // 預期結果：切場景/停用物件後，不會有舊的倒帶請求繼續執行
+            StopRollbackCoroutine();
+            // ===== 變更結束 =====
         }
 
         private void OnDestroy()
@@ -277,6 +332,50 @@ namespace OpsidanosInk.Runtime.UI
             {
                 rollbackButton.clicked -= OnClickRollback;
             }
+
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：補齊多槽與 Auto 槽按鈕反註冊，避免重複 callback)
+            // 預期結果：重建物件或切場景後，不會遺留重複綁定
+            if (saveSlot1Button != null)
+            {
+                saveSlot1Button.clicked -= OnClickSaveSlot1;
+            }
+
+            if (loadSlot1Button != null)
+            {
+                loadSlot1Button.clicked -= OnClickLoadSlot1;
+            }
+
+            if (saveSlot2Button != null)
+            {
+                saveSlot2Button.clicked -= OnClickSaveSlot2;
+            }
+
+            if (loadSlot2Button != null)
+            {
+                loadSlot2Button.clicked -= OnClickLoadSlot2;
+            }
+
+            if (saveSlot3Button != null)
+            {
+                saveSlot3Button.clicked -= OnClickSaveSlot3;
+            }
+
+            if (loadSlot3Button != null)
+            {
+                loadSlot3Button.clicked -= OnClickLoadSlot3;
+            }
+
+            if (saveAutoSlotButton != null)
+            {
+                saveAutoSlotButton.clicked -= OnClickSaveAutoSlot;
+            }
+
+            if (loadAutoSlotButton != null)
+            {
+                loadAutoSlotButton.clicked -= OnClickLoadAutoSlot;
+            }
+            // ===== 變更結束 =====
             // ===== 變更結束 =====
 
             if (showUIButton != null)
@@ -350,6 +449,98 @@ namespace OpsidanosInk.Runtime.UI
             saveSystem.LoadFromSlot();
         }
 
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：新增多槽與 Auto 槽按鈕行為)
+        // 預期結果：按鈕點擊可準確呼叫對應槽位的存讀 API
+        private void OnClickSaveSlot1()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.SaveToManualSlot(1);
+        }
+
+        private void OnClickLoadSlot1()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.LoadFromManualSlot(1);
+        }
+
+        private void OnClickSaveSlot2()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.SaveToManualSlot(2);
+        }
+
+        private void OnClickLoadSlot2()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.LoadFromManualSlot(2);
+        }
+
+        private void OnClickSaveSlot3()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.SaveToManualSlot(3);
+        }
+
+        private void OnClickLoadSlot3()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.LoadFromManualSlot(3);
+        }
+
+        private void OnClickSaveAutoSlot()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.SaveToAutoSlot();
+        }
+
+        private void OnClickLoadAutoSlot()
+        {
+            if (saveSystem == null)
+            {
+                Debug.LogError("[OpsidanosInk] VNPlayerPresenter 尚未指定 Save System（InkSaveSystem）。", this);
+                return;
+            }
+
+            saveSystem.LoadFromAutoSlot();
+        }
+        // ===== 變更結束 =====
+
         private void OnClickRollback()
         {
             if (saveSystem == null)
@@ -358,7 +549,20 @@ namespace OpsidanosInk.Runtime.UI
                 return;
             }
 
-            saveSystem.RollbackOnce();
+            // ===== 變更開始 =====
+            // 2026/02/06 Opsidanos (修改原因：快速連按倒帶時，不能直接重入 Rollback；要排隊逐步執行)
+            // 預期結果：多次點擊會一筆一筆倒帶，且到最前句時停止，不會刷紅字 Error
+            isAutoEnabled = false;
+            isSkipEnabled = false;
+            RefreshToggleButtons();
+            ResetAutoAdvanceState();
+
+            pendingRollbackRequests += 1;
+            if (rollbackCoroutine == null)
+            {
+                rollbackCoroutine = StartCoroutine(RollbackCoroutine());
+            }
+            // ===== 變更結束 =====
         }
         // ===== 變更結束 =====
 
@@ -654,6 +858,47 @@ namespace OpsidanosInk.Runtime.UI
             StopCoroutine(autoSkipCoroutine);
             autoSkipCoroutine = null;
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/06 Opsidanos (修改原因：統一停止倒帶協程與清空佇列，避免停用後殘留舊請求)
+        // 預期結果：OnDisable/切場景時倒帶狀態會被正確重置
+        private void StopRollbackCoroutine()
+        {
+            pendingRollbackRequests = 0;
+            if (rollbackCoroutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(rollbackCoroutine);
+            rollbackCoroutine = null;
+        }
+
+        private IEnumerator RollbackCoroutine()
+        {
+            while (pendingRollbackRequests > 0)
+            {
+                pendingRollbackRequests -= 1;
+
+                while (IsAnyBusy())
+                {
+                    TryForceCompleteIfBusy(isClick: false);
+                    yield return null;
+                }
+
+                if (!saveSystem.TryRollbackOnce())
+                {
+                    pendingRollbackRequests = 0;
+                    Debug.Log("[OpsidanosInk][Rollback] 已到最前句，停止倒帶。", this);
+                    break;
+                }
+
+                yield return null;
+            }
+
+            rollbackCoroutine = null;
+        }
+        // ===== 變更結束 =====
 
         private IEnumerator AutoSkipCoroutine()
         {

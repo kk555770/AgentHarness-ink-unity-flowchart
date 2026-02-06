@@ -2,6 +2,7 @@
   "name": "OpsidanosInk.EditModeTests",
   "references": [
     "OpsidanosInk.Runtime",
+    "OpsidanosInk.FlowChartEditor",
     "Ink-Libraries"
   ],
   "includePlatforms": [
