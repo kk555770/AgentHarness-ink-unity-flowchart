@@ -15,7 +15,11 @@ namespace OpsidanosInk.Editor
         public const string AssetExtension = "inkfc";
         private const string DefaultGraphName = "NewInkFlowChartGraph";
 
-        [MenuItem("Assets/Create/OpsidanosInk/Flow Chart Graph")]
+        // ===== 變更開始 =====
+        // 2026/02/07 Opsidanos (修改原因：將 Flow Chart 工具入口統一到 Tools/OpsidanosInk，避免入口分散)
+        // 預期結果：只從 Tools/OpsidanosInk/Flow Chart Graph 進入，不再保留舊路徑入口
+        [MenuItem("Tools/OpsidanosInk/Flow Chart Graph")]
+        // ===== 變更結束 =====
         private static void CreateGraphAsset()
         {
             GraphDatabase.PromptInProjectBrowserToCreateNewAsset<InkFlowChartGraph>(DefaultGraphName);

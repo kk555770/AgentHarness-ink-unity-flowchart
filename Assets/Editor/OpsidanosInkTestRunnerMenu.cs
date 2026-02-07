@@ -13,7 +13,11 @@ namespace OpsidanosInk.Editor
         private static readonly TestRunnerApi Api = new TestRunnerApi();
         private static RunAllCallback runAllCallback;
 
-        [MenuItem("OpsidanosInk/測試/跑全部（Edit → Play，只跑我們的）")]
+        // ===== 變更開始 =====
+        // 2026/02/07 Opsidanos (修改原因：將測試工具入口統一到 Tools/OpsidanosInk，避免分散在多個選單路徑)
+        // 預期結果：測試入口全部集中在 Tools/OpsidanosInk/測試，功能流程不變
+        [MenuItem("Tools/OpsidanosInk/測試/跑全部（Edit → Play，只跑我們的）")]
+        // ===== 變更結束 =====
         private static void RunAll_EditThenPlay()
         {
             if (runAllCallback != null)
@@ -27,13 +31,21 @@ namespace OpsidanosInk.Editor
             runAllCallback.RunEditMode();
         }
 
-        [MenuItem("OpsidanosInk/測試/跑 EditMode（只跑我們的）")]
+        // ===== 變更開始 =====
+        // 2026/02/07 Opsidanos (修改原因：將測試工具入口統一到 Tools/OpsidanosInk，避免分散在多個選單路徑)
+        // 預期結果：測試入口全部集中在 Tools/OpsidanosInk/測試，功能流程不變
+        [MenuItem("Tools/OpsidanosInk/測試/跑 EditMode（只跑我們的）")]
+        // ===== 變更結束 =====
         private static void RunEditMode_OnlyOurs()
         {
             RunEditMode();
         }
 
-        [MenuItem("OpsidanosInk/測試/跑 PlayMode（只跑我們的）")]
+        // ===== 變更開始 =====
+        // 2026/02/07 Opsidanos (修改原因：將測試工具入口統一到 Tools/OpsidanosInk，避免分散在多個選單路徑)
+        // 預期結果：測試入口全部集中在 Tools/OpsidanosInk/測試，功能流程不變
+        [MenuItem("Tools/OpsidanosInk/測試/跑 PlayMode（只跑我們的）")]
+        // ===== 變更結束 =====
         private static void RunPlayMode_OnlyOurs()
         {
             RunPlayMode();
