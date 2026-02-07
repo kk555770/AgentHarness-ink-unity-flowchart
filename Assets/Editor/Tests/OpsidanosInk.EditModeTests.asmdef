@@ -3,7 +3,10 @@
   "references": [
     "OpsidanosInk.Runtime",
     "OpsidanosInk.FlowChartEditor",
-    "Ink-Libraries"
+    "Ink-Libraries",
+    "Unity.GraphToolkit.Common.Editor",
+    "Unity.GraphToolkit.Utility.Editor",
+    "Unity.GraphToolkit.Editor"
   ],
   "includePlatforms": [
     "Editor"
