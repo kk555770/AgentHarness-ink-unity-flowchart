@@ -93,4 +93,5 @@ PlanningWithFiles/
 AGENTS.md
 AGENTS__.md
 UIToolkitSpec.md
+GraphToolkitSpec.md
 *.dwlt
