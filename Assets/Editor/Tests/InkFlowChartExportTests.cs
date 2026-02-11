@@ -23,7 +23,11 @@ namespace OpsidanosInk.Tests.EditMode
         [SetUp]
         public void SetUp()
         {
+            // ===== 變更開始 =====
+            // 2026/02/08 Opsidanos (修改原因：移除測試啟動時的批次清理，避免測試與匯入編譯時序衝突拖垮 Editor Undo)
+            // 預期結果：匯出測試啟動時只建立固定暫存資料夾，不再主動清除 `TmpGraphToolkitExportTests*`
             EnsureTempFolder();
+            // ===== 變更結束 =====
             EnsureFixtureGraphExists();
         }
 
@@ -44,8 +48,18 @@ namespace OpsidanosInk.Tests.EditMode
             try
             {
                 copiedGraphPath = BuildUniqueGraphPath("FixtureExport");
-                bool copySucceeded = AssetDatabase.CopyAsset(FixtureGraphPath, copiedGraphPath);
-                Assert.IsTrue(copySucceeded, $"無法複製 fixture 圖：{FixtureGraphPath}");
+                // ===== 變更開始 =====
+                // 2026/02/08 Opsidanos (修改原因：`CopyAsset` 的 .inkfc 在特定時序會出現讀取失敗，改為每次直接建立 fixture 圖)
+                // 預期結果：匯出測試不再受複製時序影響，穩定取得可匯出的 Graph 資產
+                InkFlowChartGraph copiedGraph = CreateGraphWithMutedLogger(copiedGraphPath);
+                BuildFixtureGraph(copiedGraph);
+                GraphDatabase.SaveGraphIfDirty(copiedGraph);
+                string createdGraphPath = GraphDatabase.GetGraphAssetPath(copiedGraph);
+                if (!string.IsNullOrEmpty(createdGraphPath))
+                {
+                    copiedGraphPath = createdGraphPath;
+                }
+                // ===== 變更結束 =====
 
                 InkFlowChartExportResult exportResult = InkFlowChartExporter.ExportGraphAsset(copiedGraphPath);
                 Assert.IsTrue(exportResult.success, $"匯出應該成功，但失敗：{exportResult.errorMessage}");
@@ -202,10 +216,14 @@ namespace OpsidanosInk.Tests.EditMode
 
         private static void DeleteTempFolderIfExists()
         {
+            // ===== 變更開始 =====
+            // 2026/02/08 Opsidanos (修改原因：取消前綴批次刪除，改回只清理固定暫存資料夾避免 Undo 時序問題)
+            // 預期結果：TearDown 只會刪除 `Assets/TmpGraphToolkitExportTests`，不再掃描刪除批次資料夾
             if (AssetDatabase.IsValidFolder(TempFolderPath))
             {
                 AssetDatabase.DeleteAsset(TempFolderPath);
             }
+            // ===== 變更結束 =====
         }
     }
 }

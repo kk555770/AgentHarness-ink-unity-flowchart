@@ -49,6 +49,14 @@ namespace OpsidanosInk.Editor
             try
             {
                 InkFlowChartGraph graph = GraphDatabase.LoadGraphForImporter<InkFlowChartGraph>(graphAssetPath);
+                // ===== 變更開始 =====
+                // 2026/02/08 Opsidanos (修改原因：部分測試時序下 importer 讀不到剛建立的圖資產，補上記憶體路徑讀取避免誤判不存在)
+                // 預期結果：匯出流程優先讀磁碟乾淨版，若暫時不可得時可回退到一般載入路徑，避免「找不到 Graph 資產」誤判
+                if (graph == null)
+                {
+                    graph = GraphDatabase.LoadGraph<InkFlowChartGraph>(graphAssetPath);
+                }
+                // ===== 變更結束 =====
                 if (graph == null)
                 {
                     string error = $"找不到 Graph 資產：{graphAssetPath}";

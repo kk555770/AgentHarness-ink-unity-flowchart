@@ -95,3 +95,9 @@ AGENTS__.md
 UIToolkitSpec.md
 GraphToolkitSpec.md
 *.dwlt
+
+# Graph Toolkit 測試暫存（避免測試中斷後殘留含編號資料夾進版控）
+/Assets/Editor/TmpGraphToolkitImportTests*
+/Assets/Editor/TmpGraphToolkitImport_*
+/Assets/TmpGraphToolkitExportTests*
+/Assets/TmpGraphToolkitTests*

@@ -6,6 +6,7 @@ using OpsidanosInk.Editor;
 using Unity.GraphToolkit.Editor;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace OpsidanosInk.Tests.EditMode
 {
@@ -84,10 +85,14 @@ namespace OpsidanosInk.Tests.EditMode
 
         private static void DeleteTempFolderIfExists()
         {
+            // ===== 變更開始 =====
+            // 2026/02/08 Opsidanos (修改原因：移除測試中前綴批次刪除，避免與匯入/編譯時序衝突造成 Editor Undo 卡住)
+            // 預期結果：僅清理固定暫存資料夾，不再在測試流程刪除 `TmpGraphToolkitTests*` 批次目錄
             if (AssetDatabase.IsValidFolder(TempFolderPath))
             {
                 AssetDatabase.DeleteAsset(TempFolderPath);
             }
+            // ===== 變更結束 =====
         }
     }
 }
