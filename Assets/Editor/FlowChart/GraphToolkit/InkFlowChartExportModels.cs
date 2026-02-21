@@ -9,7 +9,11 @@ namespace OpsidanosInk.Editor
     [Serializable]
     public sealed class ExportGraphDto
     {
-        public string version = "1.0";
+        // ===== 變更開始 =====
+        // 2026/02/13 Opsidanos (修改原因：加入 Graph v2 分岔節點資料結構（choice/condition），需要能保存「每個輸出埠對應到哪個節點」與其文字/條件)
+        // 預期結果：`.flowchart.json` 可完整保存多輸出埠連線與分支資料，支援 `.inkfc ⇄ (.ink + .flowchart.json)` 可逆閉環
+        public string version = "2.0";
+        // ===== 變更結束 =====
         public string graphName = string.Empty;
         public string startNodeId = string.Empty;
         public List<ExportNodeDto> nodes = new List<ExportNodeDto>();
@@ -21,7 +25,21 @@ namespace OpsidanosInk.Editor
         public string id = string.Empty;
         public string type = string.Empty;
         public string content = string.Empty;
+        public string choiceMode = string.Empty;
+        public List<ExportNodeOutputDto> outputs = new List<ExportNodeOutputDto>();
+
+        // v1 相容欄位：舊版只支援線性 nextIds（0 或 1）
         public List<string> nextIds = new List<string>();
+    }
+
+    [Serializable]
+    public sealed class ExportNodeOutputDto
+    {
+        public string portName = string.Empty;
+        public string toNodeId = string.Empty;
+        public string label = string.Empty;
+        public string condition = string.Empty;
+        public bool isElse = false;
     }
 }
 // ===== 變更結束 =====

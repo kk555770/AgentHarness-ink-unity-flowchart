@@ -164,7 +164,7 @@ namespace OpsidanosInk.Editor
                     var position = new Vector2(180f + (300f * nodeIndex), 180f);
                     createNodeModelMethod.Invoke(graphImplementation, new object[] { runtimeNode, position });
 
-                    if (!TryApplyNodeContent(runtimeNode, exportNode.content, out string contentError))
+                    if (!TryApplyNodeOptions(runtimeNode, exportNode, out string contentError))
                     {
                         return Fail(contentError);
                     }
@@ -180,7 +180,54 @@ namespace OpsidanosInk.Editor
                         return Fail($"匯入失敗：找不到來源節點（{exportNode.id}）。");
                     }
 
+                    if (exportNode.outputs != null && exportNode.outputs.Count > 0)
+                    {
+                        for (int i = 0; i < exportNode.outputs.Count; i++)
+                        {
+                            ExportNodeOutputDto output = exportNode.outputs[i];
+                            string toNodeId = output != null ? output.toNodeId : string.Empty;
+                            if (string.IsNullOrEmpty(toNodeId))
+                            {
+                                string portName = output != null ? output.portName : string.Empty;
+                                return Fail($"匯入失敗：節點 `{exportNode.id}` 的輸出埠 `{portName}` 缺少 toNodeId。");
+                            }
+
+                            if (!nodeById.TryGetValue(toNodeId, out INode toNode))
+                            {
+                                return Fail($"匯入失敗：`{exportNode.id}` 指向不存在節點 `{toNodeId}`。");
+                            }
+
+                            string outputPortName = output != null && !string.IsNullOrEmpty(output.portName) ? output.portName : FlowPortName;
+                            string pairKey = $"{exportNode.id}:{outputPortName}->{toNodeId}";
+                            if (connectedPairs.Contains(pairKey))
+                            {
+                                continue;
+                            }
+
+                            IPort fromOutputPort = fromNode.GetOutputPortByName(outputPortName);
+                            IPort toInputPort = toNode.GetInputPortByName(FlowPortName);
+                            if (fromOutputPort == null || toInputPort == null)
+                            {
+                                return Fail($"匯入失敗：節點 `{exportNode.id}` 或 `{toNodeId}` 缺少對應 port（from={outputPortName}, to={FlowPortName}）。");
+                            }
+
+                            createWireMethod.Invoke(graphImplementation, new object[] { toInputPort, fromOutputPort, default(Hash128) });
+                            connectedPairs.Add(pairKey);
+                        }
+
+                        continue;
+                    }
+
                     List<string> nextIds = exportNode.nextIds ?? new List<string>();
+                    // ===== 變更開始 =====
+                    // 2026/02/13 Opsidanos (修改原因：Graph v1（線性流程）只允許 0 或 1 條 next；多分岔必須改用 Graph v2 的 choice/condition 輸出結構)
+                    // 預期結果：匯入 v1 sidecar 時仍能擋下多 next 的不閉環資料，避免匯入後圖看似分岔但 Ink 不成立
+                    if (nextIds.Count > 1)
+                    {
+                        return Fail($"匯入失敗：Graph v1（線性流程）只允許每個節點有 0 或 1 條 next。節點 `{exportNode.id}`（type={exportNode.type}）有 {nextIds.Count} 條：{string.Join(", ", nextIds)}。");
+                    }
+                    // ===== 變更結束 =====
+
                     foreach (string nextId in nextIds)
                     {
                         if (!nodeById.TryGetValue(nextId, out INode toNode))
@@ -188,7 +235,7 @@ namespace OpsidanosInk.Editor
                             return Fail($"匯入失敗：`{exportNode.id}` 指向不存在節點 `{nextId}`。");
                         }
 
-                        string pairKey = $"{exportNode.id}->{nextId}";
+                        string pairKey = $"{exportNode.id}:{FlowPortName}->{nextId}";
                         if (connectedPairs.Contains(pairKey))
                         {
                             continue;
@@ -283,28 +330,142 @@ namespace OpsidanosInk.Editor
                 return new InkFlowCommentNode();
             }
 
+            if (string.Equals(nodeType, "choice", StringComparison.OrdinalIgnoreCase))
+            {
+                return new InkFlowChoiceNode();
+            }
+
+            if (string.Equals(nodeType, "condition", StringComparison.OrdinalIgnoreCase))
+            {
+                return new InkFlowConditionNode();
+            }
+
             return null;
         }
 
-        private static bool TryApplyNodeContent(INode node, string nodeContent, out string errorMessage)
+        private static bool TryApplyNodeOptions(INode node, ExportNodeDto exportNode, out string errorMessage)
         {
             errorMessage = string.Empty;
-            string optionName = string.Empty;
-
-            if (node is InkFlowActionNode)
-            {
-                optionName = ActionContentOptionName;
-            }
-            else if (node is InkFlowCommentNode)
-            {
-                optionName = CommentNoteOptionName;
-            }
-            else
+            if (node == null || exportNode == null)
             {
                 return true;
             }
 
-            INodeOption option = ((Node)node).GetNodeOptionByName(optionName);
+            if (node is InkFlowActionNode)
+            {
+                return TrySetNodeOptionValue((Node)node, ActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
+            }
+
+            if (node is InkFlowCommentNode)
+            {
+                return TrySetNodeOptionValue((Node)node, CommentNoteOptionName, exportNode.content ?? string.Empty, out errorMessage);
+            }
+
+            if (node is InkFlowChoiceNode)
+            {
+                if (exportNode.outputs == null || exportNode.outputs.Count < 1)
+                {
+                    errorMessage = $"匯入失敗：choice 節點 `{exportNode.id}` 至少需要 1 個 outputs。";
+                    return false;
+                }
+
+                if (!TrySetNodeOptionValue((Node)node, "OutputCount", exportNode.outputs.Count, out errorMessage))
+                {
+                    return false;
+                }
+
+                string choiceTexts = BuildJoinedLabels(exportNode.outputs);
+                if (!TrySetNodeOptionValue((Node)node, "ChoiceTexts", choiceTexts, out errorMessage))
+                {
+                    return false;
+                }
+
+                InkFlowChoiceMode mode = exportNode.choiceMode == "+" ? InkFlowChoiceMode.Repeatable : InkFlowChoiceMode.Once;
+                if (!TrySetNodeOptionValue((Node)node, "ChoiceMode", mode, out errorMessage))
+                {
+                    return false;
+                }
+
+                ((Node)node).DefineNode();
+                return true;
+            }
+
+            if (node is InkFlowConditionNode)
+            {
+                if (exportNode.outputs == null || exportNode.outputs.Count < 2)
+                {
+                    errorMessage = $"匯入失敗：condition 節點 `{exportNode.id}` 至少需要 2 個 outputs（含 else）。";
+                    return false;
+                }
+
+                ExportNodeOutputDto lastOutput = exportNode.outputs[exportNode.outputs.Count - 1];
+                if (lastOutput == null || !lastOutput.isElse)
+                {
+                    errorMessage = $"匯入失敗：condition 節點 `{exportNode.id}` 的最後一個 outputs 必須是 else（isElse=true）。";
+                    return false;
+                }
+
+                if (!TrySetNodeOptionValue((Node)node, "OutputCount", exportNode.outputs.Count, out errorMessage))
+                {
+                    return false;
+                }
+
+                string conditionTexts = BuildJoinedConditions(exportNode.outputs);
+                if (!TrySetNodeOptionValue((Node)node, "ConditionTexts", conditionTexts, out errorMessage))
+                {
+                    return false;
+                }
+
+                ((Node)node).DefineNode();
+                return true;
+            }
+
+            return true;
+        }
+
+        private static string BuildJoinedLabels(List<ExportNodeOutputDto> outputs)
+        {
+            if (outputs == null || outputs.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var labels = new List<string>(outputs.Count);
+            for (int i = 0; i < outputs.Count; i++)
+            {
+                string label = outputs[i] != null ? outputs[i].label : string.Empty;
+                labels.Add(label ?? string.Empty);
+            }
+
+            return string.Join("\n", labels);
+        }
+
+        private static string BuildJoinedConditions(List<ExportNodeOutputDto> outputs)
+        {
+            if (outputs == null || outputs.Count < 2)
+            {
+                return string.Empty;
+            }
+
+            var conditions = new List<string>(outputs.Count - 1);
+            for (int i = 0; i < outputs.Count - 1; i++)
+            {
+                string condition = outputs[i] != null ? outputs[i].condition : string.Empty;
+                conditions.Add(condition ?? string.Empty);
+            }
+
+            return string.Join("\n", conditions);
+        }
+
+        private static bool TrySetNodeOptionValue<T>(Node node, string optionName, T value, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            if (node == null)
+            {
+                return true;
+            }
+
+            INodeOption option = node.GetNodeOptionByName(optionName);
             if (option == null)
             {
                 errorMessage = $"匯入失敗：找不到節點選項 `{optionName}`。";
@@ -327,27 +488,110 @@ namespace OpsidanosInk.Editor
                 return false;
             }
 
-            MethodInfo trySetValueMethod = embeddedValueObject
-                .GetType()
-                .GetMethod("TrySetValue", BindingFlags.Instance | BindingFlags.Public)?
-                .MakeGenericMethod(typeof(string));
-
-            if (trySetValueMethod == null)
+            // ===== 變更開始 =====
+            // 2026/02/21 Opsidanos (修改原因：GraphToolkit 的 enum option 內部使用 EnumValueReference；直接 TrySetValue<Enum> 會失敗，導致 Graph v2 choice 匯入測試卡住)
+            // 預期結果：匯入 enum option（如 ChoiceMode）可正確寫入並讓 Graph v2 choice/condition 測試通過；寫入失敗仍回傳明確錯誤訊息
+            MethodInfo trySetValueOpenGeneric = embeddedValueObject.GetType().GetMethod("TrySetValue", BindingFlags.Instance | BindingFlags.Public);
+            if (trySetValueOpenGeneric == null || !trySetValueOpenGeneric.IsGenericMethodDefinition)
             {
-                errorMessage = $"匯入失敗：節點選項 `{optionName}` 無法寫入內容。";
+                errorMessage = $"匯入失敗：節點選項 `{optionName}` 無法寫入內容（找不到 EmbeddedValue.TrySetValue<T>）。";
                 return false;
             }
 
-            object setResult = trySetValueMethod.Invoke(embeddedValueObject, new object[] { nodeContent ?? string.Empty });
+            MethodInfo trySetValueMethod = trySetValueOpenGeneric.MakeGenericMethod(typeof(T));
+            object setResult = trySetValueMethod.Invoke(embeddedValueObject, new object[] { value });
+            bool success = setResult is bool boolResult && boolResult;
+            if (success)
+            {
+                return true;
+            }
+
+            if (typeof(T).IsEnum)
+            {
+                Enum enumValue = value == null ? null : (Enum)(object)value;
+                if (enumValue == null)
+                {
+                    errorMessage = $"匯入失敗：節點選項 `{optionName}` enum 值不可為空。";
+                    return false;
+                }
+
+                if (TrySetNodeOptionEnumValueReference(embeddedValueObject, trySetValueOpenGeneric, enumValue, out string enumError))
+                {
+                    return true;
+                }
+
+                errorMessage = $"匯入失敗：節點選項 `{optionName}` 寫入失敗（enum 需要 EnumValueReference）。{enumError}";
+                return false;
+            }
+
+            errorMessage = $"匯入失敗：節點選項 `{optionName}` 寫入失敗。";
+            return false;
+            // ===== 變更結束 =====
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/21 Opsidanos (修改原因：GraphToolkit enum constant 的 Type 是 EnumValueReference；需要用反射建立 EnumValueReference(Enum) 再 TrySetValue<EnumValueReference>)
+        // 預期結果：匯入 choice/condition 節點時可寫入 ChoiceMode，並維持失敗即回報（不做防禦性補洞）
+        private static bool TrySetNodeOptionEnumValueReference(object embeddedValueObject, MethodInfo trySetValueOpenGeneric, Enum enumValue, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            if (embeddedValueObject == null || trySetValueOpenGeneric == null || enumValue == null)
+            {
+                errorMessage = "EmbeddedValue 或 enumValue 為空。";
+                return false;
+            }
+
+            Type enumValueReferenceType = FindTypeInLoadedAssemblies("Unity.GraphToolkit.EnumValueReference");
+            if (enumValueReferenceType == null)
+            {
+                errorMessage = "找不到 Unity.GraphToolkit.EnumValueReference（可能是 GraphToolkit 版本差異）。";
+                return false;
+            }
+
+            ConstructorInfo enumValueReferenceCtor = enumValueReferenceType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Enum) },
+                modifiers: null);
+
+            if (enumValueReferenceCtor == null)
+            {
+                errorMessage = "找不到 EnumValueReference(Enum) 建構子。";
+                return false;
+            }
+
+            object enumValueReference = enumValueReferenceCtor.Invoke(new object[] { enumValue });
+            MethodInfo trySetEnumValueReferenceMethod = trySetValueOpenGeneric.MakeGenericMethod(enumValueReferenceType);
+            object setResult = trySetEnumValueReferenceMethod.Invoke(embeddedValueObject, new object[] { enumValueReference });
             bool success = setResult is bool boolResult && boolResult;
             if (!success)
             {
-                errorMessage = $"匯入失敗：節點選項 `{optionName}` 寫入失敗。";
+                errorMessage = "TrySetValue<EnumValueReference> 回傳 false。";
                 return false;
             }
 
             return true;
         }
+
+        private static Type FindTypeInLoadedAssemblies(string fullName)
+        {
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                return null;
+            }
+
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type type = assembly.GetType(fullName, throwOnError: false);
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
+            return null;
+        }
+        // ===== 變更結束 =====
     }
 }
 // ===== 變更結束 =====

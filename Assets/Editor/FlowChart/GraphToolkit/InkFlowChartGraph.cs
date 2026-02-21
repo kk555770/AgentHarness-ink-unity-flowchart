@@ -212,7 +212,11 @@ namespace OpsidanosInk.Editor
 
             if (startNodeCount > 1)
             {
-                graphLogger.LogWarning("Flow Chart 只允許 1 個開始節點。", this);
+                // ===== 變更開始 =====
+                // 2026/02/13 Opsidanos (修改原因：Graph v2 規範要求 start 必須且只能 1 個；超過 1 個會讓匯出入口不唯一，閉環失效)
+                // 預期結果：在圖上直接以 Error 提醒作者修正，而不是僅 warning 讓問題延後到匯出才爆
+                graphLogger.LogError("Flow Chart 只允許 1 個開始節點。", this);
+                // ===== 變更結束 =====
             }
         }
     }
