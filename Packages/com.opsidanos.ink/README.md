@@ -142,10 +142,12 @@
 - `actions` 只支援：`appear` / `move` / `disappear`
 - 你可以用 `raise` 與 `raiseActors` 控制「本步是否會改變層級」：
   - `raise`（bool，預設 `true`）：`true` 代表「本步有動作的角色」會自動暫時置頂；`false` 代表不自動置頂
-  - `raiseActors`（string[]）：不管有沒有動作，都會先把指定 actor 暫時置頂（可用來「只有改層級」）
-- 若你漏掉必要動作（例如有角色要消失但 steps 沒寫 `disappear`），系統會印 Error，並把缺的動作補到排程最後面，避免畫面狀態不正確
+  - `raiseActors`（string[]）：不管有沒有動作，都會先把指定 actor 暫時置頂（如果該 actor 可能需要進場，請把 `raiseActors` 放在包含 `appear` 的那一步）
+- 如果你是 Flow Chart/GraphToolkit 匯出（可重播/快照式），只要你有輸出 `steps`，就應該把 `appear/move/disappear` 三種動作都排進去（各最多一次），避免在不同起始狀態（例如讀檔後空畫面）觸發紅字 Error
+- 若你漏掉必要動作（例如有角色要進場，但 steps 沒寫 `appear`），系統會印 Error，並把缺的動作補到排程最後面，避免畫面狀態不正確（但紅字代表你的輸出不完整）
+- Flow Chart/GraphToolkit 的正式輸出契約請以 `Documentation/DeveloperModeOutputContract.md` 為準
 
-例：先消失，再「移動＋出現」同時，最後再消失
+例：先消失，再「移動＋出現」同時
 ```json
 "transition":{
   "appear":0.3,
@@ -153,19 +155,21 @@
   "disappear":0.3,
   "steps":[
     {"actions":["disappear"]},
-    {"actions":["move","appear"]},
-    {"actions":["disappear"]}
+    {"actions":["move","appear"]}
   ]
 }
 ```
 
-例：先把 alice 置頂（無動作），再讓移動發生（且移動這一步不自動置頂）
+例：先把 alice 置頂（無動作），再開始演出，但每個動作都不自動置頂（raise=false）
 ```json
 "transition":{
+  "appear":0.3,
   "move":1,
+  "disappear":0.3,
   "steps":[
-    {"raiseActors":["alice"]},
-    {"actions":["move"],"raise":false}
+    {"actions":["appear"],"raise":false,"raiseActors":["alice"]},
+    {"actions":["move"],"raise":false},
+    {"actions":["disappear"],"raise":false}
   ]
 }
 ```
