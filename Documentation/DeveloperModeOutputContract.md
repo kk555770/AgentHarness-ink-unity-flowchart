@@ -1,6 +1,6 @@
 # 開發者模式輸出契約（Flow Chart / GraphToolkit → Ink → 玩家模式）
 
-> 最後更新：2026/02/13  
+> 最後更新：2026/02/22  
 > 適用範圍：開發者模式（Editor）輸出 `.ink`（含 `.flowchart.json` sidecar）給玩家模式（Runtime）播放與存讀檔
 
 ## 0. 這份契約在解決什麼問題
@@ -357,4 +357,25 @@ Ink 會把 `{ ... }` 當成 inline logic，所以你在 `.ink` 內要把 JSON �
 ## 7. 可檢驗性（避免「看起來能跑，其實流程已壞」）
 - 匯出的 `.ink` 必須能被 Ink 編譯器編譯成 `story.json`（否則代表流程語法不成立）
 - 匯出的 `.ink + .flowchart.json` 必須可匯入還原成圖（結構與相依關係一致）
-- 本契約最容易出錯的部份（例如 `char.transition.steps` 的閉環要求）必須有回歸測試鎖定（目前 PlayMode 測試在：`/Users/arcumit/Documents/GitHub/ink-unity-integration/Assets/Tests/PlayMode/OpsidanosInkPlayModeTests.cs`）
+- 本契約最容易出錯的部份（例如 `char.transition.steps` 的閉環要求）必須有回歸測試鎖定（目前 PlayMode 測試在：`OpsidanosInkPlayModeTests.cs`、`OpsidanosInkPlayModeUiClickTests.cs`）
+
+### 7.1 玩家輸入節奏不變式（Continue / Choice / Rollback）
+- 玩家模式三種輸入（`Continue`、`Choice`、`Rollback`）的點擊節奏必須一致：
+  1. Busy（打字機或角色演出尚未完成）時，第一次點擊只能 `ForceComplete`，不能直接前進或倒帶。
+  2. 觸發 `ForceComplete` 後必須進入點擊冷卻；冷卻期間點擊不得觸發前進/選擇/倒帶。
+  3. 冷卻結束後，下一次有效點擊只能執行 1 次流程動作（前進一步、選擇一次、或倒帶一步）。
+- 禁止把 `Rollback` 設計成「連按排隊連續倒帶」語義；若要倒帶多步，必須由多次有效點擊觸發。
+
+### 7.2 Rollback 測試治理（caseId 注入）
+- `OpsidanosInkPlayModeUiClickTests.cs` 的 Rollback 節奏驗證採「固定流程 + caseId 注入」。
+- 目前最低保留案例：
+  - `RBK_001`：Busy 首點只補完，冷卻後第二次才倒帶一步。
+  - `RBK_002`：快速連按不排隊，一波連按最多倒帶一步。
+- 規格變更時，先改 case 參數（如 `requiredRollbackSteps`、各階段 `clickCount`），不要直接重寫整段測試流程；只有流程邏輯本身改變時，才改共用 runner。
+
+### 7.3 節奏相關改動的最小驗收
+- 任何變更只要碰到 `OnClickContinue` / `OnClickChoice` / `OnClickRollback` / 點擊冷卻，都至少要通過：
+  - `RollbackButton_Busy時第一次只補完不倒帶_冷卻後第二次才倒帶`
+  - `RollbackButton_快速連按_不會排隊連續倒帶`
+  - `OpsidanosInkPlayModeUiClickTests` 整包
+- 驗收時 Console `error` 必須是 0 筆。

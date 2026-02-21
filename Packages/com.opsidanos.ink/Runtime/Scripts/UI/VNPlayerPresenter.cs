@@ -110,12 +110,6 @@ namespace OpsidanosInk.Runtime.UI
         private bool isUiHidden;
         private Coroutine autoSkipCoroutine;
         // ===== 變更開始 =====
-        // 2026/02/06 Opsidanos (修改原因：快速連按倒帶時，需要把多次點擊排隊，避免動作重疊)
-        // 預期結果：Rollback 會一步一步執行，不會「還沒到終點就進下一步」
-        private Coroutine rollbackCoroutine;
-        private int pendingRollbackRequests;
-        // ===== 變更結束 =====
-        // ===== 變更開始 =====
         // 2026/01/25 Opsidanos (修改原因：記錄點擊冷卻時間與可用的 blocker 介面)
         // 預期結果：強制完成後，短時間內點擊不會直接推進，避免快速連點跳過內容
         private float clickCooldownUntilUnscaled;
@@ -276,11 +270,6 @@ namespace OpsidanosInk.Runtime.UI
             }
 
             StopAutoSkipCoroutine();
-            // ===== 變更開始 =====
-            // 2026/02/06 Opsidanos (修改原因：物件停用時，倒帶佇列也要停止，避免殘留請求在重新啟用後誤觸發)
-            // 預期結果：切場景/停用物件後，不會有舊的倒帶請求繼續執行
-            StopRollbackCoroutine();
-            // ===== 變更結束 =====
         }
 
         private void OnDestroy()
@@ -550,17 +539,26 @@ namespace OpsidanosInk.Runtime.UI
             }
 
             // ===== 變更開始 =====
-            // 2026/02/06 Opsidanos (修改原因：快速連按倒帶時，不能直接重入 Rollback；要排隊逐步執行)
-            // 預期結果：多次點擊會一筆一筆倒帶，且到最前句時停止，不會刷紅字 Error
+            // 2026/02/22 Opsidanos (修改原因：倒帶點擊節奏需對齊 Continue，避免連按直接連續跨句)
+            // 預期結果：Busy 時第一次點擊只 ForceComplete 並進冷卻；冷卻後再點才倒帶一步
             isAutoEnabled = false;
             isSkipEnabled = false;
             RefreshToggleButtons();
             ResetAutoAdvanceState();
 
-            pendingRollbackRequests += 1;
-            if (rollbackCoroutine == null)
+            if (IsClickInCooldown())
             {
-                rollbackCoroutine = StartCoroutine(RollbackCoroutine());
+                return;
+            }
+
+            if (TryForceCompleteIfBusy(isClick: true))
+            {
+                return;
+            }
+
+            if (!saveSystem.TryRollbackOnce())
+            {
+                Debug.Log("[OpsidanosInk][Rollback] 已到最前句，停止倒帶。", this);
             }
             // ===== 變更結束 =====
         }
@@ -858,47 +856,6 @@ namespace OpsidanosInk.Runtime.UI
             StopCoroutine(autoSkipCoroutine);
             autoSkipCoroutine = null;
         }
-
-        // ===== 變更開始 =====
-        // 2026/02/06 Opsidanos (修改原因：統一停止倒帶協程與清空佇列，避免停用後殘留舊請求)
-        // 預期結果：OnDisable/切場景時倒帶狀態會被正確重置
-        private void StopRollbackCoroutine()
-        {
-            pendingRollbackRequests = 0;
-            if (rollbackCoroutine == null)
-            {
-                return;
-            }
-
-            StopCoroutine(rollbackCoroutine);
-            rollbackCoroutine = null;
-        }
-
-        private IEnumerator RollbackCoroutine()
-        {
-            while (pendingRollbackRequests > 0)
-            {
-                pendingRollbackRequests -= 1;
-
-                while (IsAnyBusy())
-                {
-                    TryForceCompleteIfBusy(isClick: false);
-                    yield return null;
-                }
-
-                if (!saveSystem.TryRollbackOnce())
-                {
-                    pendingRollbackRequests = 0;
-                    Debug.Log("[OpsidanosInk][Rollback] 已到最前句，停止倒帶。", this);
-                    break;
-                }
-
-                yield return null;
-            }
-
-            rollbackCoroutine = null;
-        }
-        // ===== 變更結束 =====
 
         private IEnumerator AutoSkipCoroutine()
         {

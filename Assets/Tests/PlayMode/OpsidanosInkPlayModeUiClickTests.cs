@@ -22,6 +22,59 @@ namespace OpsidanosInk.Tests
     public sealed class OpsidanosInkPlayModeUiClickTests
     {
         private const string TestSceneName = "Test";
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：建立 caseId 注入機制，避免每次規格微調都重寫整段 Rollback 測試)
+        // 預期結果：Rollback 節奏測試改為「固定流程 + caseId 參數」，後續只需改 case 定義即可
+        private sealed class RollbackRhythmCase
+        {
+            public string CaseId { get; }
+            public int RequiredRollbackSteps { get; }
+            public int ExternalOutputId { get; }
+            public int BusyPhaseClickCount { get; }
+            public int CooldownPhaseClickCount { get; }
+            public int PostCooldownClickCount { get; }
+
+            public RollbackRhythmCase(
+                string caseId,
+                int requiredRollbackSteps,
+                int externalOutputId,
+                int busyPhaseClickCount,
+                int cooldownPhaseClickCount,
+                int postCooldownClickCount)
+            {
+                CaseId = caseId;
+                RequiredRollbackSteps = requiredRollbackSteps;
+                ExternalOutputId = externalOutputId;
+                BusyPhaseClickCount = busyPhaseClickCount;
+                CooldownPhaseClickCount = cooldownPhaseClickCount;
+                PostCooldownClickCount = postCooldownClickCount;
+            }
+        }
+
+        private static readonly Dictionary<string, RollbackRhythmCase> RollbackRhythmCases = new Dictionary<string, RollbackRhythmCase>
+        {
+            {
+                "RBK_001",
+                new RollbackRhythmCase(
+                    caseId: "RBK_001",
+                    requiredRollbackSteps: 1,
+                    externalOutputId: 9301,
+                    busyPhaseClickCount: 1,
+                    cooldownPhaseClickCount: 1,
+                    postCooldownClickCount: 1)
+            },
+            {
+                "RBK_002",
+                new RollbackRhythmCase(
+                    caseId: "RBK_002",
+                    requiredRollbackSteps: 2,
+                    externalOutputId: 9302,
+                    busyPhaseClickCount: 10,
+                    cooldownPhaseClickCount: 0,
+                    postCooldownClickCount: 10)
+            }
+        };
+        // ===== 變更結束 =====
 
         [UnityTest]
         public IEnumerator BacklogButton_可開關Backlog面板()
@@ -472,166 +525,126 @@ namespace OpsidanosInk.Tests
         // ===== 變更結束 =====
 
         // ===== 變更開始 =====
-        // 2026/02/06 Opsidanos (修改原因：驗證 RollbackButton 快速連按時，會排隊逐步倒帶，不會卡在中間)
-        // 預期結果：連按多次 Rollback 後，狀態會穩定回到可倒帶最前句
+        // 2026/02/22 Opsidanos (修改原因：導入 caseId 事件注入，將 Rollback 驗證改為呼叫共用流程)
+        // 預期結果：測試本體只負責指派 caseId，流程細節集中在共用 runner
         [UnityTest]
-        public IEnumerator RollbackButton_快速連按_會排隊倒帶到最前句()
+        public IEnumerator RollbackButton_Busy時第一次只補完不倒帶_冷卻後第二次才倒帶()
         {
-            yield return LoadTestScene();
-
-            GameObject vnPlayer = FindVNPlayer();
-            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
-            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
-            InkSaveSystem saveSystem = GetRequiredComponent<InkSaveSystem>(vnPlayer, "InkSaveSystem");
-            yield return WaitUntilUiReady(uiDocument, 3f);
-
-            var outputs = new List<StoryOutput>();
-            Action<StoryOutput> handler = output => outputs.Add(output);
-            storyEngine.OutputGenerated += handler;
-
-            try
-            {
-                yield return AdvanceStoryOneStep(storyEngine, outputs);
-                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out _), "應該能取得第一句狀態。");
-
-                yield return AdvanceStoryOneStep(storyEngine, outputs);
-                yield return AdvanceStoryOneStep(storyEngine, outputs);
-                yield return AdvanceStoryOneStep(storyEngine, outputs);
-                Assert.GreaterOrEqual(saveSystem.AvailableRollbackSteps, 3, "建立測試資料後，應至少有 3 步可倒帶。");
-                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateBeforeRapidRollback), "快速倒帶前應能取得狀態。");
-
-                Button rollbackButton = uiDocument.rootVisualElement.Q<Button>("RollbackButton");
-                Assert.IsNotNull(rollbackButton, "找不到 RollbackButton。");
-
-                int rollbackClicks = Mathf.Min(3, saveSystem.AvailableRollbackSteps);
-                int expectedRemainingSteps = saveSystem.AvailableRollbackSteps - rollbackClicks;
-                for (int i = 0; i < rollbackClicks; i++)
-                {
-                    SimulateLeftClick(rollbackButton);
-                }
-
-                float start = Time.realtimeSinceStartup;
-                while (saveSystem.AvailableRollbackSteps > expectedRemainingSteps)
-                {
-                    if (Time.realtimeSinceStartup - start > 5f)
-                    {
-                        Assert.Fail("等待快速連按 Rollback 收斂逾時。");
-                    }
-
-                    yield return null;
-                }
-
-                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterRollback), "倒帶後應該能取得狀態。");
-                Assert.AreNotEqual(stateBeforeRapidRollback, stateAfterRollback, "快速連按 Rollback 後，狀態應該改變。");
-                Assert.AreEqual(expectedRemainingSteps, saveSystem.AvailableRollbackSteps, "快速連按 Rollback 後，可倒帶步數應與預期一致。");
-            }
-            finally
-            {
-                storyEngine.OutputGenerated -= handler;
-            }
+            yield return RunRollbackRhythmCaseById("RBK_001");
         }
         // ===== 變更結束 =====
 
         // ===== 變更開始 =====
-        // 2026/02/06 Opsidanos (修改原因：補上更高壓的實測，覆蓋「讀檔後 + 超量連按 rollback」情境)
-        // 預期結果：Load 後連按 rollback 超過可倒帶步數，仍可穩定回到最前句，且不產生 rollbackBuffer 不足 Error
+        // 2026/02/22 Opsidanos (修改原因：導入 caseId 事件注入，將 Rollback 驗證改為呼叫共用流程)
+        // 預期結果：測試本體只負責指派 caseId，流程細節集中在共用 runner
         [UnityTest]
-        public IEnumerator RollbackButton_高壓連按_讀檔後仍可回到存檔前且無錯誤()
+        public IEnumerator RollbackButton_快速連按_不會排隊連續倒帶()
         {
+            yield return RunRollbackRhythmCaseById("RBK_002");
+        }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：Rollback 測試導入 caseId 注入，流程需抽成可重用 runner)
+        // 預期結果：同一套流程可依 caseId 驗證不同點擊密度與步數條件，後續只改 case 定義
+        private static IEnumerator RunRollbackRhythmCaseById(string caseId)
+        {
+            Assert.IsFalse(string.IsNullOrWhiteSpace(caseId), "caseId 不可為空白。");
+            Assert.IsTrue(RollbackRhythmCases.TryGetValue(caseId, out RollbackRhythmCase testCase), $"找不到 Rollback 測試案例：{caseId}");
+            Assert.IsNotNull(testCase, $"Rollback 測試案例不可為 null：{caseId}");
+
             yield return LoadTestScene();
 
             GameObject vnPlayer = FindVNPlayer();
             UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
             InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
             InkSaveSystem saveSystem = GetRequiredComponent<InkSaveSystem>(vnPlayer, "InkSaveSystem");
+            InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
             yield return WaitUntilUiReady(uiDocument, 3f);
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
 
             var outputs = new List<StoryOutput>();
             Action<StoryOutput> outputHandler = output => outputs.Add(output);
             storyEngine.OutputGenerated += outputHandler;
 
-            string savePointState = null;
-
             try
             {
-                int safety = 20;
-                while (safety-- > 0)
-                {
-                    if (outputs.Count > 0 && outputs[outputs.Count - 1].HasEnded)
-                    {
-                        break;
-                    }
-
-                    yield return AdvanceStoryOneStep(storyEngine, outputs);
-
-                    if (savePointState == null && outputs.Count >= 5)
-                    {
-                        Assert.IsTrue(storyEngine.TryGetStoryStateJson(out savePointState), "應該能取得存檔點狀態。");
-                        saveSystem.SaveToSlot();
-                    }
-                }
-
-                Assert.IsNotNull(savePointState, "高壓測試前，必須先建立存檔點。");
-
-                int beforeLoadCount = outputs.Count;
-                saveSystem.LoadFromSlot();
-                yield return WaitForNewOutput(outputs, beforeLoadCount, 3f, "LoadFromSlot 應該送出一筆輸出。");
-
-                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterLoad), "讀檔後應能取得狀態。");
-                Assert.AreEqual(savePointState, stateAfterLoad, "讀檔後應回到存檔點。");
-                Assert.GreaterOrEqual(saveSystem.AvailableRollbackSteps, 1, "讀檔後至少應該還有 1 步可倒帶。");
-
                 Button rollbackButton = uiDocument.rootVisualElement.Q<Button>("RollbackButton");
-                Assert.IsNotNull(rollbackButton, "找不到 RollbackButton。");
+                Assert.IsNotNull(rollbackButton, $"[{testCase.CaseId}] 找不到 RollbackButton。");
 
-                var rollbackErrors = new List<string>();
-                Application.LogCallback logHandler = (condition, stackTrace, type) =>
+                int safety = 20;
+                while (saveSystem.AvailableRollbackSteps < testCase.RequiredRollbackSteps && safety-- > 0)
                 {
-                    if (type != LogType.Error)
-                    {
-                        return;
-                    }
-
-                    if (condition != null && condition.Contains("InkSaveSystem 無法倒帶"))
-                    {
-                        rollbackErrors.Add(condition);
-                    }
-                };
-
-                int overClickCount = saveSystem.AvailableRollbackSteps + 30;
-                Application.logMessageReceived += logHandler;
-                try
-                {
-                    for (int i = 0; i < overClickCount; i++)
-                    {
-                        SimulateLeftClick(rollbackButton);
-                    }
-
-                    float start = Time.realtimeSinceStartup;
-                    while (saveSystem.AvailableRollbackSteps > 0)
-                    {
-                        if (Time.realtimeSinceStartup - start > 15f)
-                        {
-                            Assert.Fail("高壓 rollback 等待收斂逾時。");
-                        }
-
-                        yield return null;
-                    }
-                }
-                finally
-                {
-                    Application.logMessageReceived -= logHandler;
+                    yield return AdvanceStoryOneStep(storyEngine, outputs);
+                    yield return WaitUntilNotBusy(charStatePlayer, 3f);
                 }
 
-                Assert.AreEqual(0, rollbackErrors.Count, "高壓 rollback 不應出現 rollbackBuffer 不足 Error。");
-                Assert.IsTrue(storyEngine.TryGetStoryStateJson(out string stateAfterStressRollback), "高壓 rollback 後應能取得狀態。");
-                Assert.AreNotEqual(savePointState, stateAfterStressRollback, "高壓 rollback 後，狀態應該已離開存檔點。");
-                Assert.AreEqual(0, saveSystem.AvailableRollbackSteps, "高壓 rollback 後應收斂到最前句（無可倒帶步數）。");
-                Assert.IsFalse(saveSystem.CanRollback, "高壓 rollback 後不應再可倒帶。");
+                Assert.GreaterOrEqual(
+                    saveSystem.AvailableRollbackSteps,
+                    testCase.RequiredRollbackSteps,
+                    $"[{testCase.CaseId}] 建立測試資料後，rollback 步數不足。");
+
+                string charJson = BuildCharJson(
+                    leftActor: "bs",
+                    centerActor: "alice",
+                    rightActor: "ss",
+                    appearSeconds: 1.0f,
+                    moveSeconds: 0f,
+                    disappearSeconds: 0f);
+
+                storyEngine.EmitExternalOutput(BuildCharOutput(testCase.ExternalOutputId, StoryOutputSource.Normal, charJson));
+                yield return null;
+                yield return WaitUntilBusy(charStatePlayer, 3f);
+
+                int rollbackStepsBefore = saveSystem.AvailableRollbackSteps;
+                int baselineOutputCount = outputs.Count;
+
+                ClickButtonMultipleTimes(rollbackButton, testCase.BusyPhaseClickCount);
+                yield return null;
+
+                Assert.IsFalse(charStatePlayer.IsBusy, $"[{testCase.CaseId}] Busy 階段點擊後應已 ForceComplete。");
+                Assert.AreEqual(rollbackStepsBefore, saveSystem.AvailableRollbackSteps, $"[{testCase.CaseId}] Busy 階段不應消耗 rollback 步數。");
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, $"[{testCase.CaseId}] Busy 階段不應送出 Restore。");
+
+                ClickButtonMultipleTimes(rollbackButton, testCase.CooldownPhaseClickCount);
+                yield return null;
+
+                Assert.AreEqual(rollbackStepsBefore, saveSystem.AvailableRollbackSteps, $"[{testCase.CaseId}] 冷卻階段不應消耗 rollback 步數。");
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, $"[{testCase.CaseId}] 冷卻階段不應送出 Restore。");
+
+                yield return new WaitForSecondsRealtime(0.35f);
+
+                int beforeRollbackOutputCount = outputs.Count;
+                ClickButtonMultipleTimes(rollbackButton, testCase.PostCooldownClickCount);
+                yield return WaitForNewOutput(outputs, beforeRollbackOutputCount, 3f, $"[{testCase.CaseId}] 冷卻後點擊應送出 Restore。");
+
+                float rollbackStart = Time.realtimeSinceStartup;
+                while (saveSystem.AvailableRollbackSteps >= rollbackStepsBefore)
+                {
+                    if (Time.realtimeSinceStartup - rollbackStart > 5f)
+                    {
+                        Assert.Fail($"[{testCase.CaseId}] 等待 rollback 步數遞減逾時。");
+                    }
+
+                    yield return null;
+                }
+
+                Assert.AreEqual(rollbackStepsBefore - 1, saveSystem.AvailableRollbackSteps, $"[{testCase.CaseId}] 冷卻後一波點擊應只倒帶一步。");
             }
             finally
             {
                 storyEngine.OutputGenerated -= outputHandler;
+            }
+        }
+
+        private static void ClickButtonMultipleTimes(Button button, int count)
+        {
+            Assert.IsNotNull(button, "button 不可為 null。");
+            Assert.GreaterOrEqual(count, 0, "count 不可小於 0。");
+
+            for (int i = 0; i < count; i++)
+            {
+                SimulateLeftClick(button);
             }
         }
         // ===== 變更結束 =====
