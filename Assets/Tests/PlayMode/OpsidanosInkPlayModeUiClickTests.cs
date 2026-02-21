@@ -283,6 +283,118 @@ namespace OpsidanosInk.Tests
                 storyEngine.OutputGenerated -= handler;
             }
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：補上「體感路徑」回歸測試：透過實際 UI 點擊驗證 rollback 的相反重排可感知)
+        // 預期結果：同一路徑下 Normal 與 Rollback(Restore) 會呈現可量測的最上層角色差異（右側在上 ↔ 左側在上）
+        [UnityTest]
+        public IEnumerator Rollback後_相反重排可感知()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkSaveSystem saveSystem = GetRequiredComponent<InkSaveSystem>(vnPlayer, "InkSaveSystem");
+            InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            VisualElement root = uiDocument.rootVisualElement;
+            Button rollbackButton = root.Q<Button>("RollbackButton");
+            Assert.IsNotNull(rollbackButton, "找不到 RollbackButton。");
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> handler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += handler;
+
+            try
+            {
+                yield return null;
+                yield return null;
+                outputs.Clear();
+
+                int safety = 20;
+                while (true)
+                {
+                    yield return AdvanceStoryOneStep(storyEngine, outputs);
+                    yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+                    StoryOutput currentOutput = outputs.Count > 0 ? outputs[outputs.Count - 1] : null;
+                    if (IsTargetNormalOutputForRollbackPerception(currentOutput))
+                    {
+                        break;
+                    }
+
+                    safety--;
+                    if (safety <= 0)
+                    {
+                        Assert.Fail("找不到目標測試句（Normal + move=1 + right=ss + 無 steps），無法執行體感驗證。");
+                    }
+                }
+
+                VisualElement actorLayer = GetCharacterActorLayer(uiDocument);
+                Assert.AreEqual("ss", GetTopmostActorName(actorLayer, "bs", "alice", "ss"), "Normal 目標句下，右側角色（ss）應該在最上層。");
+
+                Assert.GreaterOrEqual(saveSystem.AvailableRollbackSteps, 1, "進入角色段落後至少應該可倒帶 1 步。");
+                int rollbackStepsBefore = saveSystem.AvailableRollbackSteps;
+                int beforeRollbackOutputCount = outputs.Count;
+
+                SimulateLeftClick(rollbackButton);
+                yield return null;
+
+                float rollbackStart = Time.realtimeSinceStartup;
+                while (saveSystem.AvailableRollbackSteps >= rollbackStepsBefore)
+                {
+                    if (Time.realtimeSinceStartup - rollbackStart > 5f)
+                    {
+                        Assert.Fail("等待 Rollback 消耗步數逾時。");
+                    }
+
+                    yield return null;
+                }
+
+                yield return WaitForNewOutput(outputs, beforeRollbackOutputCount, 3f, "Rollback 後應該送出 Restore 輸出。");
+                yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+                actorLayer = GetCharacterActorLayer(uiDocument);
+                Assert.AreEqual("bs", GetTopmostActorName(actorLayer, "bs", "ss", "alice"), "Rollback（Restore）後應切成相反重排：左側角色在最上層。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= handler;
+            }
+        }
+
+        private static bool IsTargetNormalOutputForRollbackPerception(StoryOutput output)
+        {
+            if (output == null || output.Source != StoryOutputSource.Normal || output.Tags == null)
+            {
+                return false;
+            }
+
+            string charTag = null;
+            for (int i = 0; i < output.Tags.Count; i++)
+            {
+                string tag = output.Tags[i];
+                if (!string.IsNullOrEmpty(tag) && tag.StartsWith("char:", StringComparison.Ordinal))
+                {
+                    charTag = tag;
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(charTag))
+            {
+                return false;
+            }
+
+            string value = charTag.Substring("char:".Length);
+            return value.Contains("\"move\":1")
+                && value.Contains("\"right\":{\"actor\":\"ss\"}")
+                && !value.Contains("\"steps\"");
+        }
+        // ===== 變更結束 =====
         // ===== 變更結束 =====
 
         // ===== 變更開始 =====
@@ -699,6 +811,72 @@ namespace OpsidanosInk.Tests
             Assert.IsNotNull(component, $"VNPlayer 缺少元件：{readableName}（{typeof(T).Name}）。");
             return component;
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：體感路徑測試需要直接比對角色層級順序，確認 Normal/Restore 重排差異)
+        // 預期結果：測試可穩定取得 CharacterActorLayer 與最上層角色名稱，不受 UI 結構小變動影響
+        private static VisualElement GetCharacterActorLayer(UIDocument uiDocument)
+        {
+            VisualElement root = uiDocument != null ? uiDocument.rootVisualElement : null;
+            Assert.IsNotNull(root, "UIDocument.rootVisualElement 不可為 null。");
+
+            VisualElement actorLayer = root.Q<VisualElement>("CharacterActorLayer");
+            Assert.IsNotNull(actorLayer, "找不到 CharacterActorLayer。請確認 CharacterTag 已成功建立角色層。");
+            return actorLayer;
+        }
+
+        private static string GetTopmostActorName(VisualElement actorLayer, params string[] actors)
+        {
+            Assert.IsNotNull(actorLayer, "actorLayer 不可為 null。");
+            Assert.IsNotNull(actors, "actors 不可為 null。");
+            Assert.GreaterOrEqual(actors.Length, 2, "至少要提供 2 個 actor 才能比較層級。");
+
+            string topmostActor = null;
+            int topmostIndex = int.MinValue;
+
+            for (int i = 0; i < actors.Length; i++)
+            {
+                string actor = actors[i];
+                Assert.IsFalse(string.IsNullOrWhiteSpace(actor), "actor 名稱不可為空白。");
+
+                VisualElement element = actorLayer.Q<VisualElement>($"Actor_{actor}");
+                Assert.IsNotNull(element, $"找不到角色元素 Actor_{actor}。");
+
+                int index = GetChildIndex(actorLayer, element);
+                Assert.GreaterOrEqual(index, 0, $"Actor_{actor} 必須在 CharacterActorLayer 底下。");
+
+                if (index > topmostIndex)
+                {
+                    topmostIndex = index;
+                    topmostActor = actor;
+                }
+            }
+
+            Assert.IsNotNull(topmostActor, "topmostActor 不可為 null。");
+            return topmostActor;
+        }
+
+        private static int GetChildIndex(VisualElement parent, VisualElement child)
+        {
+            if (parent == null || child == null)
+            {
+                return -1;
+            }
+
+            int index = 0;
+            foreach (VisualElement element in parent.Children())
+            {
+                if (element == child)
+                {
+                    return index;
+                }
+
+                index++;
+            }
+
+            return -1;
+        }
+        // ===== 變更結束 =====
 
         private static void SimulateLeftClick(VisualElement element)
         {
