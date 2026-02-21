@@ -6,6 +6,11 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using OpsidanosInk.Runtime.Save;
+// ===== 變更開始 =====
+// 2026/02/12 Opsidanos (修改原因：新增 ContinueButton 兩段式點擊節奏回歸測試，需要直接取得角色演出 blocker)
+// 預期結果：測試可使用 InkTagCharacterStatePlayer 建立 Busy 狀態並驗證 ForceComplete/冷卻/前進節奏
+using OpsidanosInk.Runtime.Presentation;
+// ===== 變更結束 =====
 using OpsidanosInk.Runtime.Story;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -153,6 +158,132 @@ namespace OpsidanosInk.Tests
             Assert.IsFalse(vnRoot.ClassListContains("vn-ui-hidden"), "點 ShowUIButton 後應該取消隱藏 UI。");
             Assert.AreEqual(DisplayStyle.None, showUIButton.resolvedStyle.display, "取消隱藏後 ShowUIButton 應該不顯示（display:none）。");
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/12 Opsidanos (修改原因：補齊 ContinueButton 的兩段式點擊節奏回歸測試（Busy→ForceComplete→冷卻→再點才前進）)
+        // 預期結果：Busy 時第一次點擊只補完演出且不前進；冷卻內點擊不前進；冷卻後再點才前進（Normal/Restore 皆適用）
+        [UnityTest]
+        public IEnumerator ContinueButton_Busy時第一次只補完不前進_冷卻後第二次才前進_Normal()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            Button continueButton = uiDocument.rootVisualElement.Q<Button>("ContinueButton");
+            Assert.IsNotNull(continueButton, "找不到 ContinueButton。");
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> handler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += handler;
+
+            try
+            {
+                yield return null;
+                yield return null;
+                outputs.Clear();
+
+                string charJson = BuildCharJson(
+                    leftActor: "bs",
+                    centerActor: "alice",
+                    rightActor: "ss",
+                    appearSeconds: 1.0f,
+                    moveSeconds: 0f,
+                    disappearSeconds: 0f);
+
+                storyEngine.EmitExternalOutput(BuildCharOutput(9201, StoryOutputSource.Normal, charJson));
+                yield return null;
+                yield return WaitUntilBusy(charStatePlayer, 3f);
+
+                int baselineOutputCount = outputs.Count;
+
+                SimulateLeftClick(continueButton);
+                yield return null;
+
+                Assert.IsFalse(charStatePlayer.IsBusy, "Busy 時第一次點 ContinueButton 應該 ForceComplete 角色演出。");
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, "Busy 第一次點擊只補完，不應前進。");
+
+                SimulateLeftClick(continueButton);
+                yield return null;
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, "冷卻內點擊不應前進。");
+
+                yield return new WaitForSecondsRealtime(0.35f);
+
+                int beforeAdvance = outputs.Count;
+                SimulateLeftClick(continueButton);
+                yield return WaitForNewOutput(outputs, beforeAdvance, 3f, "冷卻結束後第二次點擊應前進並產生新輸出。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= handler;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ContinueButton_Busy時第一次只補完不前進_冷卻後第二次才前進_Restore()
+        {
+            yield return LoadTestScene();
+
+            GameObject vnPlayer = FindVNPlayer();
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
+            yield return WaitUntilUiReady(uiDocument, 3f);
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            Button continueButton = uiDocument.rootVisualElement.Q<Button>("ContinueButton");
+            Assert.IsNotNull(continueButton, "找不到 ContinueButton。");
+
+            var outputs = new List<StoryOutput>();
+            Action<StoryOutput> handler = output => outputs.Add(output);
+            storyEngine.OutputGenerated += handler;
+
+            try
+            {
+                yield return null;
+                yield return null;
+                outputs.Clear();
+
+                string charJson = BuildCharJson(
+                    leftActor: "bs",
+                    centerActor: "alice",
+                    rightActor: "ss",
+                    appearSeconds: 1.0f,
+                    moveSeconds: 0f,
+                    disappearSeconds: 0f);
+
+                storyEngine.EmitExternalOutput(BuildCharOutput(9202, StoryOutputSource.Restore, charJson));
+                yield return null;
+                yield return WaitUntilBusy(charStatePlayer, 3f);
+
+                int baselineOutputCount = outputs.Count;
+
+                SimulateLeftClick(continueButton);
+                yield return null;
+
+                Assert.IsFalse(charStatePlayer.IsBusy, "Restore Busy 時第一次點 ContinueButton 應該 ForceComplete 角色演出。");
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, "Restore Busy 第一次點擊只補完，不應前進。");
+
+                SimulateLeftClick(continueButton);
+                yield return null;
+                yield return AssertNoNewOutputForSeconds(outputs, baselineOutputCount, 0.2f, "Restore 冷卻內點擊不應前進。");
+
+                yield return new WaitForSecondsRealtime(0.35f);
+
+                int beforeAdvance = outputs.Count;
+                SimulateLeftClick(continueButton);
+                yield return WaitForNewOutput(outputs, beforeAdvance, 3f, "Restore 冷卻結束後第二次點擊應前進並產生新輸出。");
+            }
+            finally
+            {
+                storyEngine.OutputGenerated -= handler;
+            }
+        }
+        // ===== 變更結束 =====
 
         // ===== 變更開始 =====
         // 2026/02/06 Opsidanos (修改原因：新增多槽與 Auto 槽按鈕的 UI 點擊驗證，確保按鈕真的接到對應 API)
@@ -389,6 +520,110 @@ namespace OpsidanosInk.Tests
             finally
             {
                 storyEngine.OutputGenerated -= outputHandler;
+            }
+        }
+        // ===== 變更結束 =====
+
+        // ===== 變更開始 =====
+        // 2026/02/12 Opsidanos (修改原因：ContinueButton 節奏測試需要可重用的「建立 Busy」與「禁止前進」工具)
+        // 預期結果：能穩定建立角色 Busy（appear>0），並精準驗證點擊後是否產生新輸出
+        private static StoryOutput BuildCharOutput(int outputId, StoryOutputSource source, string charJson)
+        {
+            var rawTags = new List<string>
+            {
+                $"char:{charJson}"
+            };
+
+            var parsedTags = new List<InkTag>
+            {
+                new InkTag("char", charJson)
+            };
+
+            return new StoryOutput(
+                outputId,
+                speaker: "測試",
+                lineText: "測試",
+                hasEnded: false,
+                tags: rawTags,
+                parsedTags: parsedTags,
+                choices: new List<ChoiceOutput>(),
+                source: source);
+        }
+
+        private static string BuildCharJson(
+            string leftActor,
+            string centerActor,
+            string rightActor,
+            float appearSeconds,
+            float moveSeconds,
+            float disappearSeconds)
+        {
+            string centerJson = string.IsNullOrWhiteSpace(centerActor)
+                ? string.Empty
+                : ",\"center\":{"
+                + $"\"actor\":\"{centerActor}\""
+                + "}";
+
+            return
+                "{"
+                + "\"transition\":{"
+                + $"\"appear\":{appearSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)},"
+                + $"\"move\":{moveSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)},"
+                + $"\"disappear\":{disappearSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}"
+                + "},"
+                + "\"left\":{"
+                + $"\"actor\":\"{leftActor}\""
+                + "}"
+                + centerJson
+                + ",\"right\":{"
+                + $"\"actor\":\"{rightActor}\""
+                + "}"
+                + "}";
+        }
+
+        private static IEnumerator WaitUntilBusy(InkTagCharacterStatePlayer player, float timeoutSeconds)
+        {
+            Assert.IsNotNull(player, "InkTagCharacterStatePlayer 不可為 null。");
+
+            float start = Time.realtimeSinceStartup;
+            while (!player.IsBusy)
+            {
+                if (Time.realtimeSinceStartup - start > timeoutSeconds)
+                {
+                    Assert.Fail("等待角色演出開始逾時（IsBusy 一直為 false）。");
+                }
+
+                yield return null;
+            }
+        }
+
+        private static IEnumerator WaitUntilNotBusy(InkTagCharacterStatePlayer player, float timeoutSeconds)
+        {
+            Assert.IsNotNull(player, "InkTagCharacterStatePlayer 不可為 null。");
+
+            float start = Time.realtimeSinceStartup;
+            while (player.IsBusy)
+            {
+                if (Time.realtimeSinceStartup - start > timeoutSeconds)
+                {
+                    Assert.Fail("等待角色演出結束逾時（IsBusy 一直為 true）。");
+                }
+
+                yield return null;
+            }
+        }
+
+        private static IEnumerator AssertNoNewOutputForSeconds(List<StoryOutput> outputs, int previousCount, float seconds, string reason)
+        {
+            float start = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - start < seconds)
+            {
+                if (outputs.Count > previousCount)
+                {
+                    Assert.Fail($"不應產生新輸出：{reason}");
+                }
+
+                yield return null;
             }
         }
         // ===== 變更結束 =====

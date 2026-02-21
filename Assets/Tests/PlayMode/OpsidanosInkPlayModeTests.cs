@@ -199,51 +199,81 @@ namespace OpsidanosInk.Tests
         }
 
         // ===== 變更開始 =====
-        // 2026/02/06 Opsidanos (修改原因：快速倒帶（Restore）遇到 steps 缺少 Appear 時，會產生 Error（missing Appear / raiseActors 找不到角色）)
-        // 預期結果：Restore 缺少 Appear 時，系統會自動補齊且不產生紅字 Error
+        // 2026/02/12 Opsidanos (修改原因：PlayMode 測試要以「開發者模式輸出契約（可重播/快照式）」設計；steps 必須包含必要動作，才能在 Restore（空畫面起始）正確收斂)
+        // 預期結果：Restore 套用「可重播」的 char JSON 時不產生任何 Error log，且角色元素可正確建立
         [UnityTest]
-        public IEnumerator Restore_缺少Appear時_不應產生CharTransitionStepsError()
+        public IEnumerator Restore_可重播CharJson_不應產生CharTransitionStepsError()
         {
             yield return LoadTestScene();
 
             GameObject vnPlayer = FindVNPlayer();
             InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
             InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
 
             yield return WaitUntilNotBusy(charStatePlayer, 3f);
 
             const int outputId = 9101;
             string charJson =
-                "{\"transition\":{\"appear\":0,\"move\":0,\"steps\":[{\"raiseActors\":[\"alice\"]},{\"actions\":[\"move\"],\"raise\":false}]},\"left\":{\"actor\":\"bs\"},\"center\":{\"actor\":\"alice\",\"expr\":\"happy\"},\"right\":{\"actor\":\"ss\"}}";
+                "{\"transition\":{\"appear\":0,\"move\":0,\"disappear\":0,\"steps\":[{\"actions\":[\"appear\"],\"raise\":false,\"raiseActors\":[\"alice\"]},{\"actions\":[\"move\"],\"raise\":false},{\"actions\":[\"disappear\"],\"raise\":false}]},\"left\":{\"actor\":\"bs\"},\"center\":{\"actor\":\"alice\",\"expr\":\"happy\"},\"right\":{\"actor\":\"ss\"}}";
 
-            var errors = new List<string>();
-            Application.LogCallback handler = (condition, stackTrace, type) =>
-            {
-                if (type != LogType.Error)
-                {
-                    return;
-                }
+            storyEngine.EmitExternalOutput(BuildCharOutput(outputId, StoryOutputSource.Restore, charJson));
+            yield return null;
+            yield return null;
 
-                if (!string.IsNullOrEmpty(condition) && condition.Contains("[OpsidanosInk] char.transition.steps"))
-                {
-                    errors.Add(condition);
-                }
-            };
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
 
-            Application.logMessageReceived += handler;
-            try
-            {
-                storyEngine.EmitExternalOutput(BuildCharOutput(outputId, StoryOutputSource.Restore, charJson));
-                yield return null;
+            VisualElement actorLayer = GetCharacterActorLayer(uiDocument);
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_bs"), "Restore 後應該存在角色：bs。");
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_alice"), "Restore 後應該存在角色：alice。");
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_ss"), "Restore 後應該存在角色：ss。");
+        }
+        // ===== 變更結束 =====
 
-                yield return WaitUntilNotBusy(charStatePlayer, 3f);
-            }
-            finally
-            {
-                Application.logMessageReceived -= handler;
-            }
+        // ===== 變更開始 =====
+        // 2026/02/12 Opsidanos (修改原因：把「開發者模式輸出契約（可重播/快照式）」鎖進 PlayMode 測試；自訂 steps 必須能在任意畫面狀態套用且不噴紅字)
+        // 預期結果：含 appear/move/disappear 的 steps，可從「空畫面」與「非空畫面」套用後收斂到目標狀態，且不產生任何 Error log
+        [UnityTest]
+        public IEnumerator CharTransitionSteps_可重播契約_可從任意狀態收斂()
+        {
+            yield return LoadTestScene();
 
-            Assert.AreEqual(0, errors.Count, $"Restore 缺少 Appear 時不應產生 char.transition.steps 的 Error。OutputId={outputId}");
+            GameObject vnPlayer = FindVNPlayer();
+            InkStoryEngine storyEngine = GetRequiredComponent<InkStoryEngine>(vnPlayer, "InkStoryEngine");
+            InkTagCharacterStatePlayer charStatePlayer = GetRequiredComponent<InkTagCharacterStatePlayer>(vnPlayer, "InkTagCharacterStatePlayer");
+            UIDocument uiDocument = GetRequiredComponent<UIDocument>(vnPlayer, "UIDocument");
+
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            // Case A：從空畫面套用（最容易踩到「steps 缺必要動作」的地方）
+            const int outputIdA = 9201;
+            const string contractCharJsonA =
+                "{\"transition\":{\"appear\":0,\"move\":0,\"disappear\":0,\"steps\":[{\"actions\":[\"appear\"],\"raise\":false,\"raiseActors\":[\"alice\"]},{\"actions\":[\"move\"],\"raise\":false},{\"actions\":[\"disappear\"],\"raise\":false}]},\"left\":{\"actor\":\"bs\"},\"center\":{\"actor\":\"alice\",\"expr\":\"happy\"},\"right\":{\"actor\":\"ss\"}}";
+
+            storyEngine.EmitExternalOutput(BuildCharOutput(outputIdA, StoryOutputSource.Restore, contractCharJsonA));
+            yield return null;
+            yield return null;
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            VisualElement actorLayer = GetCharacterActorLayer(uiDocument);
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_bs"), "Case A：應該存在角色：bs。");
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_alice"), "Case A：應該存在角色：alice。");
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_ss"), "Case A：應該存在角色：ss。");
+
+            // Case B：從非空畫面套用（要同時覆蓋 move + disappear）
+            const int outputIdB = 9202;
+            const string contractCharJsonB =
+                "{\"transition\":{\"appear\":0,\"move\":0,\"disappear\":0,\"steps\":[{\"actions\":[\"appear\"],\"raise\":false},{\"actions\":[\"move\"],\"raise\":false},{\"actions\":[\"disappear\"],\"raise\":false}]},\"left\":{\"actor\":\"ss\"},\"center\":{\"actor\":\"alice\",\"expr\":\"happy\"}}";
+
+            storyEngine.EmitExternalOutput(BuildCharOutput(outputIdB, StoryOutputSource.Restore, contractCharJsonB));
+            yield return null;
+            yield return null;
+            yield return WaitUntilNotBusy(charStatePlayer, 3f);
+
+            actorLayer = GetCharacterActorLayer(uiDocument);
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_ss"), "Case B：應該存在角色：ss。");
+            Assert.IsNotNull(actorLayer.Q<VisualElement>("Actor_alice"), "Case B：應該存在角色：alice。");
+            Assert.IsNull(actorLayer.Q<VisualElement>("Actor_bs"), "Case B：bs 應該已消失（元素被移除）。");
         }
         // ===== 變更結束 =====
 
