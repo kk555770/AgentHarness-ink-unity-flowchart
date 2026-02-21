@@ -103,28 +103,37 @@ namespace OpsidanosInk.Tests
             Assert.AreEqual("happy", p4.center.expr);
             Assert.AreEqual("bs", p4.right.actor);
 
-            // 5) move=1，steps=[raiseActors]->[move(raise=false)]，先置頂 alice，再讓 bs/ss 移動（且移動不自動置頂）
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：契約要求只要有 steps 就必須完整安排 appear/move/disappear，且 raiseActors 要落在可用角色時機)
+            // 預期結果：Demo 第 5~7 句 payload 符合可重播契約，Rollback/快速連點不再觸發「缺少必要動作」與 raiseActors 紅字
+            // 5) appear=0, move=1, disappear=0，steps=[appear(raiseActors=alice,raise=false)] -> [move(raise=false)] -> [disappear(raise=false)]
             story.Continue();
             Payload p5 = ParseCharPayloadFromCurrentTags(story);
             Assert.IsNotNull(p5.transition);
+            Assert.AreEqual(0f, p5.transition.appear);
             Assert.AreEqual(1f, p5.transition.move);
+            Assert.AreEqual(0f, p5.transition.disappear);
             Assert.AreEqual("bs", p5.left.actor);
             Assert.AreEqual("alice", p5.center.actor);
             Assert.AreEqual("happy", p5.center.expr);
             Assert.AreEqual("ss", p5.right.actor);
             Assert.IsNotNull(p5.transition.steps);
-            Assert.AreEqual(2, p5.transition.steps.Length);
-            Assert.IsTrue(p5.transition.steps[0].actions == null || p5.transition.steps[0].actions.Length == 0);
-            Assert.IsTrue(p5.transition.steps[0].raise);
+            Assert.AreEqual(3, p5.transition.steps.Length);
+            CollectionAssert.AreEqual(new[] { "appear" }, p5.transition.steps[0].actions);
+            Assert.IsFalse(p5.transition.steps[0].raise);
             CollectionAssert.AreEqual(new[] { "alice" }, p5.transition.steps[0].raiseActors);
             CollectionAssert.AreEqual(new[] { "move" }, p5.transition.steps[1].actions);
             Assert.IsFalse(p5.transition.steps[1].raise);
             Assert.IsTrue(p5.transition.steps[1].raiseActors == null || p5.transition.steps[1].raiseActors.Length == 0);
+            CollectionAssert.AreEqual(new[] { "disappear" }, p5.transition.steps[2].actions);
+            Assert.IsFalse(p5.transition.steps[2].raise);
+            Assert.IsTrue(p5.transition.steps[2].raiseActors == null || p5.transition.steps[2].raiseActors.Length == 0);
 
-            // 6) move=0.7、disappear=0.5，steps=[disappear]->[move]，alice 消失後 ss 再移動
+            // 6) appear=0.3、move=0.7、disappear=0.5，steps=[disappear]->[move+appear]，alice 消失後 ss 再移動並可從空畫面重播
             story.Continue();
             Payload p6 = ParseCharPayloadFromCurrentTags(story);
             Assert.IsNotNull(p6.transition);
+            Assert.AreEqual(0.3f, p6.transition.appear);
             Assert.AreEqual(0.7f, p6.transition.move);
             Assert.AreEqual(0.5f, p6.transition.disappear);
             Assert.AreEqual("bs", p6.left.actor);
@@ -133,12 +142,13 @@ namespace OpsidanosInk.Tests
             Assert.IsNotNull(p6.transition.steps);
             Assert.AreEqual(2, p6.transition.steps.Length);
             CollectionAssert.AreEqual(new[] { "disappear" }, p6.transition.steps[0].actions);
-            CollectionAssert.AreEqual(new[] { "move" }, p6.transition.steps[1].actions);
+            CollectionAssert.AreEqual(new[] { "move", "appear" }, p6.transition.steps[1].actions);
 
-            // 7) move=0、disappear=0.5，steps=[move+disappear]，bs 右邊、ss 消失
+            // 7) appear=0、move=0、disappear=0.5，steps=[appear+move+disappear]，bs 右邊、ss 消失
             story.Continue();
             Payload p7 = ParseCharPayloadFromCurrentTags(story);
             Assert.IsNotNull(p7.transition);
+            Assert.AreEqual(0f, p7.transition.appear);
             Assert.AreEqual(0f, p7.transition.move);
             Assert.AreEqual(0.5f, p7.transition.disappear);
             Assert.IsTrue(p7.left == null || string.IsNullOrEmpty(p7.left.actor), "left 應該是空的（允許 null 或空物件）。");
@@ -146,7 +156,8 @@ namespace OpsidanosInk.Tests
             Assert.AreEqual("bs", p7.right.actor);
             Assert.IsNotNull(p7.transition.steps);
             Assert.AreEqual(1, p7.transition.steps.Length);
-            CollectionAssert.AreEqual(new[] { "move", "disappear" }, p7.transition.steps[0].actions);
+            CollectionAssert.AreEqual(new[] { "appear", "move", "disappear" }, p7.transition.steps[0].actions);
+            // ===== 變更結束 =====
 
             // 8) clear
             story.Continue();

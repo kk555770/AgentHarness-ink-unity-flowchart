@@ -13,9 +13,9 @@
 第二句：ss 出現與 alice 移動同時發生（appear=0.5）。 # speaker:旁白 # char:\{\"transition\":\{\"appear\":0.5,\"steps\":[\{\"actions\":[\"appear\",\"move\"]\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"ss\"\},\"right\":\{\"actor\":\"alice\",\"expr\":\"normal\"\}\}
 第三句：把 alice 移回中間並換表情（move=1）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":1\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"alice\",\"expr\":\"happy\"\},\"right\":\{\"actor\":\"ss\"\}\}
 第四句：bs 和 ss 交換位置（move=1），移動中的角色會暫時在最上面。 # speaker:旁白 # char:\{\"transition\":\{\"move\":1\},\"left\":\{\"actor\":\"ss\"\},\"center\":\{\"actor\":\"alice\",\"expr\":\"happy\"\},\"right\":\{\"actor\":\"bs\"\}\}
-第五句：先把 alice 置頂（無動作，raiseActors），再讓 bs/ss 移動（move=1），且移動這一步不自動置頂（raise=false）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":1,\"steps\":[\{\"raiseActors\":[\"alice\"]\},\{\"actions\":[\"move\"],\"raise\":false\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"alice\",\"expr\":\"happy\"\},\"right\":\{\"actor\":\"ss\"\}\}
-第六句：先讓 alice 消失（disappear=0.5），再讓 ss 移動到中間（move=0.7）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":0.7,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"disappear\"]\},\{\"actions\":[\"move\"]\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"ss\"\}\}
-第七句：bs 瞬間移動到右邊（move=0），同時 ss 消失（disappear=0.5）。 # speaker:旁白 # char:\{\"transition\":\{\"move\":0,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"move\",\"disappear\"]\}]\},\"right\":\{\"actor\":\"bs\"\}\}
+第五句：先把 alice 置頂，再讓 bs/ss 移動（move=1），且移動這一步不自動置頂（raise=false）。 # speaker:旁白 # char:\{\"transition\":\{\"appear\":0,\"move\":1,\"disappear\":0,\"steps\":[\{\"actions\":[\"appear\"],\"raise\":false,\"raiseActors\":[\"alice\"]\},\{\"actions\":[\"move\"],\"raise\":false\},\{\"actions\":[\"disappear\"],\"raise\":false\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"alice\",\"expr\":\"happy\"\},\"right\":\{\"actor\":\"ss\"\}\}
+第六句：先讓 alice 消失（disappear=0.5），再讓 ss 移動到中間（move=0.7），並補上 appear 以符合可重播契約。 # speaker:旁白 # char:\{\"transition\":\{\"appear\":0.3,\"move\":0.7,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"disappear\"]\},\{\"actions\":[\"move\",\"appear\"]\}]\},\"left\":\{\"actor\":\"bs\"\},\"center\":\{\"actor\":\"ss\"\}\}
+第七句：bs 瞬間移動到右邊（move=0），同時 ss 消失（disappear=0.5），同一步補上 appear。 # speaker:旁白 # char:\{\"transition\":\{\"appear\":0,\"move\":0,\"disappear\":0.5,\"steps\":[\{\"actions\":[\"appear\",\"move\",\"disappear\"]\}]\},\"right\":\{\"actor\":\"bs\"\}\}
 第八句：全部清空。 # speaker:旁白 # char:clear
 -> END
 
