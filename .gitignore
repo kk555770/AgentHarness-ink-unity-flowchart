@@ -89,11 +89,13 @@ Packages/**/Samples~/**/.DS_Store
 Packages/**/Samples~/**/.DS_Store?
 .idea/
 codex-hello-loop/
-PlanningWithFiles/
-AGENTS.md
+# PlanningWithFiles 預設忽略，僅放行計畫三件套（task_plan/findings/progress）
+PlanningWithFiles/**
+!PlanningWithFiles/**/
+!PlanningWithFiles/**/task_plan.md
+!PlanningWithFiles/**/findings.md
+!PlanningWithFiles/**/progress.md
 AGENTS__.md
-UIToolkitSpec.md
-GraphToolkitSpec.md
 *.dwlt
 
 # Graph Toolkit 測試暫存（避免測試中斷後殘留含編號資料夾進版控）
