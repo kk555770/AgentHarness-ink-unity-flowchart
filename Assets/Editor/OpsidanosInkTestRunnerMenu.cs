@@ -12,6 +12,16 @@ namespace OpsidanosInk.Editor
     {
         private static readonly TestRunnerApi Api = new TestRunnerApi();
         private static RunAllCallback runAllCallback;
+        // ===== 變更開始 =====
+        // 2026/02/23 Opsidanos (修改原因：建立 GraphToolkit 專用安全測試流程，避免誤跑整包 EditMode 連動 package 場景測試)
+        // 預期結果：固定只跑 Import/RoundTrip 兩個 fixture，且可透過 category 再次守門
+        private const string GraphToolkitSafeCategory = "GraphToolkitFlowSafe";
+        private static readonly string[] GraphToolkitSafeFixtureNames =
+        {
+            "OpsidanosInk.Tests.EditMode.InkFlowChartImportTests",
+            "OpsidanosInk.Tests.EditMode.InkFlowChartRoundTripTests"
+        };
+        // ===== 變更結束 =====
 
         // ===== 變更開始 =====
         // 2026/02/07 Opsidanos (修改原因：將測試工具入口統一到 Tools/OpsidanosInk，避免分散在多個選單路徑)
@@ -49,6 +59,29 @@ namespace OpsidanosInk.Editor
         private static void RunPlayMode_OnlyOurs()
         {
             RunPlayMode();
+        }
+
+        // ===== 變更開始 =====
+        // 2026/02/23 Opsidanos (修改原因：提供 GraphToolkit 最小測試入口，避免使用者手滑啟動整包測試導致 Unity/MCP 暴走)
+        // 預期結果：從選單一鍵執行時，只會命中 GraphToolkit Import/RoundTrip，且具固定分類防呆
+        [MenuItem("Tools/OpsidanosInk/測試/GraphToolkit/安全跑 Import+RoundTrip（60秒）")]
+        // ===== 變更結束 =====
+        private static void RunGraphToolkitSafe_EditMode()
+        {
+            // ===== 變更開始 =====
+            // 2026/02/23 Opsidanos (修改原因：將測試範圍鎖死在 assembly + category + fixture，避免篩選條件遺漏)
+            // 預期結果：不會誤跑到 package 測試，減少場景切換與編譯風暴風險
+            var filter = new Filter
+            {
+                testMode = TestMode.EditMode,
+                assemblyNames = new[] { "OpsidanosInk.EditModeTests" },
+                categoryNames = new[] { GraphToolkitSafeCategory },
+                testNames = GraphToolkitSafeFixtureNames
+            };
+
+            Debug.Log("[OpsidanosInk] GraphToolkit 安全測試啟動：Import + RoundTrip（60 秒逾時由測試層控制）");
+            Api.Execute(new ExecutionSettings(filter));
+            // ===== 變更結束 =====
         }
 
         private static void RunEditMode()

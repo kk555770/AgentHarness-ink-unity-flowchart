@@ -17,6 +17,12 @@ using Object = UnityEngine.Object;
 
 namespace OpsidanosInk.Tests.EditMode
 {
+    // ===== 變更開始 =====
+    // 2026/02/23 Opsidanos (修改原因：建立 GraphToolkit 專用測試分類與 60 秒上限，避免測試卡死拖垮 Unity/MCP)
+    // 預期結果：此類別所有測試可被安全入口精準篩選，且單測最長 60 秒逾時失敗
+    [Category("GraphToolkitFlowSafe")]
+    [Timeout(60000)]
+    // ===== 變更結束 =====
     public sealed class InkFlowChartImportTests
     {
         private const string TempAssetPrefix = "Assets/Editor/TmpGraphToolkitImport_";
@@ -101,6 +107,11 @@ namespace OpsidanosInk.Tests.EditMode
             InkFlowCommentNode commentNode = nodes.OfType<InkFlowCommentNode>().Single();
 
             AssertNodeOptionValue(actionNode, "Content", "你好，旅人。");
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：新增 ActionKind 後需要驗證舊 sidecar（缺 actionKind）匯入時的預設值)
+            // 預期結果：未提供 actionKind 時，Action 節點預設為 Dialogue，維持舊資料可匯入
+            AssertNodeOptionValue(actionNode, "ActionKind", InkFlowActionKind.Dialogue);
+            // ===== 變更結束 =====
             AssertNodeOptionValue(commentNode, "Note", "這是註解節點");
 
             AssertEdgeExists(startNode, actionNode);
@@ -200,6 +211,12 @@ namespace OpsidanosInk.Tests.EditMode
             AssertNodeOptionValue(choiceNode, "ChoiceTexts", "去 A\n去 B");
             AssertNodeOptionValue(choiceNode, "OutputCount", 2);
             AssertNodeOptionValue(choiceNode, "ChoiceMode", InkFlowChoiceMode.Once);
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：v2 匯入要驗證 actionKind 可被還原)
+            // 預期結果：Action A/B 的內容類型下拉值可依 sidecar 還原
+            AssertNodeOptionValue(actionA, "ActionKind", InkFlowActionKind.Dialogue);
+            AssertNodeOptionValue(actionB, "ActionKind", InkFlowActionKind.StageAction);
+            // ===== 變更結束 =====
 
             AssertEdgeExists(startNode, choiceNode);
             AssertEdgeExists(choiceNode, "Out0", actionA);
@@ -238,6 +255,12 @@ namespace OpsidanosInk.Tests.EditMode
 
             AssertNodeOptionValue(conditionNode, "ConditionTexts", "favor > 7");
             AssertNodeOptionValue(conditionNode, "OutputCount", 2);
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：condition 路徑也要驗證 actionKind 匯入還原)
+            // 預期結果：Action A/B 的內容類型下拉值可依 sidecar 還原
+            AssertNodeOptionValue(actionA, "ActionKind", InkFlowActionKind.Dialogue);
+            AssertNodeOptionValue(actionB, "ActionKind", InkFlowActionKind.StageAction);
+            // ===== 變更結束 =====
 
             AssertEdgeExists(startNode, conditionNode);
             AssertEdgeExists(conditionNode, "Out0", actionA);
@@ -353,6 +376,11 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N002",
                         type = "action",
                         content = "A",
+                        // ===== 變更開始 =====
+                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證匯入可還原下拉值)
+                        // 預期結果：A 節點匯入後 ActionKind = Dialogue
+                        actionKind = "dialogue",
+                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     },
                     new ExportNodeDto
@@ -360,6 +388,11 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N003",
                         type = "action",
                         content = "B",
+                        // ===== 變更開始 =====
+                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證匯入可還原下拉值)
+                        // 預期結果：B 節點匯入後 ActionKind = StageAction
+                        actionKind = "action",
+                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     }
                 }
@@ -399,6 +432,11 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N002",
                         type = "action",
                         content = "A",
+                        // ===== 變更開始 =====
+                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證匯入可還原下拉值)
+                        // 預期結果：A 節點匯入後 ActionKind = Dialogue
+                        actionKind = "dialogue",
+                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     },
                     new ExportNodeDto
@@ -406,6 +444,11 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N003",
                         type = "action",
                         content = "B",
+                        // ===== 變更開始 =====
+                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證匯入可還原下拉值)
+                        // 預期結果：B 節點匯入後 ActionKind = StageAction
+                        actionKind = "action",
+                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     }
                 }
@@ -571,6 +614,20 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.IsTrue(readSuccess, $"節點 `{optionName}` option 應可讀取 choice mode 值。");
             Assert.AreEqual(expectedValue, actualValue, $"節點 `{optionName}` option 值不符合預期。");
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：新增 ActionKind 驗證需求，補上 enum 斷言工具)
+        // 預期結果：測試可直接驗證 Action 節點內容類型下拉值
+        private static void AssertNodeOptionValue(Node node, string optionName, InkFlowActionKind expectedValue)
+        {
+            INodeOption option = node.GetNodeOptionByName(optionName);
+            Assert.NotNull(option, $"節點必須存在 `{optionName}` option。");
+
+            bool readSuccess = option.TryGetValue(out InkFlowActionKind actualValue);
+            Assert.IsTrue(readSuccess, $"節點 `{optionName}` option 應可讀取 action kind 值。");
+            Assert.AreEqual(expectedValue, actualValue, $"節點 `{optionName}` option 值不符合預期。");
+        }
+        // ===== 變更結束 =====
         // ===== 變更結束 =====
 
         private static string BuildUniqueName(string prefix)

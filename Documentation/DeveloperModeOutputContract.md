@@ -256,6 +256,19 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - `choice`：選項節點（玩家選擇，會有 1 條以上輸出線）
 - `condition`：條件節點（系統判斷，會有 2 條以上輸出線，且必須含「否則」）
 
+#### 6.2.1-1 編輯器白話名稱與下拉欄位（作者體驗）
+- 節點標題（顯示給作者看）應使用白話繁中：
+  - `start` 顯示「開始」
+  - `action` 顯示「對話」
+  - `comment` 顯示「註解」
+  - `choice` 顯示「選項」
+  - `condition` 顯示「條件」
+- `action` 節點必須提供 `actionKind` 下拉，至少包含：
+  - `dialogue`（對話）
+  - `action`（動作）
+  - `custom`（自訂）
+- 這個下拉的目的，是讓一般作者「先選格式，再填內容」，不用先背規範。
+
 #### 6.2.2 接線規則（最重要）
 - `start/action/comment`：
   - 輸出線數量只能是 `0` 或 `1`
@@ -331,6 +344,8 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - `startNodeId`
 - `nodes[*].id/type/content`
 - `nodes[*].outputs[*].portName/toNodeId`
+- `action` 額外需要：
+  - `nodes[*].actionKind`（`dialogue` / `action` / `custom`；缺值時匯入預設 `dialogue`）
 - `choice` 額外需要：
   - `nodes[*].choiceMode`（`*` 或 `+`）
   - `nodes[*].outputs[*].label`
@@ -379,3 +394,13 @@ Ink 會把 `{ ... }` 當成 inline logic，所以你在 `.ink` 內要把 JSON �
   - `RollbackButton_快速連按_不會排隊連續倒帶`
   - `OpsidanosInkPlayModeUiClickTests` 整包
 - 驗收時 Console `error` 必須是 0 筆。
+
+### 7.4 GraphToolkit 測試防暴走流程（固定範圍）
+- GraphToolkit 匯入/匯出閉環驗證，禁止用「整包 EditMode」直接跑。
+- 允許的固定範圍：
+  - Assembly：`OpsidanosInk.EditModeTests`
+  - Category：`GraphToolkitFlowSafe`
+  - Fixture：`OpsidanosInk.Tests.EditMode.InkFlowChartImportTests`、`OpsidanosInk.Tests.EditMode.InkFlowChartRoundTripTests`
+- 兩個 fixture 必須維持 `[Timeout(60000)]`，避免測試卡住拖垮 Unity/MCP。
+- Unity Editor 建議入口：`Tools/OpsidanosInk/測試/GraphToolkit/安全跑 Import+RoundTrip（60秒）`
+- 若執行紀錄出現 package 測試名稱（例如 `com.unity.ai.navigation`），判定為範圍外執行，必須中止並改回固定篩選流程。
