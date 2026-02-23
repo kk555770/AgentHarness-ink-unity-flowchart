@@ -5,7 +5,7 @@
 可下拉選的節點格式欄位，並同步更新 sidecar、測試與契約文件。
 
 ## Current Phase
-Phase 5（完成）
+Phase 6（完成）
 
 ## Phases
 ### Phase 1: 規範對齊與現況確認
@@ -38,6 +38,14 @@ Phase 5（完成）
 - [x] 回報使用者
 - **Status:** complete
 
+### Phase 6: 測試防暴走流程與場景還原
+- [x] 盤點「暴走」根因與受影響範圍
+- [x] 實作 GraphToolkit 專用安全測試入口（固定篩選）
+- [x] 對 Import/RoundTrip 測試加上固定分類與超時
+- [x] 還原非目標場景改動（OffMeshLinkScene）
+- [x] 重新驗證並回報結果（Import 8/8、RoundTrip 2/2）
+- **Status:** complete
+
 ## Key Questions
 1. 在不新增新節點型別下，如何讓一般使用者先選格式再填內容？
 2. 新增 `actionKind` 後，如何保證舊版 sidecar 仍可匯入？
@@ -49,9 +57,12 @@ Phase 5（完成）
 | `actionKind` 要進 sidecar | 避免匯入再匯出遺失 UI 選擇，維持可逆閉環 |
 | 節點與欄位中文顯示名集中管理 | 後續改名只改一處，避免字串分散 |
 | 測試先嘗試自動執行，再回報環境阻擋 | 不假裝通過；環境被佔用時要明確揭露 |
+| 測試防暴走改為「流程守門」而非只靠口頭提醒 | 防止再次誤跑整包 EditMode/Package 測試，避免 Unity/MCP 被拖垮 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
 | MCP `run_tests` 回傳 `no_unity_session` | 1 | 改走 Unity CLI 測試 |
 | Unity CLI 測試被阻擋（專案已被另一個 Unity 開啟） | 1 | 停止重試並回報使用者 |
+| 直接跑整包 EditMode 造成 Unity 場景測試鏈暴走 | 1 | 以 assembly+category+fixture 固定篩選，並加入 60 秒超時 |
+| MCP transport error (`localhost:8080/mcp`) | 1 | 等使用者恢復後，改用固定篩選重跑並驗證通過 |

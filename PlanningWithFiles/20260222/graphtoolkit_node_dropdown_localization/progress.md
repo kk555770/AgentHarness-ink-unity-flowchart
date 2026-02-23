@@ -57,25 +57,52 @@
 - Files created/modified:
   - 無新增程式檔案（僅驗證）
 
+## Session: 2026-02-23（測試防暴走修正）
+
+### Phase 6: 測試防暴走流程與場景還原
+- **Status:** complete
+- **Started:** 2026-02-23
+- Actions taken:
+  - 盤點暴走根因：`run_tests(mode=EditMode)` 無篩選會拉進 package 測試。
+  - 確認 package 測試確實會切換/建立場景（`com.unity.ai.navigation`）。
+  - 確認目前唯一被動到的非目標場景是 `Assets/OffMeshLinkScene.unity`。
+  - `OpsidanosInkTestRunnerMenu` 新增 GraphToolkit 安全入口（assembly + category + fixture 固定篩選）。
+  - `InkFlowChartImportTests`、`InkFlowChartRoundTripTests` 新增 `[Category("GraphToolkitFlowSafe")]` + `[Timeout(60000)]`。
+  - `DeveloperModeOutputContract.md` 新增 7.4「GraphToolkit 測試防暴走流程」。
+  - 已還原 `Assets/OffMeshLinkScene.unity`。
+  - 使用者回報「已恢復」後，MCP 連線恢復，已完成固定範圍測試驗證。
+- Files created/modified:
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/task_plan.md`
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/findings.md`
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/progress.md`
+  - `Assets/Editor/OpsidanosInkTestRunnerMenu.cs`
+  - `Assets/Editor/Tests/InkFlowChartImportTests.cs`
+  - `Assets/Editor/Tests/InkFlowChartRoundTripTests.cs`
+  - `Documentation/DeveloperModeOutputContract.md`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
 | MCP EditMode 測試 | `run_tests(EditMode, ImportTests+RoundTripTests)` | 取得測試 job | 回傳 `no_unity_session` | blocked |
 | Unity CLI Import 測試 | `Unity -runTests -testFilter InkFlowChartImportTests` | 執行 EditMode 測試 | 專案被另一 Unity instance 開啟，批次中止 | blocked |
+| MCP 連線檢查 | `debug_request_context` | 可取得 session/context | `Transport send error: http://localhost:8080/mcp` | blocked |
 | Diff 檢查 | `git diff --check` | 無 patch 格式問題 | 通過 | pass |
+| GraphToolkit Import（安全篩選） | `assembly=OpsidanosInk.EditModeTests` + `category=GraphToolkitFlowSafe` + `group=InkFlowChartImportTests` | 只跑 Import fixture | 8/8 Passed | pass |
+| GraphToolkit RoundTrip（安全篩選） | `assembly=OpsidanosInk.EditModeTests` + `category=GraphToolkitFlowSafe` + `group=InkFlowChartRoundTripTests` | 只跑 RoundTrip fixture | 2/2 Passed | pass |
+| Console Error 檢查 | `read_console types=[\"error\"]` | 0 筆 | 0 筆 | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
 | 2026-02-22 | Unity MCP: `no_unity_session` | 1 | 改走 Unity CLI |
 | 2026-02-22 | Unity CLI: project already open | 1 | 停止重試，記錄並回報 |
+| 2026-02-23 | MCP transport error (`localhost:8080/mcp`) | 1 | 先完成流程守門改檔，待 MCP 恢復後重跑固定範圍測試 |
 
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5 完成（交付前檢查完成） |
-| Where am I going? | 回報變更與測試阻擋，等使用者決定是否重跑 |
-| What's the goal? | 下拉化 + 白話命名 + 閉環不破壞 |
+| Where am I? | Phase 6 完成（流程守門 + 驗證完成） |
+| Where am I going? | 等使用者決定是否 commit |
+| What's the goal? | 防止 GraphToolkit 驗證再次暴走，且還原非目標場景改動（已達成） |
 | What have I learned? | 參考 findings.md |
-| What have I done? | 節點/匯出匯入/測試/文件都已改完，驗證遇環境阻擋 |
-
+| What have I done? | 已完成安全測試入口 + 分類/超時 + 場景還原，並驗證 10/10 通過 |
