@@ -38,9 +38,11 @@ namespace OpsidanosInk.Editor
 
     public static class InkFlowChartImporter
     {
-        private const string ActionContentOptionName = "Content";
-        private const string CommentNoteOptionName = "Note";
-        private const string FlowPortName = "Flow";
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：Flow port key 改由共用 schema 常數提供，避免匯出匯入 key 漂移)
+        // 預期結果：匯入端與節點定義端共用同一個 Flow key
+        private const string FlowPortName = InkFlowNodeSchema.FlowPortName;
+        // ===== 變更結束 =====
         private const string FlowchartJsonSuffix = ".flowchart.json";
 
         public static InkFlowChartImportResult ImportFromFlowchartJson(string flowchartJsonPath)
@@ -315,30 +317,34 @@ namespace OpsidanosInk.Editor
 
         private static INode CreateNodeByType(string nodeType)
         {
-            if (string.Equals(nodeType, "start", StringComparison.OrdinalIgnoreCase))
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：節點 type 字串改由共用 schema 常數比對，避免匯入判斷與匯出不一致)
+            // 預期結果：匯入可穩定識別 start/action/comment/choice/condition
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
             {
                 return new InkFlowStartNode();
             }
 
-            if (string.Equals(nodeType, "action", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
             {
                 return new InkFlowActionNode();
             }
 
-            if (string.Equals(nodeType, "comment", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
             {
                 return new InkFlowCommentNode();
             }
 
-            if (string.Equals(nodeType, "choice", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
             {
                 return new InkFlowChoiceNode();
             }
 
-            if (string.Equals(nodeType, "condition", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
             {
                 return new InkFlowConditionNode();
             }
+            // ===== 變更結束 =====
 
             return null;
         }
@@ -353,12 +359,25 @@ namespace OpsidanosInk.Editor
 
             if (node is InkFlowActionNode)
             {
-                return TrySetNodeOptionValue((Node)node, ActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
+                // ===== 變更開始 =====
+                // 2026/02/22 Opsidanos (修改原因：Action 節點新增 actionKind，下拉值需從 sidecar 還原)
+                // 預期結果：匯入後 Action 節點可保留「對話/動作/自訂」選擇；舊 sidecar 缺值時預設 Dialogue
+                InkFlowActionKind actionKind = InkFlowNodeSchema.ParseActionKindToken(exportNode.actionKind);
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ActionKindOptionName, actionKind, out errorMessage))
+                {
+                    return false;
+                }
+
+                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
+                // ===== 變更結束 =====
             }
 
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：匯入 option key 改由共用 schema 常數提供，避免 key 字串散落)
+            // 預期結果：Comment/Choice/Condition 匯入讀寫 key 與節點定義保持一致
             if (node is InkFlowCommentNode)
             {
-                return TrySetNodeOptionValue((Node)node, CommentNoteOptionName, exportNode.content ?? string.Empty, out errorMessage);
+                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.CommentNoteOptionName, exportNode.content ?? string.Empty, out errorMessage);
             }
 
             if (node is InkFlowChoiceNode)
@@ -369,19 +388,19 @@ namespace OpsidanosInk.Editor
                     return false;
                 }
 
-                if (!TrySetNodeOptionValue((Node)node, "OutputCount", exportNode.outputs.Count, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
                 {
                     return false;
                 }
 
                 string choiceTexts = BuildJoinedLabels(exportNode.outputs);
-                if (!TrySetNodeOptionValue((Node)node, "ChoiceTexts", choiceTexts, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceTextsOptionName, choiceTexts, out errorMessage))
                 {
                     return false;
                 }
 
                 InkFlowChoiceMode mode = exportNode.choiceMode == "+" ? InkFlowChoiceMode.Repeatable : InkFlowChoiceMode.Once;
-                if (!TrySetNodeOptionValue((Node)node, "ChoiceMode", mode, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceModeOptionName, mode, out errorMessage))
                 {
                     return false;
                 }
@@ -405,13 +424,13 @@ namespace OpsidanosInk.Editor
                     return false;
                 }
 
-                if (!TrySetNodeOptionValue((Node)node, "OutputCount", exportNode.outputs.Count, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ConditionOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
                 {
                     return false;
                 }
 
                 string conditionTexts = BuildJoinedConditions(exportNode.outputs);
-                if (!TrySetNodeOptionValue((Node)node, "ConditionTexts", conditionTexts, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ConditionTextsOptionName, conditionTexts, out errorMessage))
                 {
                     return false;
                 }
@@ -419,6 +438,7 @@ namespace OpsidanosInk.Editor
                 ((Node)node).DefineNode();
                 return true;
             }
+            // ===== 變更結束 =====
 
             return true;
         }

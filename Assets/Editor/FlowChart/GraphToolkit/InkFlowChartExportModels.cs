@@ -25,6 +25,11 @@ namespace OpsidanosInk.Editor
         public string id = string.Empty;
         public string type = string.Empty;
         public string content = string.Empty;
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：Action 節點新增下拉類型，需保存到 sidecar 才能匯入後保留設定)
+        // 預期結果：`.flowchart.json` 可保存 actionKind，避免匯入後遺失「對話/動作/自訂」選擇
+        public string actionKind = string.Empty;
+        // ===== 變更結束 =====
         public string choiceMode = string.Empty;
         public List<ExportNodeOutputDto> outputs = new List<ExportNodeOutputDto>();
 

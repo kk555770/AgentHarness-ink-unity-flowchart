@@ -41,9 +41,6 @@ namespace OpsidanosInk.Editor
 
     public static class InkFlowChartExporter
     {
-        private const string ActionContentOptionName = "Content";
-        private const string CommentNoteOptionName = "Note";
-
         public static InkFlowChartExportResult ExportGraphAsset(string graphAssetPath)
         {
             try
@@ -139,6 +136,11 @@ namespace OpsidanosInk.Editor
                     id = nodeId,
                     type = GetNodeType(node),
                     content = GetNodeContent(node),
+                    // ===== 變更開始 =====
+                    // 2026/02/22 Opsidanos (修改原因：Action 節點新增內容類型下拉，匯出時需保留到 sidecar)
+                    // 預期結果：匯出 `.flowchart.json` 時可帶出 actionKind，供匯入與 round-trip 保持一致
+                    actionKind = GetNodeActionKind(node),
+                    // ===== 變更結束 =====
                     choiceMode = GetNodeChoiceMode(node)
                 };
                 exportDto.nodes.Add(exportNode);
@@ -178,20 +180,24 @@ namespace OpsidanosInk.Editor
             List<string> choiceLabels = null;
             List<string> conditionExpressions = null;
 
-            if (typedNode != null && string.Equals(nodeType, "choice", StringComparison.OrdinalIgnoreCase))
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：choice/condition 的 option key 與 type 判斷改由 schema 常數管理)
+            // 預期結果：BuildNodeOutputs 不再硬編碼字串，避免 key 或 type 拼字漂移
+            if (typedNode != null && string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
             {
-                choiceLabels = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, "ChoiceTexts"));
+                choiceLabels = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ChoiceTextsOptionName));
             }
 
-            if (typedNode != null && string.Equals(nodeType, "condition", StringComparison.OrdinalIgnoreCase))
+            if (typedNode != null && string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
             {
-                conditionExpressions = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, "ConditionTexts"));
+                conditionExpressions = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ConditionTextsOptionName));
             }
 
             var connectedPorts = new List<IPort>();
             List<IPort> outputPorts = node.GetOutputPorts().ToList();
-            bool includeAllOutputs = string.Equals(nodeType, "choice", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(nodeType, "condition", StringComparison.OrdinalIgnoreCase);
+            bool includeAllOutputs = string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase);
+            // ===== 變更結束 =====
             for (int outputIndex = 0; outputIndex < outputPorts.Count; outputIndex++)
             {
                 IPort outputPort = outputPorts[outputIndex];
@@ -240,9 +246,12 @@ namespace OpsidanosInk.Editor
 
         private static string GetNodeChoiceMode(INode node)
         {
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：ChoiceMode option key 改由 schema 常數提供，避免硬編碼字串)
+            // 預期結果：choiceMode 匯出讀值與節點定義共用同一個 key
             if (node is InkFlowChoiceNode choiceNode)
             {
-                INodeOption option = choiceNode.GetNodeOptionByName("ChoiceMode");
+                INodeOption option = choiceNode.GetNodeOptionByName(InkFlowNodeSchema.ChoiceModeOptionName);
                 if (option != null && option.TryGetValue(out InkFlowChoiceMode mode) && mode == InkFlowChoiceMode.Repeatable)
                 {
                     return "+";
@@ -251,8 +260,29 @@ namespace OpsidanosInk.Editor
                 return "*";
             }
 
+            // ===== 變更結束 =====
             return string.Empty;
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/22 Opsidanos (修改原因：Action 節點新增內容類型下拉，匯出時需要對應 sidecar token)
+        // 預期結果：Action 節點可穩定輸出 `dialogue/action/custom`，舊資料缺值時預設為 dialogue
+        private static string GetNodeActionKind(INode node)
+        {
+            if (node is InkFlowActionNode actionNode)
+            {
+                INodeOption option = actionNode.GetNodeOptionByName(InkFlowNodeSchema.ActionKindOptionName);
+                if (option != null && option.TryGetValue(out InkFlowActionKind actionKind))
+                {
+                    return InkFlowNodeSchema.ToActionKindToken(actionKind);
+                }
+
+                return InkFlowNodeSchema.ToActionKindToken(InkFlowActionKind.Dialogue);
+            }
+
+            return string.Empty;
+        }
+        // ===== 變更結束 =====
 
         private static List<string> SplitAndNormalizeLines(string text)
         {
@@ -665,45 +695,53 @@ namespace OpsidanosInk.Editor
 
         private static string GetNodeType(INode node)
         {
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：節點 type 字串改由共用 schema 常數輸出，避免匯出/匯入打字不一致)
+            // 預期結果：節點 type 來源單一化（start/action/comment/choice/condition）
             if (node is InkFlowStartNode)
             {
-                return "start";
+                return InkFlowNodeSchema.NodeTypeStart;
             }
 
             if (node is InkFlowActionNode)
             {
-                return "action";
+                return InkFlowNodeSchema.NodeTypeAction;
             }
 
             if (node is InkFlowCommentNode)
             {
-                return "comment";
+                return InkFlowNodeSchema.NodeTypeComment;
             }
 
             if (node is InkFlowChoiceNode)
             {
-                return "choice";
+                return InkFlowNodeSchema.NodeTypeChoice;
             }
 
             if (node is InkFlowConditionNode)
             {
-                return "condition";
+                return InkFlowNodeSchema.NodeTypeCondition;
             }
+            // ===== 變更結束 =====
 
             return "unknown";
         }
 
         private static string GetNodeContent(INode node)
         {
+            // ===== 變更開始 =====
+            // 2026/02/22 Opsidanos (修改原因：option key 改由共用 schema 常數提供，避免 key 字串散落)
+            // 預期結果：Action/Comment 內容欄位匯出時使用同一組 key 定義
             if (node is InkFlowActionNode actionNode)
             {
-                return GetNodeOptionValue(actionNode, ActionContentOptionName);
+                return GetNodeOptionValue(actionNode, InkFlowNodeSchema.ActionContentOptionName);
             }
 
             if (node is InkFlowCommentNode commentNode)
             {
-                return GetNodeOptionValue(commentNode, CommentNoteOptionName);
+                return GetNodeOptionValue(commentNode, InkFlowNodeSchema.CommentNoteOptionName);
             }
+            // ===== 變更結束 =====
 
             return string.Empty;
         }
