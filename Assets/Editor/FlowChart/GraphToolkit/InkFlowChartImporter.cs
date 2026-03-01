@@ -166,7 +166,7 @@ namespace OpsidanosInk.Editor
                     var position = new Vector2(180f + (300f * nodeIndex), 180f);
                     createNodeModelMethod.Invoke(graphImplementation, new object[] { runtimeNode, position });
 
-                    if (!TryApplyNodeOptions(runtimeNode, exportNode, out string contentError))
+                    if (!TryApplyNodeOptions(runtimeNode, exportNode, graphDto, out string contentError))
                     {
                         return Fail(contentError);
                     }
@@ -200,17 +200,18 @@ namespace OpsidanosInk.Editor
                             }
 
                             string outputPortName = output != null && !string.IsNullOrEmpty(output.portName) ? output.portName : FlowPortName;
-                            string pairKey = $"{exportNode.id}:{outputPortName}->{toNodeId}";
+                            string toInputPortName = output != null && !string.IsNullOrEmpty(output.toPortName) ? output.toPortName : FlowPortName;
+                            string pairKey = $"{exportNode.id}:{outputPortName}->{toNodeId}:{toInputPortName}";
                             if (connectedPairs.Contains(pairKey))
                             {
                                 continue;
                             }
 
                             IPort fromOutputPort = fromNode.GetOutputPortByName(outputPortName);
-                            IPort toInputPort = toNode.GetInputPortByName(FlowPortName);
+                            IPort toInputPort = toNode.GetInputPortByName(toInputPortName);
                             if (fromOutputPort == null || toInputPort == null)
                             {
-                                return Fail($"匯入失敗：節點 `{exportNode.id}` 或 `{toNodeId}` 缺少對應 port（from={outputPortName}, to={FlowPortName}）。");
+                                return Fail($"匯入失敗：節點 `{exportNode.id}` 或 `{toNodeId}` 缺少對應 port（from={outputPortName}, to={toInputPortName}）。");
                             }
 
                             createWireMethod.Invoke(graphImplementation, new object[] { toInputPort, fromOutputPort, default(Hash128) });
@@ -320,36 +321,49 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/22 Opsidanos (修改原因：節點 type 字串改由共用 schema 常數比對，避免匯入判斷與匯出不一致)
             // 預期結果：匯入可穩定識別 start/action/comment/choice/condition
+            // ===== 變更開始 =====
+            // 2026/02/23 Opsidanos (修改原因：GraphToolkit 標題取決於類別名，匯入時改建立中文節點型別)
+            // 預期結果：從 sidecar 匯入的節點在圖上直接顯示繁中節點名
             if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
             {
-                return new InkFlowStartNode();
+                return new 開始();
             }
 
             if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
             {
-                return new InkFlowActionNode();
+                return new 對話();
             }
+
+            // ===== 變更開始 =====
+            // 2026/02/25 Opsidanos (修改原因：新增動作節點型別，匯入時需可建立資料節點)
+            // 預期結果：sidecar type=stageAction 可還原成中文可見節點「動作」
+            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+            {
+                return new 動作();
+            }
+            // ===== 變更結束 =====
 
             if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
             {
-                return new InkFlowCommentNode();
+                return new 註解();
             }
 
             if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
             {
-                return new InkFlowChoiceNode();
+                return new 選項();
             }
 
             if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
             {
-                return new InkFlowConditionNode();
+                return new 條件();
             }
+            // ===== 變更結束 =====
             // ===== 變更結束 =====
 
             return null;
         }
 
-        private static bool TryApplyNodeOptions(INode node, ExportNodeDto exportNode, out string errorMessage)
+        private static bool TryApplyNodeOptions(INode node, ExportNodeDto exportNode, ExportGraphDto graphDto, out string errorMessage)
         {
             errorMessage = string.Empty;
             if (node == null || exportNode == null)
@@ -357,20 +371,35 @@ namespace OpsidanosInk.Editor
                 return true;
             }
 
-            if (node is InkFlowActionNode)
+            // ===== 變更開始 =====
+            // 2026/02/25 Opsidanos (修改原因：對話節點與動作節點已拆分，匯入要分別還原各自內容欄位)
+            // 預期結果：type=action 還原對話內容；type=stageAction 還原動作內容，且對話節點依 sidecar 自動撐開動作輸入埠數量
+            if (node is InkFlowDialogueNode)
             {
-                // ===== 變更開始 =====
-                // 2026/02/22 Opsidanos (修改原因：Action 節點新增 actionKind，下拉值需從 sidecar 還原)
-                // 預期結果：匯入後 Action 節點可保留「對話/動作/自訂」選擇；舊 sidecar 缺值時預設 Dialogue
-                InkFlowActionKind actionKind = InkFlowNodeSchema.ParseActionKindToken(exportNode.actionKind);
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ActionKindOptionName, actionKind, out errorMessage))
+                int maxActionInputOrder = GetMaxDialogueActionInputOrder(graphDto, exportNode.id);
+                int actionInputCount = maxActionInputOrder >= 0
+                    ? Mathf.Max(InkFlowNodeSchema.DialogueActionInputCountDefaultValue, maxActionInputOrder + 1)
+                    : InkFlowNodeSchema.DialogueActionInputCountDefaultValue;
+
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.DialogueActionInputCountOptionName, actionInputCount, out errorMessage))
                 {
                     return false;
                 }
 
-                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
-                // ===== 變更結束 =====
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.DialogueContentOptionName, exportNode.content ?? string.Empty, out errorMessage))
+                {
+                    return false;
+                }
+
+                ((Node)node).DefineNode();
+                return true;
             }
+
+            if (node is InkFlowStageActionNode)
+            {
+                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.StageActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
+            }
+            // ===== 變更結束 =====
 
             // ===== 變更開始 =====
             // 2026/02/22 Opsidanos (修改原因：匯入 option key 改由共用 schema 常數提供，避免 key 字串散落)
@@ -459,6 +488,47 @@ namespace OpsidanosInk.Editor
 
             return string.Join("\n", labels);
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/25 Opsidanos (修改原因：匯入對話節點時需依 sidecar 的 toPortName 還原 ActionIn 埠數量)
+        // 預期結果：若 sidecar 有 ActionIn2，對話節點會自動建立至少 3 個動作輸入埠
+        private static int GetMaxDialogueActionInputOrder(ExportGraphDto graphDto, string dialogueNodeId)
+        {
+            if (graphDto == null || graphDto.nodes == null || string.IsNullOrEmpty(dialogueNodeId))
+            {
+                return -1;
+            }
+
+            int maxOrder = -1;
+            for (int i = 0; i < graphDto.nodes.Count; i++)
+            {
+                ExportNodeDto node = graphDto.nodes[i];
+                if (node == null
+                    || !string.Equals(node.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase)
+                    || node.outputs == null)
+                {
+                    continue;
+                }
+
+                for (int outputIndex = 0; outputIndex < node.outputs.Count; outputIndex++)
+                {
+                    ExportNodeOutputDto output = node.outputs[outputIndex];
+                    if (output == null || !string.Equals(output.toNodeId, dialogueNodeId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    int order = InkFlowNodeSchema.ParseDialogueActionInputOrder(output.toPortName);
+                    if (order != int.MaxValue && order > maxOrder)
+                    {
+                        maxOrder = order;
+                    }
+                }
+            }
+
+            return maxOrder;
+        }
+        // ===== 變更結束 =====
 
         private static string BuildJoinedConditions(List<ExportNodeOutputDto> outputs)
         {

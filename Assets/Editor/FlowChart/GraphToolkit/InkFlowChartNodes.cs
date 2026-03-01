@@ -2,8 +2,12 @@
 // 2026/02/06 Opsidanos (修改原因：建立 Graph Toolkit 版最小節點集合，先讓拉線與內容欄位可運作)
 // 預期結果：開始/流程/註解節點可在 Graph Toolkit 視窗新增、拖曳與連線
 using System;
-using System.Reflection;
 using Unity.GraphToolkit.Editor;
+// ===== 變更開始 =====
+// 2026/02/23 Opsidanos (修改原因：ActionKind 下拉要顯示繁中名稱，需使用 InspectorName 標註)
+// 預期結果：GraphToolkit 的 ActionKind 下拉顯示「對話/動作/自訂」，不再顯示英文 enum 成員名
+using UnityEngine;
+// ===== 變更結束 =====
 
 namespace OpsidanosInk.Editor
 {
@@ -16,20 +20,24 @@ namespace OpsidanosInk.Editor
 
         public const string NodeTypeStart = "start";
         public const string NodeTypeAction = "action";
+        public const string NodeTypeStageAction = "stageAction";
         public const string NodeTypeComment = "comment";
         public const string NodeTypeChoice = "choice";
         public const string NodeTypeCondition = "condition";
 
-        public const string StartNodeTitle = "開始";
-        public const string ActionNodeTitle = "對話";
-        public const string CommentNodeTitle = "註解";
-        public const string ChoiceNodeTitle = "選項";
-        public const string ConditionNodeTitle = "條件";
-
         public const string ActionKindOptionName = "ActionKind";
-        public const string ActionContentOptionName = "Content";
-        public const string ActionKindOptionDisplayName = "內容類型";
-        public const string ActionContentOptionDisplayName = "內容";
+        public const string DialogueContentOptionName = "Content";
+        public const string DialogueContentOptionDisplayName = "對話內容";
+        public const string DialogueActionInputCountOptionName = "ActionInputCount";
+        public const string DialogueActionInputCountOptionDisplayName = "動作輸入數量";
+        public const int DialogueActionInputCountDefaultValue = 1;
+        public const string DialogueActionInputPortNamePrefix = "ActionIn";
+        public const string DialogueActionInputDisplayNamePrefix = "動作";
+
+        public const string StageActionContentOptionName = "Content";
+        public const string StageActionContentOptionDisplayName = "動作內容";
+        public const string StageActionDataOutputPortName = "ActionData";
+        public const string StageActionDataOutputPortDisplayName = "動作資料";
 
         public const string CommentNoteOptionName = "Note";
         public const string CommentNoteOptionDisplayName = "註解";
@@ -63,6 +71,37 @@ namespace OpsidanosInk.Editor
             return $"條件{order}";
         }
 
+        public static string BuildDialogueActionInputPortName(int order)
+        {
+            return $"{DialogueActionInputPortNamePrefix}{order}";
+        }
+
+        public static string GetDialogueActionInputDisplayName(int order)
+        {
+            return $"{DialogueActionInputDisplayNamePrefix}{order + 1}";
+        }
+
+        public static int ParseDialogueActionInputOrder(string toPortName)
+        {
+            if (string.IsNullOrEmpty(toPortName))
+            {
+                return int.MaxValue;
+            }
+
+            if (!toPortName.StartsWith(DialogueActionInputPortNamePrefix, StringComparison.Ordinal))
+            {
+                return int.MaxValue;
+            }
+
+            string suffix = toPortName.Substring(DialogueActionInputPortNamePrefix.Length);
+            if (int.TryParse(suffix, out int order) && order >= 0)
+            {
+                return order;
+            }
+
+            return int.MaxValue;
+        }
+
         public static string ToActionKindToken(InkFlowActionKind actionKind)
         {
             switch (actionKind)
@@ -94,13 +133,29 @@ namespace OpsidanosInk.Editor
     // ===== 變更結束 =====
 
     // ===== 變更開始 =====
+    // 2026/02/25 Opsidanos (修改原因：新增「資料連線」型別，讓動作節點與對話節點用型別線區分流程線)
+    // 預期結果：GraphToolkit 會把資料連線視為 typed wire，與 Flow 線在視覺與連線規則上分離
+    [Serializable]
+    public struct InkFlowActionPayload
+    {
+    }
+    // ===== 變更結束 =====
+
+    // ===== 變更開始 =====
     // 2026/02/22 Opsidanos (修改原因：提供 Action 節點可下拉的內容類型，讓一般使用者不用先背格式)
     // 預期結果：Action 節點可直接從下拉選「對話 / 動作 / 自訂」，再填對應內容
     public enum InkFlowActionKind
     {
+        // ===== 變更開始 =====
+        // 2026/02/23 Opsidanos (修改原因：將下拉選單值改為繁中顯示，避免作者看到英文)
+        // 預期結果：ActionKind 下拉顯示為「對話/動作/自訂」
+        [InspectorName("對話")]
         Dialogue = 0,
+        [InspectorName("動作")]
         StageAction = 1,
+        [InspectorName("自訂")]
         Custom = 2
+        // ===== 變更結束 =====
     }
     // ===== 變更結束 =====
 
@@ -108,15 +163,10 @@ namespace OpsidanosInk.Editor
     public abstract class InkFlowBaseNode : Node
     {
         protected const string FlowPortName = InkFlowNodeSchema.FlowPortName;
-        private static readonly FieldInfo NodeImplementationField = typeof(Node).GetField("m_Implementation", BindingFlags.Instance | BindingFlags.NonPublic);
-
-        protected abstract string NodeTitle { get; }
-
-        public override void OnEnable()
-        {
-            base.OnEnable();
-            ApplyNodeTitle();
-        }
+        // ===== 變更開始 =====
+        // 2026/02/23 Opsidanos (修改原因：GraphToolkit 節點標題來源是類別名稱，移除無效的反射覆寫 Title)
+        // 預期結果：節點標題由節點類別名稱穩定決定，避免繼續誤以為可用反射改標題
+        // ===== 變更結束 =====
 
         protected void AddInputFlowPort(IPortDefinitionContext context)
         {
@@ -133,49 +183,11 @@ namespace OpsidanosInk.Editor
                 .WithConnectorUI(PortConnectorUI.Arrowhead)
                 .Build();
         }
-
-        // ===== 變更開始 =====
-        // 2026/02/22 Opsidanos (修改原因：節點 class 名稱是英文，作者在圖上會看到難懂標題；改由集中設定覆寫節點標題)
-        // 預期結果：節點標題顯示為白話繁中（開始/對話/註解/選項/條件），且可在同一個設定類別調整
-        private void ApplyNodeTitle()
-        {
-            string nodeTitle = NodeTitle;
-            if (string.IsNullOrWhiteSpace(nodeTitle))
-            {
-                return;
-            }
-
-            object nodeImplementation = NodeImplementationField?.GetValue(this);
-            if (nodeImplementation == null)
-            {
-                return;
-            }
-
-            PropertyInfo titleProperty = nodeImplementation
-                .GetType()
-                .GetProperty("Title", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (titleProperty == null || !titleProperty.CanWrite)
-            {
-                return;
-            }
-
-            string currentTitle = titleProperty.GetValue(nodeImplementation) as string;
-            if (string.Equals(currentTitle, nodeTitle, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            titleProperty.SetValue(nodeImplementation, nodeTitle);
-        }
-        // ===== 變更結束 =====
     }
 
     [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class InkFlowStartNode : InkFlowBaseNode
+    public class InkFlowStartNode : InkFlowBaseNode
     {
-        protected override string NodeTitle => InkFlowNodeSchema.StartNodeTitle;
-
         protected override void OnDefinePorts(IPortDefinitionContext context)
         {
             AddOutputFlowPort(context);
@@ -183,38 +195,95 @@ namespace OpsidanosInk.Editor
     }
 
     [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class InkFlowActionNode : InkFlowBaseNode
+    public class InkFlowDialogueNode : InkFlowBaseNode
     {
-        protected override string NodeTitle => InkFlowNodeSchema.ActionNodeTitle;
-
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
             // ===== 變更開始 =====
-            // 2026/02/22 Opsidanos (修改原因：先選內容類型再填內容，降低手動輸入失誤)
-            // 預期結果：Action 節點可透過下拉快速切換「對話 / 動作 / 自訂」
-            context.AddOption<InkFlowActionKind>(InkFlowNodeSchema.ActionKindOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ActionKindOptionDisplayName)
-                .WithDefaultValue(InkFlowActionKind.Dialogue);
+            // 2026/02/25 Opsidanos (修改原因：對話節點需可接多個動作資料輸入，讓「同一句多角色同時動作」可視覺化)
+            // 預期結果：作者可用下拉調整動作輸入埠數量，不再把多角色動作塞進同一段文字
+            context.AddOption<int>(InkFlowNodeSchema.DialogueActionInputCountOptionName)
+                .WithDisplayName(InkFlowNodeSchema.DialogueActionInputCountOptionDisplayName)
+                .WithDefaultValue(InkFlowNodeSchema.DialogueActionInputCountDefaultValue)
+                .Delayed();
             // ===== 變更結束 =====
 
-            context.AddOption<string>(InkFlowNodeSchema.ActionContentOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ActionContentOptionDisplayName);
+            context.AddOption<string>(InkFlowNodeSchema.DialogueContentOptionName)
+                .WithDisplayName(InkFlowNodeSchema.DialogueContentOptionDisplayName);
         }
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
         {
+            // ===== 變更開始 =====
+            // 2026/02/25 Opsidanos (修改原因：流程線與資料線分離；對話節點保留 Flow 進出，並新增 typed data input ports)
+            // 預期結果：Flow 線只負責主流程，動作節點用資料線接到對話節點，不會誤接成流程分支
             AddInputFlowPort(context);
             AddOutputFlowPort(context);
+
+            int actionInputCount = Mathf.Max(0, GetNodeOptionInt(InkFlowNodeSchema.DialogueActionInputCountOptionName));
+            for (int i = 0; i < actionInputCount; i++)
+            {
+                string portName = InkFlowNodeSchema.BuildDialogueActionInputPortName(i);
+                string displayName = InkFlowNodeSchema.GetDialogueActionInputDisplayName(i);
+                context.AddInputPort<InkFlowActionPayload>(portName)
+                    .WithDisplayName(displayName)
+                    .WithConnectorUI(PortConnectorUI.Circle)
+                    .Build();
+            }
+            // ===== 變更結束 =====
+        }
+
+        private int GetNodeOptionInt(string optionName)
+        {
+            INodeOption option = GetNodeOptionByName(optionName);
+            if (option == null)
+            {
+                return 0;
+            }
+
+            if (option.TryGetValue(out int value))
+            {
+                return value;
+            }
+
+            return 0;
         }
     }
 
+    // ===== 變更開始 =====
+    // 2026/02/25 Opsidanos (修改原因：保留舊類別名稱相容，避免既有測試/流程在型別判斷時直接中斷)
+    // 預期結果：舊程式碼引用 InkFlowActionNode 仍可運作，語意上對應到「對話節點」
     [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class InkFlowCommentNode : InkFlowBaseNode
+    public class InkFlowActionNode : InkFlowDialogueNode
     {
-        protected override string NodeTitle => InkFlowNodeSchema.CommentNodeTitle;
+    }
+    // ===== 變更結束 =====
 
+    // ===== 變更開始 =====
+    // 2026/02/25 Opsidanos (修改原因：新增動作節點，專門輸出動作資料到對話節點，不再混在同一節點)
+    // 預期結果：動作節點只走資料輸出線，作者可把多角色動作分開管理
+    [Serializable]
+    public class InkFlowStageActionNode : InkFlowBaseNode
+    {
+        protected override void OnDefineOptions(IOptionDefinitionContext context)
+        {
+            context.AddOption<string>(InkFlowNodeSchema.StageActionContentOptionName)
+                .WithDisplayName(InkFlowNodeSchema.StageActionContentOptionDisplayName);
+        }
+
+        protected override void OnDefinePorts(IPortDefinitionContext context)
+        {
+            context.AddOutputPort<InkFlowActionPayload>(InkFlowNodeSchema.StageActionDataOutputPortName)
+                .WithDisplayName(InkFlowNodeSchema.StageActionDataOutputPortDisplayName)
+                .WithConnectorUI(PortConnectorUI.Circle)
+                .Build();
+        }
+    }
+    // ===== 變更結束 =====
+
+    [Serializable]
+    public class InkFlowCommentNode : InkFlowBaseNode
+    {
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
             context.AddOption<string>(InkFlowNodeSchema.CommentNoteOptionName)
@@ -238,11 +307,8 @@ namespace OpsidanosInk.Editor
     }
 
     [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class InkFlowChoiceNode : InkFlowBaseNode
+    public class InkFlowChoiceNode : InkFlowBaseNode
     {
-        protected override string NodeTitle => InkFlowNodeSchema.ChoiceNodeTitle;
-
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
             context.AddOption<int>(InkFlowNodeSchema.ChoiceOutputCountOptionName)
@@ -344,11 +410,8 @@ namespace OpsidanosInk.Editor
     }
 
     [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class InkFlowConditionNode : InkFlowBaseNode
+    public class InkFlowConditionNode : InkFlowBaseNode
     {
-        protected override string NodeTitle => InkFlowNodeSchema.ConditionNodeTitle;
-
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
             context.AddOption<int>(InkFlowNodeSchema.ConditionOutputCountOptionName)
@@ -447,6 +510,49 @@ namespace OpsidanosInk.Editor
             return fallback;
         }
     }
+    // ===== 變更開始 =====
+    // 2026/02/23 Opsidanos (修改原因：GraphToolkit 以類別名顯示節點標題，新增中文節點型別做為作者可見節點)
+    // 預期結果：新增節點時直接顯示「開始/對話/註解/選項/條件」，避免再出現英文類別名稱
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 開始 : InkFlowStartNode
+    {
+    }
+
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 對話 : InkFlowActionNode
+    {
+    }
+
+    // ===== 變更開始 =====
+    // 2026/02/25 Opsidanos (修改原因：新增作者可見的「動作」節點，對應資料連線語意)
+    // 預期結果：Graph 視圖可直接新增「動作」節點並用資料線接到「對話」節點
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 動作 : InkFlowStageActionNode
+    {
+    }
+    // ===== 變更結束 =====
+
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 註解 : InkFlowCommentNode
+    {
+    }
+
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 選項 : InkFlowChoiceNode
+    {
+    }
+
+    [Serializable]
+    [UseWithGraph(typeof(InkFlowChartGraph))]
+    public sealed class 條件 : InkFlowConditionNode
+    {
+    }
+    // ===== 變更結束 =====
     // ===== 變更結束 =====
 }
 // ===== 變更結束 =====

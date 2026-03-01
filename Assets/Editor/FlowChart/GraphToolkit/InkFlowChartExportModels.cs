@@ -42,6 +42,11 @@ namespace OpsidanosInk.Editor
     {
         public string portName = string.Empty;
         public string toNodeId = string.Empty;
+        // ===== 變更開始 =====
+        // 2026/02/25 Opsidanos (修改原因：流程線與資料線都要可逆，需保存目標輸入埠名稱)
+        // 預期結果：匯入時可精準接回 `Flow` 或 `ActionIn*`，不會把資料線誤接到流程埠
+        public string toPortName = string.Empty;
+        // ===== 變更結束 =====
         public string label = string.Empty;
         public string condition = string.Empty;
         public bool isElse = false;

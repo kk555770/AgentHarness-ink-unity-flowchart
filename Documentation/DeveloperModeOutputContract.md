@@ -251,7 +251,8 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 
 #### 6.2.1 節點型別
 - `start`：開始節點（必須存在且只能 1 個）
-- `action`：內容節點（對話/敘述/指令/同一段落的 tag）
+- `action`：對話節點（主流程節點，承載對話文字與接收動作資料）
+- `stageAction`：動作節點（資料節點，不參與主流程，輸出動作資料給對話節點）
 - `comment`：註解節點（只影響作者閱讀，不影響播放）
 - `choice`：選項節點（玩家選擇，會有 1 條以上輸出線）
 - `condition`：條件節點（系統判斷，會有 2 條以上輸出線，且必須含「否則」）
@@ -260,32 +261,50 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - 節點標題（顯示給作者看）應使用白話繁中：
   - `start` 顯示「開始」
   - `action` 顯示「對話」
+  - `stageAction` 顯示「動作」
   - `comment` 顯示「註解」
   - `choice` 顯示「選項」
   - `condition` 顯示「條件」
-- `action` 節點必須提供 `actionKind` 下拉，至少包含：
-  - `dialogue`（對話）
-  - `action`（動作）
-  - `custom`（自訂）
-- 這個下拉的目的，是讓一般作者「先選格式，再填內容」，不用先背規範。
+- GraphToolkit 實作要求：節點型別名稱本身要用同一組繁中詞（開始/對話/動作/註解/選項/條件），避免標題與類別名不一致。
+
+#### 6.2.1-2 節點文字欄位可讀寬度（作者體驗）
+- 目標：讓作者在節點內直接看清楚內容，不需要先打開外部編輯器。
+- GraphToolkit 實作要求：
+  - 需提供專案層級樣式覆寫，把節點內文字欄位調整為「可直接閱讀中等長句子」的寬度。
+  - 欄位寬度調整只影響編輯器顯示，不得改變匯出/匯入資料語意。
+  - 若有長標籤，需避免標籤寬度過大擠壓文字輸入區。
+- 適用範圍（目前 Graph v2）：
+  - `action` 的對話內容欄位
+  - `stageAction` 的動作內容欄位
+  - `comment` 的註解欄位
+  - `choice` 的選項文字欄位
+  - `condition` 的條件文字欄位
 
 #### 6.2.2 接線規則（最重要）
-- `start/action/comment`：
+- 接線分兩種（必須分離）：
+  - **流程線（Flow）**：主流程走向（start/action/comment/choice/condition）
+  - **資料線（ActionData）**：動作節點 → 對話節點的資料輸入（ActionIn*）
+  - 編輯器上應讓兩種線可視覺區分（至少型別/顏色其中之一必須可辨識）
+- `start/action/comment`（流程線）：
   - 輸出線數量只能是 `0` 或 `1`
   - `0`：代表該 knot 結束（匯出 `-> END`）
   - `1`：代表下一個節點（匯出 `-> knot_<nextId>`）
   - `> 1`：匯出必須失敗，並提示「請改用 choice/condition」
-- `choice/condition`：
+- `choice/condition`（流程線）：
   - 節點必須允許調整「輸出埠數量」
   - 每個輸出埠只能接 `1` 條線（每個選項/分支只能去 1 個目標）
   - 任一輸出埠沒接線：匯出必須失敗（因為會造成不可逆，也無法在圖上說清楚要去哪裡）
+- `stageAction`（資料線）：
+  - 每個動作節點必須且只能有 `1` 條資料輸出線
+  - 只能接到 `action` 節點的 `ActionIn*` 輸入埠
+  - 不允許接到 `Flow` 輸入埠
 - 匯流（多路線收束）：
   - 允許多條線連到同一個節點（這是文字小說最常見的「收束」手法）
 
 > 以上規則的目的，是避免「圖上看起來分岔，匯出卻只是把多行 `->` 排在一起」這種隱性錯誤。Ink 不會同時走多個 divert，多出來的只會變死線。
 
-#### 6.2.3 `action/comment` 內容規範（圖是權威，所以不能藏流程結構）
-`action/comment` 的內容允許做「演出」與「狀態更新」，但不得偷偷改變流程結構。
+#### 6.2.3 `action/stageAction/comment` 內容規範（圖是權威，所以不能藏流程結構）
+`action/stageAction/comment` 的內容允許做「演出」與「狀態更新」，但不得偷偷改變流程結構。
 
 - 允許（例）：一般文字、tag（`# ...`）、邏輯行（`~ ...`）、變數宣告（`VAR/CONST ...`）、行內邏輯（文字中出現 `{expr}`）
 - 禁止（只要出現就代表你把流程藏在文字裡）：
@@ -308,12 +327,19 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - 檔案第一行必須是：`-> knot_<startNodeId>`
 
 #### 6.3.2 每個節點對應一個 knot
-- 每個節點輸出一個 knot：`=== knot_<nodeId> ===`
+- 每個**主流程節點**輸出一個 knot：`=== knot_<nodeId> ===`
+- `stageAction` 不單獨輸出 knot；它會在目標 `action` 節點輸出時合併
 
-#### 6.3.3 `start/action/comment`（線性）
+#### 6.3.3 `start/action/comment`（線性主流程）
 - 節點內容照原樣輸出（`comment` 以 `//` 註解輸出）
 - 若有下一個節點：輸出 `-> knot_<nextId>`
 - 若沒有下一個節點：輸出 `-> END`
+
+#### 6.3.3-1 `stageAction`（動作資料）
+- `stageAction` 節點內容在匯出時，按 `ActionIn*` 順序插入對應 `action` knot 內容區塊
+- 同一個 `action` 若接多條資料線，順序規則為：
+  1. `ActionIn0`, `ActionIn1`, `ActionIn2`...
+  2. 同一輸入埠衝突時以節點 id 排序（保證 deterministic）
 
 #### 6.3.4 `choice`（玩家選擇）
 - 每個輸出埠匯出成一行 choice：
@@ -343,9 +369,12 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - `graphName`
 - `startNodeId`
 - `nodes[*].id/type/content`
-- `nodes[*].outputs[*].portName/toNodeId`
+- `nodes[*].outputs[*].portName/toNodeId/toPortName`
 - `action` 額外需要：
-  - `nodes[*].actionKind`（`dialogue` / `action` / `custom`；缺值時匯入預設 `dialogue`）
+  - `nodes[*].outputs[*].toPortName` 預期為 `Flow`
+- `stageAction` 額外需要：
+  - `nodes[*].outputs[*].portName` 預期為 `ActionData`
+  - `nodes[*].outputs[*].toPortName` 預期為 `ActionIn*`
 - `choice` 額外需要：
   - `nodes[*].choiceMode`（`*` 或 `+`）
   - `nodes[*].outputs[*].label`

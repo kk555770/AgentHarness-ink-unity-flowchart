@@ -1,0 +1,14 @@
+.ink-flowchart-wide-fields .ge-model-property-field > .unity-base-field > .unity-label {
+    min-width: 78px;
+    margin-right: 6px;
+}
+
+.ink-flowchart-wide-fields .ge-model-property-field .unity-text-field,
+.ink-flowchart-wide-fields .ge-model-property-field .unity-text-field__input {
+    min-width: 240px;
+}
+
+.ink-flowchart-wide-fields .ge-model-property-field .unity-enum-field__input,
+.ink-flowchart-wide-fields .ge-model-property-field .unity-base-popup-field__input {
+    min-width: 140px;
+}

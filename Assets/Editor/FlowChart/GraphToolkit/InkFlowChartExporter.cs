@@ -160,7 +160,9 @@ namespace OpsidanosInk.Editor
 
                 exportNode.outputs = BuildNodeOutputs(node, exportNode.type, nodeIdByNode);
 
-                if (exportNode.outputs.Count == 1)
+                if (exportNode.outputs.Count == 1
+                    && IsLinearNodeType(exportNode.type)
+                    && string.Equals(exportNode.outputs[0].portName, InkFlowNodeSchema.FlowPortName, StringComparison.Ordinal))
                 {
                     ExportNodeOutputDto output = exportNode.outputs[0];
                     if (!string.IsNullOrEmpty(output.toNodeId))
@@ -205,9 +207,16 @@ namespace OpsidanosInk.Editor
                 outputPort.GetConnectedPorts(connectedPorts);
 
                 string toNodeId = string.Empty;
+                string toPortName = string.Empty;
                 if (connectedPorts.Count > 0)
                 {
-                    INode nextNode = connectedPorts[0].GetNode();
+                    IPort connectedInputPort = connectedPorts[0];
+                    if (connectedInputPort != null)
+                    {
+                        toPortName = connectedInputPort.name ?? string.Empty;
+                    }
+
+                    INode nextNode = connectedInputPort != null ? connectedInputPort.GetNode() : null;
                     if (nextNode != null && nodeIdByNode.TryGetValue(nextNode, out string nextId))
                     {
                         toNodeId = nextId;
@@ -217,7 +226,8 @@ namespace OpsidanosInk.Editor
                 var outputDto = new ExportNodeOutputDto
                 {
                     portName = outputPort.name,
-                    toNodeId = toNodeId
+                    toNodeId = toNodeId,
+                    toPortName = toPortName
                 };
 
                 if (choiceLabels != null)
@@ -269,18 +279,21 @@ namespace OpsidanosInk.Editor
         // 預期結果：Action 節點可穩定輸出 `dialogue/action/custom`，舊資料缺值時預設為 dialogue
         private static string GetNodeActionKind(INode node)
         {
-            if (node is InkFlowActionNode actionNode)
+            // ===== 變更開始 =====
+            // 2026/02/25 Opsidanos (修改原因：對話/動作節點已拆分；actionKind 改由節點型別推導以保持舊欄位相容)
+            // 預期結果：舊 sidecar 讀者仍可從 actionKind 判斷語意，且不依賴已移除的下拉 option
+            if (node is InkFlowStageActionNode)
             {
-                INodeOption option = actionNode.GetNodeOptionByName(InkFlowNodeSchema.ActionKindOptionName);
-                if (option != null && option.TryGetValue(out InkFlowActionKind actionKind))
-                {
-                    return InkFlowNodeSchema.ToActionKindToken(actionKind);
-                }
+                return InkFlowNodeSchema.ToActionKindToken(InkFlowActionKind.StageAction);
+            }
 
+            if (node is InkFlowDialogueNode)
+            {
                 return InkFlowNodeSchema.ToActionKindToken(InkFlowActionKind.Dialogue);
             }
 
             return string.Empty;
+            // ===== 變更結束 =====
         }
         // ===== 變更結束 =====
 
@@ -324,7 +337,7 @@ namespace OpsidanosInk.Editor
                 return true;
             }
 
-            int startNodeCount = exportDto.nodes.Count(node => node != null && string.Equals(node.type, "start", StringComparison.OrdinalIgnoreCase));
+            int startNodeCount = exportDto.nodes.Count(node => node != null && string.Equals(node.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase));
             if (startNodeCount != 1)
             {
                 errorMessage = $"Graph v2 必須有且只有 1 個 start 節點，但目前有 {startNodeCount} 個。";
@@ -352,7 +365,7 @@ namespace OpsidanosInk.Editor
                 // ===== 變更開始 =====
                 // 2026/02/21 Opsidanos (修改原因：依輸出契約 §6.2.3，action 內容不得藏流程結構，否則「圖不是權威」)
                 // 預期結果：action 內容若含 divert/choice/knot/gather 等 Ink 結構語法，匯出必須直接失敗並給明確錯誤訊息
-                if (string.Equals(exportNode.type, "action", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
                 {
                     if (!TryValidateActionContentForExport(exportNode, out errorMessage))
                     {
@@ -362,11 +375,11 @@ namespace OpsidanosInk.Editor
                 // ===== 變更結束 =====
 
                 List<IPort> outputPorts = node.GetOutputPorts().ToList();
-                if (string.Equals(exportNode.type, "start", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(exportNode.type, "action", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(exportNode.type, "comment", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
                 {
-                    IPort flowOutputPort = node.GetOutputPortByName("Flow");
+                    IPort flowOutputPort = node.GetOutputPortByName(InkFlowNodeSchema.FlowPortName);
                     if (flowOutputPort == null)
                     {
                         errorMessage = $"節點 id=\"{exportNode.id}\" type=\"{exportNode.type}\" 缺少 Flow 輸出埠。";
@@ -376,7 +389,7 @@ namespace OpsidanosInk.Editor
                     connectedPorts.Clear();
                     flowOutputPort.GetConnectedPorts(connectedPorts);
 
-                    if (string.Equals(exportNode.type, "start", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
                     {
                         if (connectedPorts.Count != 1)
                         {
@@ -396,7 +409,9 @@ namespace OpsidanosInk.Editor
                     if (connectedPorts.Count == 1)
                     {
                         ExportNodeOutputDto outputDto = exportNode.outputs != null && exportNode.outputs.Count > 0 ? exportNode.outputs[0] : null;
-                        if (outputDto == null || string.IsNullOrEmpty(outputDto.toNodeId))
+                        if (outputDto == null
+                            || string.IsNullOrEmpty(outputDto.toNodeId)
+                            || !string.Equals(outputDto.toPortName, InkFlowNodeSchema.FlowPortName, StringComparison.Ordinal))
                         {
                             errorMessage = $"節點 id=\"{exportNode.id}\" type=\"{exportNode.type}\" 的 Flow 連線未指向可匯出的節點（可能連到非 Flow 節點）。";
                             return false;
@@ -406,7 +421,53 @@ namespace OpsidanosInk.Editor
                     continue;
                 }
 
-                if (string.Equals(exportNode.type, "choice", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                {
+                    IPort dataOutputPort = node.GetOutputPortByName(InkFlowNodeSchema.StageActionDataOutputPortName);
+                    if (dataOutputPort == null)
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 缺少資料輸出埠 `{InkFlowNodeSchema.StageActionDataOutputPortName}`。";
+                        return false;
+                    }
+
+                    connectedPorts.Clear();
+                    dataOutputPort.GetConnectedPorts(connectedPorts);
+                    if (connectedPorts.Count != 1)
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 必須且只能有 1 條資料線連到對話節點，目前是 {connectedPorts.Count} 條。";
+                        return false;
+                    }
+
+                    ExportNodeOutputDto outputDto = exportNode.outputs != null && exportNode.outputs.Count > 0 ? exportNode.outputs[0] : null;
+                    if (outputDto == null || string.IsNullOrEmpty(outputDto.toNodeId))
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 的資料線未連到有效節點。";
+                        return false;
+                    }
+
+                    if (!nodeById.TryGetValue(outputDto.toNodeId, out INode targetNode) || targetNode == null)
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 指向不存在節點 `{outputDto.toNodeId}`。";
+                        return false;
+                    }
+
+                    if (!(targetNode is InkFlowDialogueNode))
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 的資料線只能接到對話節點，目前目標型別不是對話。";
+                        return false;
+                    }
+
+                    int actionInputOrder = InkFlowNodeSchema.ParseDialogueActionInputOrder(outputDto.toPortName);
+                    if (actionInputOrder == int.MaxValue)
+                    {
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 連到的目標輸入埠 `{outputDto.toPortName}` 不是合法對話動作輸入埠（ActionIn*）。";
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
                 {
                     if (outputPorts.Count < 1)
                     {
@@ -460,7 +521,7 @@ namespace OpsidanosInk.Editor
                     continue;
                 }
 
-                if (string.Equals(exportNode.type, "condition", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
                 {
                     if (outputPorts.Count < 2)
                     {
@@ -687,11 +748,23 @@ namespace OpsidanosInk.Editor
         private static bool IsFlowNode(INode node)
         {
             return node is InkFlowStartNode
-                || node is InkFlowActionNode
+                || node is InkFlowDialogueNode
+                || node is InkFlowStageActionNode
                 || node is InkFlowCommentNode
                 || node is InkFlowChoiceNode
                 || node is InkFlowConditionNode;
         }
+
+        // ===== 變更開始 =====
+        // 2026/02/25 Opsidanos (修改原因：nextIds 僅適用線性流程節點，避免把資料線誤當 next)
+        // 預期結果：stageAction 的資料輸出不會污染 v1 相容欄位 nextIds
+        private static bool IsLinearNodeType(string nodeType)
+        {
+            return string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase);
+        }
+        // ===== 變更結束 =====
 
         private static string GetNodeType(INode node)
         {
@@ -703,7 +776,12 @@ namespace OpsidanosInk.Editor
                 return InkFlowNodeSchema.NodeTypeStart;
             }
 
-            if (node is InkFlowActionNode)
+            if (node is InkFlowStageActionNode)
+            {
+                return InkFlowNodeSchema.NodeTypeStageAction;
+            }
+
+            if (node is InkFlowDialogueNode)
             {
                 return InkFlowNodeSchema.NodeTypeAction;
             }
@@ -732,9 +810,14 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/22 Opsidanos (修改原因：option key 改由共用 schema 常數提供，避免 key 字串散落)
             // 預期結果：Action/Comment 內容欄位匯出時使用同一組 key 定義
-            if (node is InkFlowActionNode actionNode)
+            if (node is InkFlowDialogueNode dialogueNode)
             {
-                return GetNodeOptionValue(actionNode, InkFlowNodeSchema.ActionContentOptionName);
+                return GetNodeOptionValue(dialogueNode, InkFlowNodeSchema.DialogueContentOptionName);
+            }
+
+            if (node is InkFlowStageActionNode stageActionNode)
+            {
+                return GetNodeOptionValue(stageActionNode, InkFlowNodeSchema.StageActionContentOptionName);
             }
 
             if (node is InkFlowCommentNode commentNode)
@@ -762,17 +845,101 @@ namespace OpsidanosInk.Editor
             return string.Empty;
         }
 
+        // ===== 變更開始 =====
+        // 2026/02/25 Opsidanos (修改原因：動作節點改為資料節點，需在匯出對話 knot 時按輸入埠順序合併動作內容)
+        // 預期結果：同一句可同時帶多個動作節點內容，且順序由 ActionIn 編號穩定決定
+        private readonly struct DialogueBoundAction
+        {
+            public string dialogueNodeId { get; }
+            public string stageActionNodeId { get; }
+            public string content { get; }
+            public int inputOrder { get; }
+
+            public DialogueBoundAction(string dialogueNodeId, string stageActionNodeId, string content, int inputOrder)
+            {
+                this.dialogueNodeId = dialogueNodeId ?? string.Empty;
+                this.stageActionNodeId = stageActionNodeId ?? string.Empty;
+                this.content = content ?? string.Empty;
+                this.inputOrder = inputOrder;
+            }
+        }
+
+        private static Dictionary<string, List<DialogueBoundAction>> BuildDialogueActionMap(ExportGraphDto exportDto)
+        {
+            var map = new Dictionary<string, List<DialogueBoundAction>>(StringComparer.Ordinal);
+            if (exportDto == null || exportDto.nodes == null)
+            {
+                return map;
+            }
+
+            foreach (ExportNodeDto node in exportDto.nodes)
+            {
+                if (node == null || !string.Equals(node.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (node.outputs == null || node.outputs.Count == 0)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < node.outputs.Count; i++)
+                {
+                    ExportNodeOutputDto output = node.outputs[i];
+                    if (output == null || string.IsNullOrEmpty(output.toNodeId))
+                    {
+                        continue;
+                    }
+
+                    int inputOrder = InkFlowNodeSchema.ParseDialogueActionInputOrder(output.toPortName);
+                    var action = new DialogueBoundAction(output.toNodeId, node.id, node.content, inputOrder);
+
+                    if (!map.TryGetValue(output.toNodeId, out List<DialogueBoundAction> list))
+                    {
+                        list = new List<DialogueBoundAction>();
+                        map[output.toNodeId] = list;
+                    }
+
+                    list.Add(action);
+                }
+            }
+
+            foreach (KeyValuePair<string, List<DialogueBoundAction>> pair in map)
+            {
+                pair.Value.Sort((left, right) =>
+                {
+                    int orderCompare = left.inputOrder.CompareTo(right.inputOrder);
+                    if (orderCompare != 0)
+                    {
+                        return orderCompare;
+                    }
+
+                    return string.CompareOrdinal(left.stageActionNodeId, right.stageActionNodeId);
+                });
+            }
+
+            return map;
+        }
+        // ===== 變更結束 =====
+
         private static string BuildInkContent(ExportGraphDto exportDto)
         {
             var inkBuilder = new StringBuilder();
             inkBuilder.AppendLine($"-> knot_{exportDto.startNodeId}");
             inkBuilder.AppendLine();
+            Dictionary<string, List<DialogueBoundAction>> dialogueActionMap = BuildDialogueActionMap(exportDto);
 
             foreach (ExportNodeDto exportNode in exportDto.nodes)
             {
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 inkBuilder.AppendLine($"=== knot_{exportNode.id} ===");
 
-                if (exportNode.type == "start")
+                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
                 {
                     string nextId = exportNode.outputs != null && exportNode.outputs.Count > 0 ? exportNode.outputs[0].toNodeId : string.Empty;
                     if (!string.IsNullOrEmpty(nextId))
@@ -784,8 +951,22 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
-                else if (exportNode.type == "action")
+                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
                 {
+                    if (dialogueActionMap.TryGetValue(exportNode.id, out List<DialogueBoundAction> actions))
+                    {
+                        for (int i = 0; i < actions.Count; i++)
+                        {
+                            string actionContent = actions[i].content ?? string.Empty;
+                            if (string.IsNullOrEmpty(actionContent))
+                            {
+                                continue;
+                            }
+
+                            inkBuilder.AppendLine(actionContent);
+                        }
+                    }
+
                     if (string.IsNullOrEmpty(exportNode.content))
                     {
                         inkBuilder.AppendLine("// 空內容");
@@ -805,7 +986,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
-                else if (exportNode.type == "comment")
+                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
                 {
                     // ===== 變更開始 =====
                     // 2026/02/21 Opsidanos (修改原因：comment 內容可能多行；若只在第一行加 //，後續行會變成真正內容而破壞 Ink)
@@ -834,7 +1015,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
-                else if (exportNode.type == "choice")
+                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
                 {
                     string bullet = exportNode.choiceMode == "+" ? "+" : "*";
                     foreach (ExportNodeOutputDto output in exportNode.outputs)
@@ -842,7 +1023,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine($"{bullet} [{output.label}] -> knot_{output.toNodeId}");
                     }
                 }
-                else if (exportNode.type == "condition")
+                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
                 {
                     inkBuilder.AppendLine("{");
                     foreach (ExportNodeOutputDto output in exportNode.outputs)

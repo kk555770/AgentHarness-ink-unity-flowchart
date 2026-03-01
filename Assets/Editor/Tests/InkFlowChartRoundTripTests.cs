@@ -86,13 +86,6 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.AreEqual("去 B", out1.label, "Out1 label 應維持一致。");
             Assert.AreEqual(actionA.id, out0.toNodeId, "Out0 應指向 action A。");
             Assert.AreEqual(actionB.id, out1.toNodeId, "Out1 應指向 action B。");
-            // ===== 變更開始 =====
-            // 2026/02/22 Opsidanos (修改原因：RoundTrip 需驗證 actionKind 不會在匯入→匯出過程遺失)
-            // 預期結果：Action A/B 的 actionKind 維持 dialogue/action
-            Assert.AreEqual("dialogue", actionA.actionKind, "Action A 的 actionKind 應維持 dialogue。");
-            Assert.AreEqual("action", actionB.actionKind, "Action B 的 actionKind 應維持 action。");
-            // ===== 變更結束 =====
-
             Assert.AreEqual(1, startNode.outputs.Count, "start 節點應只有 1 條 Flow 輸出。");
             Assert.AreEqual(choiceNode.id, startNode.outputs[0].toNodeId, "start 的 Flow 應指向 choice。");
 
@@ -142,18 +135,55 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.IsTrue(out1.isElse, "Out1 應是 else。");
             Assert.IsTrue(string.IsNullOrEmpty(out1.condition), "else output 不應包含 condition。");
             Assert.AreEqual(actionB.id, out1.toNodeId, "else 應指向 action B。");
-            // ===== 變更開始 =====
-            // 2026/02/22 Opsidanos (修改原因：RoundTrip 需驗證 condition 路徑的 actionKind 不會遺失)
-            // 預期結果：Action A/B 的 actionKind 維持 dialogue/action
-            Assert.AreEqual("dialogue", actionA.actionKind, "Action A 的 actionKind 應維持 dialogue。");
-            Assert.AreEqual("action", actionB.actionKind, "Action B 的 actionKind 應維持 action。");
-            // ===== 變更結束 =====
-
             Assert.AreEqual(1, startNode.outputs.Count, "start 節點應只有 1 條 Flow 輸出。");
             Assert.AreEqual(conditionNode.id, startNode.outputs[0].toNodeId, "start 的 Flow 應指向 condition。");
 
             yield return WaitForInkCompilerIdle("RoundTrip_GraphV2Condition");
             string exportedInk = File.ReadAllText(exportResult.inkOutputPath);
+            AssertInkCompiles(exportedInk);
+        }
+
+        [UnityTest]
+        public IEnumerator RoundTrip_GraphV2DialogueWithStageActions_匯入再匯出_仍保持資料線與順序()
+        {
+            string uniqueName = BuildUniqueName("RoundTripV2DialogueWithStageActions");
+            string jsonPath = BuildAssetPath(uniqueName, ".flowchart.json");
+            string inkPath = BuildAssetPath(uniqueName, ".ink");
+            string graphPath = BuildAssetPath(uniqueName, ".inkfc");
+
+            ExportGraphDto graphDto = BuildV2DialogueWithStageActionsGraphDto();
+            WriteFile(jsonPath, JsonUtility.ToJson(graphDto, true));
+            WriteFile(inkPath, "-> knot_N000\n=== knot_N000 ===\n-> END\n");
+
+            InkFlowChartImportResult importResult = InkFlowChartImporter.ImportFromFlowchartJson(jsonPath);
+            Assert.IsTrue(importResult.success, $"匯入應成功，但失敗：{importResult.errorMessage}");
+            Assert.AreEqual(graphPath, importResult.graphAssetPath, "匯入輸出路徑應為同目錄同名 `.inkfc`。");
+
+            InkFlowChartExportResult exportResult = InkFlowChartExporter.ExportGraphAsset(importResult.graphAssetPath);
+            Assert.IsTrue(exportResult.success, $"匯出應成功，但失敗：{exportResult.errorMessage}");
+            Assert.IsTrue(File.Exists(exportResult.jsonOutputPath), "匯出後必須存在 `.flowchart.json`。");
+            Assert.IsTrue(File.Exists(exportResult.inkOutputPath), "匯出後必須存在 `.ink`。");
+
+            ExportGraphDto exportedDto = ParseExportGraphDto(exportResult.jsonOutputPath);
+            ExportNodeDto dialogueNode = exportedDto.nodes.Single(node => node != null && node.type == "action" && node.id == "N001");
+            List<ExportNodeDto> stageActions = exportedDto.nodes.Where(node => node != null && node.type == "stageAction").ToList();
+            Assert.AreEqual(2, stageActions.Count, "應保留兩個 stageAction 節點。");
+
+            ExportNodeDto stageActionA = stageActions.Single(node => node.id == "N002");
+            ExportNodeDto stageActionB = stageActions.Single(node => node.id == "N003");
+            Assert.AreEqual("ActionData", stageActionA.outputs[0].portName, "stageActionA 應維持資料輸出埠。");
+            Assert.AreEqual("ActionIn0", stageActionA.outputs[0].toPortName, "stageActionA 應連到 ActionIn0。");
+            Assert.AreEqual(dialogueNode.id, stageActionA.outputs[0].toNodeId, "stageActionA 應連到對話節點。");
+            Assert.AreEqual("ActionData", stageActionB.outputs[0].portName, "stageActionB 應維持資料輸出埠。");
+            Assert.AreEqual("ActionIn1", stageActionB.outputs[0].toPortName, "stageActionB 應連到 ActionIn1。");
+            Assert.AreEqual(dialogueNode.id, stageActionB.outputs[0].toNodeId, "stageActionB 應連到對話節點。");
+
+            yield return WaitForInkCompilerIdle("RoundTrip_GraphV2DialogueWithStageActions");
+            string exportedInk = File.ReadAllText(exportResult.inkOutputPath);
+            StringAssert.Contains("# action:alice", exportedInk, "匯出 Ink 應包含第一個動作內容。");
+            StringAssert.Contains("# action:bs", exportedInk, "匯出 Ink 應包含第二個動作內容。");
+            StringAssert.DoesNotContain("=== knot_N002 ===", exportedInk, "stageAction 節點不應單獨輸出 knot。");
+            StringAssert.DoesNotContain("=== knot_N003 ===", exportedInk, "stageAction 節點不應單獨輸出 knot。");
             AssertInkCompiles(exportedInk);
         }
         // ===== 變更結束 =====
@@ -233,11 +263,6 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N002",
                         type = "action",
                         content = "A",
-                        // ===== 變更開始 =====
-                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證 round-trip 可保留內容類型下拉)
-                        // 預期結果：Action A 匯出後維持 dialogue
-                        actionKind = "dialogue",
-                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     },
                     new ExportNodeDto
@@ -245,11 +270,6 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N003",
                         type = "action",
                         content = "B",
-                        // ===== 變更開始 =====
-                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證 round-trip 可保留內容類型下拉)
-                        // 預期結果：Action B 匯出後維持 action
-                        actionKind = "action",
-                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     }
                 }
@@ -292,11 +312,6 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N002",
                         type = "action",
                         content = "A",
-                        // ===== 變更開始 =====
-                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證 round-trip 可保留內容類型下拉)
-                        // 預期結果：Action A 匯出後維持 dialogue
-                        actionKind = "dialogue",
-                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     },
                     new ExportNodeDto
@@ -304,16 +319,70 @@ namespace OpsidanosInk.Tests.EditMode
                         id = "N003",
                         type = "action",
                         content = "B",
-                        // ===== 變更開始 =====
-                        // 2026/02/22 Opsidanos (修改原因：補上 actionKind fixture，驗證 round-trip 可保留內容類型下拉)
-                        // 預期結果：Action B 匯出後維持 action
-                        actionKind = "action",
-                        // ===== 變更結束 =====
                         outputs = new List<ExportNodeOutputDto>()
                     }
                 }
             };
             // ===== 變更結束 =====
+        }
+
+        private static ExportGraphDto BuildV2DialogueWithStageActionsGraphDto()
+        {
+            return new ExportGraphDto
+            {
+                version = "2.1",
+                graphName = "RoundTripV2DialogueWithStageActionsFixture",
+                startNodeId = "N000",
+                nodes = new List<ExportNodeDto>
+                {
+                    new ExportNodeDto
+                    {
+                        id = "N000",
+                        type = "start",
+                        outputs = new List<ExportNodeOutputDto>
+                        {
+                            new ExportNodeOutputDto { portName = "Flow", toNodeId = "N001", toPortName = "Flow" }
+                        }
+                    },
+                    new ExportNodeDto
+                    {
+                        id = "N001",
+                        type = "action",
+                        content = "第五句：旁白說話",
+                        outputs = new List<ExportNodeOutputDto>
+                        {
+                            new ExportNodeOutputDto { portName = "Flow", toNodeId = "N004", toPortName = "Flow" }
+                        }
+                    },
+                    new ExportNodeDto
+                    {
+                        id = "N002",
+                        type = "stageAction",
+                        content = "# action:alice",
+                        outputs = new List<ExportNodeOutputDto>
+                        {
+                            new ExportNodeOutputDto { portName = "ActionData", toNodeId = "N001", toPortName = "ActionIn0" }
+                        }
+                    },
+                    new ExportNodeDto
+                    {
+                        id = "N003",
+                        type = "stageAction",
+                        content = "# action:bs",
+                        outputs = new List<ExportNodeOutputDto>
+                        {
+                            new ExportNodeOutputDto { portName = "ActionData", toNodeId = "N001", toPortName = "ActionIn1" }
+                        }
+                    },
+                    new ExportNodeDto
+                    {
+                        id = "N004",
+                        type = "comment",
+                        content = "結束註解",
+                        outputs = new List<ExportNodeOutputDto>()
+                    }
+                }
+            };
         }
 
         private static void AssertInkCompiles(string inkContent)
