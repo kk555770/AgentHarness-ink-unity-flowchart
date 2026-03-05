@@ -212,3 +212,17 @@
   - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/task_plan.md`
   - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/findings.md`
   - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/progress.md`
+
+## Session: 2026-03-03（規則重新載入與流程鎖定）
+
+### Rule Sync: `/Users/arcumit/.codex/AGENTS.md` + 專案 `AGENTS.md`
+- **Status:** complete
+- Actions taken:
+  - 重新讀取兩份 AGENTS.md，套用最新規範。
+  - 依使用者要求，明確鎖定 multi-agent 並行規則與時限規則。
+  - 啟用本輪執行約束：可並行工作走 multi-agent；測試任務 60 秒上限；調查/修改不限時。
+  - 先將規則同步寫入 `task_plan.md`、`findings.md`、`progress.md`，作為後續實作基準。
+- Files created/modified:
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/task_plan.md`
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/findings.md`
+  - `PlanningWithFiles/20260222/graphtoolkit_node_dropdown_localization/progress.md`

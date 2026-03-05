@@ -253,6 +253,8 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - `start`：開始節點（必須存在且只能 1 個）
 - `action`：對話節點（主流程節點，承載對話文字與接收動作資料）
 - `stageAction`：動作節點（資料節點，不參與主流程，輸出動作資料給對話節點）
+- `character`：角色資料節點（資料節點，維護角色ID/名稱/表情圖片清單）
+- `castBundle`：登場角色集束節點（資料節點，聚合本段可用角色清單）
 - `comment`：註解節點（只影響作者閱讀，不影響播放）
 - `choice`：選項節點（玩家選擇，會有 1 條以上輸出線）
 - `condition`：條件節點（系統判斷，會有 2 條以上輸出線，且必須含「否則」）
@@ -262,10 +264,12 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
   - `start` 顯示「開始」
   - `action` 顯示「對話」
   - `stageAction` 顯示「動作」
+  - `character` 顯示「角色」
+  - `castBundle` 顯示「登場角色」
   - `comment` 顯示「註解」
   - `choice` 顯示「選項」
   - `condition` 顯示「條件」
-- GraphToolkit 實作要求：節點型別名稱本身要用同一組繁中詞（開始/對話/動作/註解/選項/條件），避免標題與類別名不一致。
+- GraphToolkit 實作要求：節點型別名稱本身要用同一組繁中詞（開始/對話/動作/角色/登場角色/註解/選項/條件），避免標題與類別名不一致。
 
 #### 6.2.1-2 節點文字欄位可讀寬度（作者體驗）
 - 目標：讓作者在節點內直接看清楚內容，不需要先打開外部編輯器。
@@ -276,15 +280,19 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - 適用範圍（目前 Graph v2）：
   - `action` 的對話內容欄位
   - `stageAction` 的動作內容欄位
+  - `character` 的角色ID/名稱/表情名稱欄位
   - `comment` 的註解欄位
   - `choice` 的選項文字欄位
   - `condition` 的條件文字欄位
 
 #### 6.2.2 接線規則（最重要）
-- 接線分兩種（必須分離）：
+- 接線分三種（必須分離）：
   - **流程線（Flow）**：主流程走向（start/action/comment/choice/condition）
   - **資料線（ActionData）**：動作節點 → 對話節點的資料輸入（ActionIn*）
-  - 編輯器上應讓兩種線可視覺區分（至少型別/顏色其中之一必須可辨識）
+  - **資料線（CharacterData / CastData）**：
+    - `character` → `castBundle`（CharacterIn*）
+    - `castBundle` → `action/stageAction`（CastIn）
+  - 編輯器上應讓流程線與資料線可視覺區分（至少型別/顏色其中之一必須可辨識）
 - `start/action/comment`（流程線）：
   - 輸出線數量只能是 `0` 或 `1`
   - `0`：代表該 knot 結束（匯出 `-> END`）
@@ -298,6 +306,17 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
   - 每個動作節點必須且只能有 `1` 條資料輸出線
   - 只能接到 `action` 節點的 `ActionIn*` 輸入埠
   - 不允許接到 `Flow` 輸入埠
+- `character`（資料線）：
+  - 可輸出到 `castBundle` 的 `CharacterIn*`
+  - 不允許直接接到 `action/stageAction` 或 `Flow` 輸入埠
+- `castBundle`（資料線）：
+  - 輸入埠由連線自動增減（`CharacterIn*`）
+  - 輸出埠由連線自動增減（`CastOut*`）
+  - 每個輸出埠只可接 `action/stageAction` 的 `CastIn`
+  - 至少要有 `1` 條角色輸入線與 `1` 條角色輸出線，否則匯出必須失敗
+- `action/stageAction`（角色來源）：
+  - 角色下拉來源只能是 `CastIn` 連到的 `castBundle`
+  - 若節點沒有 `CastIn` 連線，角色下拉必須顯示空集合（不可偷讀全域角色）
 - 匯流（多路線收束）：
   - 允許多條線連到同一個節點（這是文字小說最常見的「收束」手法）
 
@@ -322,6 +341,30 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - 要顯示 `{` `}`：寫 `\{`、`\}`
 - 要顯示 `#`：寫 `\#`
 
+#### 6.2.4 角色資料來源與 Addressable 規則（Graph v2）
+- `character` 節點欄位：
+  - `characterId`：角色唯一ID（下拉主鍵）
+  - `characterName`：預設顯示名稱
+  - `expressions[*]`：每列為「表情名稱 + 圖片資源」
+- 圖片欄位操作規則：
+  - 作者可直接把 Project 視窗圖片拖到 `character` 節點圖片欄位
+  - 拖入當下必須自動檢查 Addressable
+  - 若 `Project_Resources` Group 不存在，必須自動建立
+  - 若圖片尚未加入 Addressable，必須自動加入 `Project_Resources`
+- Addressable Key 規則：
+  - 最終格式固定：`char/{characterId}/{expressionName}`
+  - 若先拖圖、後填 `characterId` 或 `expressionName`，欄位變更時必須即時重算並更新 Key
+- 刷新規則（非每幀）：
+  - 圖接線變更（連線/斷線）
+  - `character` 內容變更（ID/名稱/表情名稱/圖片）
+  - 匯入 sidecar 後、開啟圖時
+- 名稱覆寫規則：
+  - `action/stageAction` 可覆寫當下顯示名稱
+  - 覆寫只作用在當前節點，不得回寫 `character` 主資料
+- `castBundle` 多輸出語意（第一版）：
+  - 輸出埠可依連線自動增減
+  - 每個輸出埠都代表同一份角色名單（不做分組語意）
+
 ### 6.3 Flow Chart → Ink 的對應輸出（Graph v2）
 #### 6.3.1 檔案開頭（入口）
 - 檔案第一行必須是：`-> knot_<startNodeId>`
@@ -329,6 +372,7 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 #### 6.3.2 每個節點對應一個 knot
 - 每個**主流程節點**輸出一個 knot：`=== knot_<nodeId> ===`
 - `stageAction` 不單獨輸出 knot；它會在目標 `action` 節點輸出時合併
+- `character/castBundle` 也不單獨輸出 knot；它們只提供角色資料來源，不參與主流程文本
 
 #### 6.3.3 `start/action/comment`（線性主流程）
 - 節點內容照原樣輸出（`comment` 以 `//` 註解輸出）
@@ -340,6 +384,10 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - 同一個 `action` 若接多條資料線，順序規則為：
   1. `ActionIn0`, `ActionIn1`, `ActionIn2`...
   2. 同一輸入埠衝突時以節點 id 排序（保證 deterministic）
+
+#### 6.3.3-2 `character/castBundle`（角色資料）
+- 這兩種節點不直接輸出 Ink 行。
+- 它們只決定 `action/stageAction` 的角色候選來源與顯示資訊。
 
 #### 6.3.4 `choice`（玩家選擇）
 - 每個輸出埠匯出成一行 choice：
@@ -372,15 +420,36 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 - `nodes[*].outputs[*].portName/toNodeId/toPortName`
 - `action` 額外需要：
   - `nodes[*].outputs[*].toPortName` 預期為 `Flow`
+  - `nodes[*].actorId`（可空）
+  - `nodes[*].actorName`（可空，代表當下節點覆寫名）
 - `stageAction` 額外需要：
   - `nodes[*].outputs[*].portName` 預期為 `ActionData`
   - `nodes[*].outputs[*].toPortName` 預期為 `ActionIn*`
+  - `nodes[*].actorId`（可空）
+  - `nodes[*].actorName`（可空，代表當下節點覆寫名）
+- `character` 額外需要：
+  - `nodes[*].characterId`
+  - `nodes[*].characterName`
+  - `nodes[*].expressions[*].name`
+  - `nodes[*].expressions[*].textureGuid`
+  - `nodes[*].expressions[*].addressableKey`
+  - `nodes[*].outputs[*].portName` 預期為 `CharacterData`
+  - `nodes[*].outputs[*].toPortName` 預期為 `CharacterIn*`
+- `castBundle` 額外需要：
+  - `nodes[*].castInputCount`（可由匯入時重建，但 sidecar 建議保留）
+  - `nodes[*].outputs[*].portName` 預期為 `CastData` 或 `CastOut*`
+  - `nodes[*].outputs[*].toPortName` 預期為 `CastIn`
 - `choice` 額外需要：
   - `nodes[*].choiceMode`（`*` 或 `+`）
   - `nodes[*].outputs[*].label`
 - `condition` 額外需要：
   - `nodes[*].outputs[*].condition`（非 else 分支）
   - `nodes[*].outputs[*].isElse`（else 分支，且必須在最後）
+
+#### 6.4.2 Graph v2 匯入相容策略（角色資料）
+- 舊 sidecar 若沒有 `character/castBundle` 欄位，匯入器不得猜測補圖；應明確記錄 warning 並維持可開啟。
+- 若有 `textureGuid` 但缺 `addressableKey`，匯入後在刷新階段按 `char/{id}/{expr}` 重算 Key。
+- 若 `action/stageAction` 有 `actorId`，但 `CastIn` 沒有連到來源，匯入後角色下拉視為空集合，並提示修正接線。
 
 ### 6.5 JSON 在 `.ink` 內的跳脫規則（特別是 `char`）
 Ink 會把 `{ ... }` 當成 inline logic，所以你在 `.ink` 內要把 JSON 的大括號跳脫：

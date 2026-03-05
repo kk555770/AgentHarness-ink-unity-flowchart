@@ -192,3 +192,16 @@
 - `Assets/Editor/OpsidanosInkTestRunnerMenu.cs`
 - `Packages/com.unity.ai.navigation/Tests/Editor/NavMeshModifierVolumeInPrefabTests.cs`
 - `Packages/com.unity.ai.navigation/Tests/Editor/Converter/OffMeshLinkConverterTests.cs`
+
+## 2026-03-03 規則更新記錄（執行流程）
+
+### 使用者新增硬規則（本次確認）
+- 可並行工作必須使用 multi-agent，不可用單線程連續查找替代。
+- multi-agent 的測試任務最長 60 秒。
+- 調查任務與修改任務不受 60 秒上限限制。
+- 每次執行維持「先提案、等同意、再執行」。
+
+### 對任務流程的直接影響
+- 測試規劃會拆成「可在 60 秒內完成」的小批次，逐批回報。
+- 若是調查/修改階段，可使用較長流程，但仍需每階段回報與記錄。
+- 並行階段與串行階段會明確切開，避免同檔案寫入衝突。
