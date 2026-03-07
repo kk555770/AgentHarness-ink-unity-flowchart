@@ -73,6 +73,8 @@ Canonical Schema
 - 不能把關鍵語意藏在 UI 狀態裡
 - 不能把關鍵語意藏在自由文字裡
 
+更具體的責任與最小骨架，請見 `Documentation/CanonicalGraphSchema.md`。
+
 ### 2.2 Projection
 
 Projection 是把同一份真相投影到不同工作表面上。
@@ -157,7 +159,7 @@ Validation Loop 是本專案非常重要的一層。
 ### 3.3 哪些東西是「工作投影」
 
 - `.inkfc`
-- `.flowchart.json`
+- `.flowchart.json`（目前 Graph v2 的 sidecar / interchange / round-trip 投影格式）
 - `.ink`
 - `story.json`
 - Unity Runtime 畫面
@@ -231,6 +233,12 @@ ValidateGraph()
 ExportProjection(target)
 ```
 
+正式的操作面規格，請見 `Documentation/CanonicalGraphApiSpec.md`。
+
+若要看第一個正式的 JSON 控制格式，請見：
+
+- `Documentation/CanonicalGraphJsonContract.md`
+
 這也是為什麼本專案必須以 schema 為核心，而不能以 GraphToolkit 視窗為核心。
 
 因為 AI 最穩定的操作對象是：
@@ -286,6 +294,32 @@ Unity 不是：
 - 只有 Unity 播放器才知道的節點規則
 - 只有 Unity 內部狀態才成立的故事真相
 
+## 7.5 控制面 Transport Adapter 的正確位置
+
+除了內容本身的 Projection 與 Runtime Adapter 之外，控制面還有一條容易被混淆的線：
+
+```text
+Canonical Schema
+  -> Canonical Graph API
+    -> Plain JSON Contract
+      -> 可選的 JSON-RPC / HTTP / CLI Adapter
+```
+
+這條線的重點是：
+
+- `Canonical Graph API`
+  - 決定「可以做哪些事」
+- `Plain JSON Contract`
+  - 決定「第一個正式 JSON 指令長什麼樣」
+- `JSON-RPC / HTTP / CLI Adapter`
+  - 決定「外部系統怎麼呼叫這些指令」
+
+因此：
+
+- JSON 不是自動就等於 projection
+- JSON 也不是自動就等於 canonical truth
+- JSON-RPC 若未來加入，應是 transport adapter，不應升格成真相來源
+
 ## 8. 對目前 repo 的實務解讀
 
 以目前 repo 狀態來說，更準確的說法是：
@@ -313,8 +347,14 @@ Unity 不是：
 
 它不取代下列文件：
 
+- `Documentation/CanonicalGraphSchema.md`
+  - 負責定義 canonical truth 應包含哪些圖語意與 API 邊界
+- `Documentation/CanonicalGraphApiSpec.md`
+  - 負責定義 AI / 程式如何操作 canonical graph
+- `Documentation/CanonicalGraphJsonContract.md`
+  - 負責定義第一個正式 Plain JSON wire contract
 - `Documentation/DeveloperModeOutputContract.md`
-  - 負責規定開發者模式輸出到玩家模式時的正式契約
+  - 負責規定 projection 輸出到玩家模式時的正式契約
 - `GraphToolkitSpec.md`
   - 負責 GraphToolkit API 與工具開發規範
 - `UIToolkitSpec.md`
@@ -323,7 +363,7 @@ Unity 不是：
 也就是說：
 
 - 本文件回答「為什麼要這樣設計」
-- 契約與 spec 文件回答「具體要怎麼做才算合法」
+- schema / API / 契約 / spec 文件回答「具體要怎麼做才算合法」
 
 ## 10. 一句總結
 

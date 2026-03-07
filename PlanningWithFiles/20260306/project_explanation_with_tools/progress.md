@@ -26,3 +26,129 @@
   - GraphToolkit / Ink / Unity 都是投影或 adapter
   - 為什麼 repo 現在看起來像多重真相
   - 為什麼 AI 正確的控制面應該是 schema / API，而不是 Editor 手勢
+- 已再次盤點文件與程式碼關鍵點，確認下一步最大問題不是「缺更多描述」，而是「正式文件間的語意邊界尚未完全對齊」。
+- 已定位第一個必須收斂的衝突：
+  - `DeveloperModeOutputContract.md` 仍把 `.flowchart.json` 寫成權威來源
+  - `NarrativeGraphArchitecture.md` 已把 canonical schema 定為唯一真相來源
+- 使用者已同意下一輪文件收斂提案。
+- 已新增 `Documentation/CanonicalGraphSchema.md`，作為 canonical truth 的正式文件。
+- 已同步修改：
+  - `Documentation/NarrativeGraphArchitecture.md`
+  - `Documentation/DeveloperModeOutputContract.md`
+- 這一輪的主要成果是把三層文件語意切開：
+  - 架構總覽
+  - canonical schema
+  - projection 到 runtime 的輸出契約
+- 已再盤點 `InkFlowChartNodes.cs` 與 `InkFlowChartExportModels.cs`。
+- 新結論：下一步最值得做的是 schema spec，把目前 code 裡已存在的 node/port/edge/payload/invariant 正式文件化，而不是再寫一份抽象架構稿。
+- 使用者補充新的決策規則：
+  - 若現況 script 與標準化方向衝突，優先選擇更能標準化的方案
+  - 現況 script 只能作為實作映射參考，不是自動升格成規範
+  - 遇到高影響歧義時，要帶著傾向、優缺點、未來展望與後果回頭詢問
+- 在正式撰寫 schema spec 前，已定位第一個高影響歧義：
+  - 現況 sidecar / code token 用 `action`
+  - 但語意上它其實是 `dialogue`
+- 因此暫停落 spec，先向使用者確認 canonical 命名方向。
+- 使用者已確認選項 `1`：canonical node type 採用 `dialogue`。
+- 已新增 `Documentation/CanonicalGraphSchemaSpec.md`，並把 `dialogue` / `action` 的 canonical vs legacy 關係正式文件化。
+- 已同步修改 `Documentation/CanonicalGraphSchema.md`，讓原則文件導向新的具體 spec。
+- 使用者已同意繼續補 AI 控制 API spec。
+- 已新增 `Documentation/CanonicalGraphApiSpec.md`。
+- 已同步修改：
+  - `Documentation/NarrativeGraphArchitecture.md`
+  - `Documentation/CanonicalGraphSchema.md`
+  - `Documentation/CanonicalGraphSchemaSpec.md`
+- 這一輪的主要成果是把文件層級再拆清楚：
+  - 架構總覽
+  - canonical schema 原則
+  - canonical schema spec
+  - canonical graph API spec
+- 已依使用者要求重新盤點現有全部設計規範，重新閱讀 AGENTS、Architecture、Schema、SchemaSpec、ApiSpec、DeveloperModeOutputContract、GraphToolkitSpec、UIToolkitSpec 與 GraphToolkit DTO/Node 程式碼。
+- 新結論：現有正式文件其實已把 transport 與 canonical API 切開；若要「先試 JSON-RPC」，最合理的落點是新增 transport adapter 規格，而不是把 JSON-RPC 直接升格成 canonical truth。
+- 已確認 repo 目前沒有正式 JSON-RPC 文件或程式碼；`.flowchart.json` 仍是 projection/sidecar，不是 transport contract。
+- 使用者確認改採「先做 Plain」。
+- 已新增 `Documentation/CanonicalGraphJsonContract.md`，正式建立第一個 Plain JSON wire contract。
+- 已同步修改：
+  - `Documentation/CanonicalGraphApiSpec.md`
+  - `Documentation/NarrativeGraphArchitecture.md`
+- 這一輪的主要成果是把控制面再拆清楚一層：
+  - canonical graph 語意 API
+  - 第一個正式 Plain JSON contract
+  - 未來可選的 JSON-RPC / HTTP / CLI adapter
+- 已快速檢查三份文件交叉引用，確認沒有把 `.flowchart.json` 誤寫成控制面 contract，也沒有把 JSON-RPC 升格成 canonical truth。
+- 使用者要求下一步先提案：把 Plain JSON Contract 再往下補成更細的 graph snapshot / result payload / error details 規格。
+- 已先補記到 PlanningWithFiles，避免後續提案時把 envelope 層與 payload-level spec 混在一起。
+- 使用者改要求：先透過既有計畫，重新完整看過目前文件與專案，確保對全貌的理解正確且詳細。
+- 已接手既有 `project_explanation_with_tools` 規劃資料夾，而不是另開新題，避免把同一條理解脈絡切碎。
+- 已再次確認：
+  - 全域規範來源 `~/.codex/AGENTS.md`
+  - 專案規範來源 repo `AGENTS.md`
+  - 今天現有 PlanningWithFiles 工作目錄
+  - 根 README、Unity 版本、manifest 依賴
+- 目前判斷：這次工作應聚焦在「重新驗證全貌是否仍一致」，不是直接進入下一份 spec 實作。
+- 已再次盤點 `Documentation/`、`Packages/com.opsidanos.ink/`、`Assets/Editor/FlowChart/`、`Assets/Editor/Tests/`、`Assets/Tests/PlayMode/` 的高層結構。
+- 已確認正式文件已形成 6 份分層文件，不再只是單一契約或單一願景稿。
+- 已確認 asmdef 邊界仍是：
+  - `OpsidanosInk.Runtime`
+  - `OpsidanosInk.FlowChartEditor`
+  - `OpsidanosInk.EditModeTests`
+  - `OpsidanosInk.PlayModeTests`
+- 已確認 Runtime 目錄仍維持 Story / Presentation / Save / UI 分層，尚未出現新的大型模組切分。
+- 已確認 GraphToolkit 相關核心檔仍集中在同一資料夾，對目前作者工具主線判讀沒有翻盤。
+- 已再次閱讀 Runtime 核心類別骨架：
+  - `InkStoryEngine`
+  - `StoryOutput`
+  - `InkTagParser`
+  - `InkTagEventRouter`
+  - `InkSaveSystem`
+  - `InkSaveData`
+  - `VNPlayerPresenter`
+  - `InkResourceMap`
+  - `InkTagCharacterStatePlayer`
+- 已再次確認 Runtime 主線不是單純 `Story -> UI`，而是：
+  - `StoryOutput` 統一事件
+  - `Tag router` 分流
+  - `PresentationSnapshot` 收斂演出狀態
+  - `Save/Load/Rollback` 回放同一份輸出
+  - `VNPlayerPresenter` 統一玩家操作節奏
+- 已再次確認 `VNPlayer.uxml` 已內建完整 VN 常用層級與按鈕，不像一次性 demo。
+- 已重新盤點全部專案測試名稱，確認目前測試重心仍鎖定 restore/rollback/round-trip/點擊節奏，不是單純 smoke test。
+- 已再次核對 `NarrativeGraphArchitecture.md`、`CanonicalGraphSchemaSpec.md`、`CanonicalGraphJsonContract.md`、`DeveloperModeOutputContract.md` 的關鍵段落，確認：
+  - canonical schema / API / JSON contract / sidecar projection 已有明確分層
+  - `.flowchart.json` 雖仍是目前 round-trip 的權威投影格式，但不再被寫成最終真相來源
+  - `dialogue` vs `action` 的語意分層已正式存在
+- 已再次確認 Presentation 層存在新舊並存現象：
+  - 舊的 `char-left/center/right`
+  - 新的 `char` JSON state player
+  這是目前最明顯的過渡痕跡之一。
+- 已再次閱讀三份最關鍵的正式文件開頭與責任說明：
+  - `NarrativeGraphArchitecture.md`
+  - `CanonicalGraphJsonContract.md`
+  - `DeveloperModeOutputContract.md`
+- 已確認目前文件分層基本一致：canonical truth、wire contract、runtime projection contract 已有明確切開。
+- 已用 `Assets/Scene/Test.unity` 驗證 repo 內存在實際掛好 Runtime 元件的示範場景。
+- 已用 `Assets/OpsidanosInk/Demo/story.ink` 與 `resource_map.json` 驗證 Demo 資料確實在覆蓋 char JSON、transition steps、bg/bgm/se/cg/shake 等正式契約主線。
+- 已整合平行子任務結果：
+  - 文件線確認雙層結構穩定存在
+  - Editor/Graph 線確認 round-trip 與 Graph v2 仍是正式主線
+  - Runtime 線由本地再次補讀，確認故事、Tag、演出、Save/Load/Rollback、UI 節奏仍互相對齊
+- Runtime 線的平行子任務稍後回傳，內容與本地補讀一致：
+  - repo 主線沒有翻盤
+  - `com.opsidanos.ink` 才是目前產品主體
+  - Runtime / Graph / 契約 / 測試之間仍可收斂成同一套敘事
+- 本輪最終判斷已固定：
+  - 全貌理解仍一致
+  - 目前最成熟的是 Runtime 閉環與作者工具 round-trip 閉環
+  - 主要風險點不在缺功能，而在 canonical truth / current projection / Unity adapter 三層名詞仍容易被混讀
+- 使用者已同意先走我建議的優先順序，並要求先出第一版修改提案。
+- 已再次精讀以下落點，準備提案：
+  - `Documentation/DeveloperModeOutputContract.md`
+  - `Documentation/CanonicalGraphSchema.md`
+  - `Documentation/CanonicalGraphSchemaSpec.md`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartNodes.cs`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartExporter.cs`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartImporter.cs`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartExportModels.cs`
+- 已再次確認第一版提案的最小有效範圍：
+  - 先收斂 `dialogue` / legacy `action` 的文件與實作接縫
+  - 暫不擴大到 Runtime 功能改動

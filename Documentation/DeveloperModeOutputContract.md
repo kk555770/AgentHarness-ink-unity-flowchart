@@ -1,6 +1,6 @@
 # 開發者模式輸出契約（Flow Chart / GraphToolkit → Ink → 玩家模式）
 
-> 最後更新：2026/02/22  
+> 最後更新：2026/03/06  
 > 適用範圍：開發者模式（Editor）輸出 `.ink`（含 `.flowchart.json` sidecar）給玩家模式（Runtime）播放與存讀檔
 
 ## 0. 這份契約在解決什麼問題
@@ -31,9 +31,10 @@
 
 責任邊界（最重要）：
 
+- 本文件只規定「canonical schema 投影到 Ink / `story.json` / Runtime」時的合法輸出契約；canonical truth 本體請見 `Documentation/CanonicalGraphSchema.md`。
 - 開發者模式輸出**必須**符合本文件的契約，讓 Runtime 不需要「補洞」。
 - Runtime 內部的紅字 Error log 是「抓錯用」，不是「正常流程」。
-- Flow Chart（圖）是流程結構的權威來源：流程結構必須由節點/接線表達並在 Ink 層成立，不得藏在內容文字裡（詳見 §6）。
+- Flow Chart（圖）是目前人類作者最重要的視覺投影：流程結構必須由節點/接線表達並在 Ink 層成立，不得藏在內容文字裡（詳見 §6）。
 
 ## 3. Tag 規範總表（哪些是狀態、哪些是事件）
 ### 3.1 關鍵規則
@@ -407,10 +408,11 @@ Flow Chart 的目的不是限制 Ink，而是建立「所見即所得」且可�
 ```
 - `- else:` 必須存在且必須是最後一個分支（避免條件都不符合時掉到未知狀態）
 
-### 6.4 `.flowchart.json`（sidecar）是可逆閉環的權威來源
+### 6.4 `.flowchart.json`（sidecar）是目前 Graph v2 可逆閉環的權威投影格式
 - `.ink` 是玩家模式要用的流程文本。
-- `.flowchart.json` 保存「圖的結構」：節點型別、分岔埠、分支文字/條件、連線目標。
-- 匯入時必須以 sidecar 還原，不解析 `.ink` 來猜圖形結構。
+- `.flowchart.json` 保存「圖的結構投影」：節點型別、分岔埠、分支文字/條件、連線目標。
+- 對目前 Graph v2 匯入器而言，匯入時必須以 sidecar 還原，不解析 `.ink` 來猜圖形結構。
+- 但 `.flowchart.json` 仍屬 sidecar / interchange / round-trip projection，不應被誤讀為凌駕於 canonical schema 之上的最終真相來源；canonical truth 本體請見 `Documentation/CanonicalGraphSchema.md`。
 
 #### 6.4.1 Graph v2 sidecar 最小欄位
 - `version`：格式版本（Graph v2 建議使用 `2.x`）
