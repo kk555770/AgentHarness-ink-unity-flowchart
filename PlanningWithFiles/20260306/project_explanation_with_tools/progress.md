@@ -152,3 +152,77 @@
 - 已再次確認第一版提案的最小有效範圍：
   - 先收斂 `dialogue` / legacy `action` 的文件與實作接縫
   - 暫不擴大到 Runtime 功能改動
+- 使用者已同意第一版提案。
+- 已實作第一版文件收斂：
+  - `Documentation/DeveloperModeOutputContract.md`
+  - `Documentation/CanonicalGraphSchemaSpec.md`
+  - `Documentation/CanonicalGraphSchema.md`
+- 已完成的核心動作：
+  - 在輸出契約新增命名裁決與 legacy mapping 小節
+  - 把對話節點語意從模糊的 `action` 改寫成 `dialogue`
+  - 保留 current sidecar token `action` 的現況註記
+  - 補上 schema / projection 兩份文件的交叉說明
+- 已做本地一致性驗證：
+  - 搜尋三份文件的 `action / dialogue / stageAction`
+  - 確認 `action` 現在主要只以 legacy sidecar token 的身分出現
+  - 確認 `stageAction` 不再和 legacy `action` 混讀
+- 這一輪沒有跑產品測試，因為只改正式文件，未動程式碼與資料格式。
+- 使用者要求第二版提案，主題改為 `character / castBundle` 的正式定位。
+- 已重新全文盤點：
+  - `Documentation/DeveloperModeOutputContract.md`
+  - `Documentation/CanonicalGraphSchema.md`
+  - `Documentation/CanonicalGraphSchemaSpec.md`
+  - `Documentation/NarrativeGraphArchitecture.md`
+  - `Documentation/CanonicalGraphApiSpec.md`
+  - `Documentation/CanonicalGraphJsonContract.md`
+  - `Assets/Editor/FlowChart/GraphToolkit/`
+  - `Assets/Editor/Tests/`
+  - `Packages/com.opsidanos.ink/`
+- 已確認目前 `character / castBundle` 幾乎只有文件契約，沒有對應的 GraphToolkit 程式主線與 round-trip 測試支撐。
+- 因此第二版提案的傾向已收斂：
+  - 先明確把它們定位成 projection-heavy / authoring data-source nodes
+  - 暫不升格成 canonical 核心節點
+- 使用者已同意第二版提案。
+- 已實作第二版文件收斂：
+  - `Documentation/CanonicalGraphSchema.md`
+  - `Documentation/CanonicalGraphSchemaSpec.md`
+  - `Documentation/DeveloperModeOutputContract.md`
+  - `Documentation/NarrativeGraphArchitecture.md`
+- 已完成的核心動作：
+  - 把 `character / castBundle` 從「看起來像 canonical」收斂為 projection-heavy / authoring data-source nodes
+  - 在 schema / spec / architecture / output contract 四份文件裡統一這個定位
+  - 補出未來若要升格為 canonical node 的門檻
+- 已做本地一致性驗證：
+  - 搜尋 `character / castBundle / projection-heavy / authoring data-source / canonical core`
+  - 確認四份文件說法一致
+- 這一輪同樣沒有跑產品測試，因為仍只改正式文件，未動程式碼與資料格式。
+- 使用者同意再往下做程式碼中的 `dialogue <-> legacy action` mapping 收斂。
+- 已修改：
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartNodes.cs`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartExporter.cs`
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartImporter.cs`
+- 已完成的核心動作：
+  - 在 `InkFlowNodeSchema` 建立 canonical `dialogue` 與 legacy sidecar `action` 的單一 mapping 來源
+  - exporter / importer 改為呼叫 helper，而不是自己散落判斷 `type == "action"`
+  - legacy `actionKind` token 也改由 schema helper 集中管理
+- 已做靜態檢查：
+  - 搜尋 `NodeTypeAction`
+  - 搜尋 `IsDialogueNodeType`
+  - 搜尋 `GetCurrentProjectionNodeType`
+  - 確認對話節點型別判斷與輸出來源已明顯集中
+- 已做 Unity 驗證：
+  - 指令：Unity batchmode EditMode tests，category=`GraphToolkitFlowSafe`
+  - 結果：12/12 Passed
+  - 測試結果檔：`/tmp/ink-unity-graphkit-tests.xml`
+  - 日誌檔：`/tmp/ink-unity-graphkit-tests.log`
+- 使用者要求繼續，已接著處理根 README 的 repo 定位與閱讀順序。
+- 已修改 `README.md`：
+  - 補上「先看這裡」
+  - 補上建議閱讀順序
+  - 補上 repo 現況定位與上游內容關係
+- 已做內容一致性檢查：
+  - 重新閱讀 README 前 180 行
+  - 檢查 `canonical / projection / Runtime / GraphToolkit / .flowchart.json / story.json / OpsidanosInk` 關鍵字
+  - 確認沒有把 GraphToolkit / sidecar / Unity 寫回真相本體
+- 這一輪沒有再跑測試，因為只改文件入口，沒有動程式碼。
+- 已補記到規劃檔：README 入口整理已完成，下一步若繼續文件改善，較合理的是新增短版 onboarding / 專案導讀，而不是再把 README 加重。

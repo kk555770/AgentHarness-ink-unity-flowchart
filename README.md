@@ -1,5 +1,107 @@
 # ink-Unity integration
 
+> 目前狀態更新：**這個 repo 已不只是上游 `ink-unity-integration` 套件鏡像**。  
+> 到 **2026/03/11** 為止，這裡更接近一個「`OpsidanosInk` Runtime + Graph 作者工具 + 輸出契約 + 驗證閉環」的工作倉庫。
+
+## 先看這裡
+
+如果你是第一次打開這個 repo，**不要只看下面保留的上游說明就開始判斷整個專案**。
+
+目前更準確的理解方式是：
+
+```text
+Canonical narrative graph
+  -> GraphToolkit / .flowchart.json（作者投影與 round-trip 載體）
+  -> .ink
+  -> story.json
+  -> Unity Runtime 播放
+  -> Save / Load / Rollback / 測試驗證是否仍收斂
+```
+
+也就是說：
+
+- `Packages/com.opsidanos.ink/` 才是目前最接近產品主體的 Runtime / UI / Save / Presentation 套件
+- `Assets/Editor/FlowChart/GraphToolkit/` 是目前重要的作者工具主線
+- `Documentation/` 裡的架構稿、schema、contract，才是理解 repo 北極星的正確入口
+- 本 README 後半保留了大量上游 `ink-unity-integration` 說明，**它仍有參考價值，但不等於這個 repo 的完整現況**
+
+## 建議閱讀順序
+
+### 1. 想先知道「這個專案到底在做什麼」
+
+先讀：
+
+- `Documentation/NarrativeGraphArchitecture.md`
+- `Documentation/CanonicalGraphSchema.md`
+- `Documentation/CanonicalGraphSchemaSpec.md`
+
+這三份文件會先把：
+
+- 真相在哪裡
+- GraphToolkit / `.flowchart.json` / `.ink` / `story.json` 各是什麼
+- 哪些是 canonical core，哪些只是 projection / runtime adapter
+
+講清楚。
+
+### 2. 想知道「目前 Graph 作者工具輸出必須遵守什麼」
+
+先讀：
+
+- `Documentation/DeveloperModeOutputContract.md`
+
+這份文件處理的是：
+
+- Flow Chart / GraphToolkit 輸出 `.ink + .flowchart.json` 的合法契約
+- `char` JSON、`transition.steps`
+- Restore / Rollback / 可重播閉環
+
+### 3. 想知道「Unity 玩家模式怎麼接起來」
+
+先讀：
+
+- `Packages/com.opsidanos.ink/README.md`
+
+這份文件比較像玩家模式入口，會告訴你：
+
+- `InkStoryEngine`
+- `VNPlayerPresenter`
+- `InkSaveSystem`
+- `InkTagEventRouter`
+- `InkResourceMap`
+
+怎麼在 Unity 場景裡接起來。
+
+### 4. 想看目前 code 主線
+
+常看的位置：
+
+- `Packages/com.opsidanos.ink/Runtime/Scripts/Story/`
+- `Packages/com.opsidanos.ink/Runtime/Scripts/Presentation/`
+- `Packages/com.opsidanos.ink/Runtime/Scripts/Save/`
+- `Packages/com.opsidanos.ink/Runtime/Scripts/UI/`
+- `Assets/Editor/FlowChart/GraphToolkit/`
+- `Assets/Editor/Tests/`
+- `Assets/Tests/PlayMode/`
+
+## 這個 repo 現在最重要的幾件事
+
+- **Schema-first**：真正的語意真相不應該綁死在 GraphToolkit、Unity 或某一份 sidecar。
+- **Projection-aware**：`.flowchart.json`、`.ink`、`story.json`、Unity 畫面都很重要，但它們是投影或 adapter，不是 canonical truth 本體。
+- **Runtime 已經很成熟**：目前最穩的是 `StoryOutput`、Tag router、演出播放器、Save/Load/Rollback、UI 節奏控制。
+- **GraphToolkit 已有正式主線**：`.inkfc <-> .flowchart.json + .ink` 的匯入、匯出、round-trip 都已經有測試護欄。
+
+## 與下方內容的關係
+
+下面的 `Overview` 之後內容，主要還是保留上游 `ink-unity-integration` 的功能說明：
+
+- Ink Player Window
+- 自動編譯 `.ink -> .json`
+- Inspector tools
+- 上游安裝方式
+
+這些內容依然有參考價值，尤其是理解 Ink Unity Integration 這層地基時。  
+但如果你要理解**這個 repo 今天真正的產品方向**，請以前面的「先看這裡」與「建議閱讀順序」為主。
+
 This Unity package allows you to integrate inkle's [ink narrative scripting language](http://www.inklestudios.com/ink) with Unity and provides tools to **compile**, **play** and **debug** your stories.
 
 # Overview

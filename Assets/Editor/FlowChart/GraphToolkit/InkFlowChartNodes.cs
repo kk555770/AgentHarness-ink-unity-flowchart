@@ -19,7 +19,13 @@ namespace OpsidanosInk.Editor
         public const string FlowPortName = "Flow";
 
         public const string NodeTypeStart = "start";
-        public const string NodeTypeAction = "action";
+        // ===== 變更開始 =====
+        // 2026/03/11 Opsidanos (修改原因：把 canonical dialogue 與 legacy sidecar action 拆成不同常數，避免 exporter/importer 各自散落命名判斷)
+        // 預期結果：GraphToolkit 相關程式統一從這裡取得 canonical / current projection 的對話節點命名，不再混用 `dialogue` 與 `action`
+        public const string CanonicalNodeTypeDialogue = "dialogue";
+        public const string LegacySidecarDialogueNodeType = "action";
+        public const string NodeTypeAction = LegacySidecarDialogueNodeType;
+        // ===== 變更結束 =====
         public const string NodeTypeStageAction = "stageAction";
         public const string NodeTypeComment = "comment";
         public const string NodeTypeChoice = "choice";
@@ -57,9 +63,13 @@ namespace OpsidanosInk.Editor
         public const string ConditionTextsDefaultValue = "favor > 7";
         public const string ConditionElsePortDisplayName = "否則";
 
-        private const string ActionKindDialogueToken = "dialogue";
-        private const string ActionKindStageActionToken = "action";
-        private const string ActionKindCustomToken = "custom";
+        // ===== 變更開始 =====
+        // 2026/03/11 Opsidanos (修改原因：legacy sidecar 的 actionKind token 仍需相容，但名稱要明確標示它是 legacy mapping)
+        // 預期結果：讀 code 時能一眼分辨 canonical node type 與 legacy actionKind token，不再誤會兩者是同一層命名
+        private const string LegacyActionKindDialogueToken = "dialogue";
+        private const string LegacyActionKindStageActionToken = "action";
+        private const string LegacyActionKindCustomToken = "custom";
+        // ===== 變更結束 =====
 
         public static string GetChoicePortFallbackLabel(int order)
         {
@@ -102,33 +112,88 @@ namespace OpsidanosInk.Editor
             return int.MaxValue;
         }
 
-        public static string ToActionKindToken(InkFlowActionKind actionKind)
+        // ===== 變更開始 =====
+        // 2026/03/11 Opsidanos (修改原因：集中提供 dialogue/action 的 canonical 與 legacy mapping helper，讓匯出匯入不再自己手寫判斷)
+        // 預期結果：只要對話節點命名未來再收斂，最多只改這一處 helper，其餘 GraphToolkit 程式不需同步散改
+        public static bool IsDialogueNodeType(string nodeType)
+        {
+            return string.Equals(nodeType, CanonicalNodeTypeDialogue, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, LegacySidecarDialogueNodeType, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string GetCurrentProjectionNodeType(INode node)
+        {
+            if (node is InkFlowStartNode)
+            {
+                return NodeTypeStart;
+            }
+
+            if (node is InkFlowStageActionNode)
+            {
+                return NodeTypeStageAction;
+            }
+
+            if (node is InkFlowDialogueNode)
+            {
+                return LegacySidecarDialogueNodeType;
+            }
+
+            if (node is InkFlowCommentNode)
+            {
+                return NodeTypeComment;
+            }
+
+            if (node is InkFlowChoiceNode)
+            {
+                return NodeTypeChoice;
+            }
+
+            if (node is InkFlowConditionNode)
+            {
+                return NodeTypeCondition;
+            }
+
+            return "unknown";
+        }
+
+        public static string ToLegacyActionKindToken(InkFlowActionKind actionKind)
         {
             switch (actionKind)
             {
                 case InkFlowActionKind.StageAction:
-                    return ActionKindStageActionToken;
+                    return LegacyActionKindStageActionToken;
                 case InkFlowActionKind.Custom:
-                    return ActionKindCustomToken;
+                    return LegacyActionKindCustomToken;
                 default:
-                    return ActionKindDialogueToken;
+                    return LegacyActionKindDialogueToken;
             }
         }
 
-        public static InkFlowActionKind ParseActionKindToken(string token)
+        public static InkFlowActionKind ParseLegacyActionKindToken(string token)
         {
-            if (string.Equals(token, ActionKindStageActionToken, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(token, LegacyActionKindStageActionToken, StringComparison.OrdinalIgnoreCase))
             {
                 return InkFlowActionKind.StageAction;
             }
 
-            if (string.Equals(token, ActionKindCustomToken, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(token, LegacyActionKindCustomToken, StringComparison.OrdinalIgnoreCase))
             {
                 return InkFlowActionKind.Custom;
             }
 
             return InkFlowActionKind.Dialogue;
         }
+
+        public static string ToActionKindToken(InkFlowActionKind actionKind)
+        {
+            return ToLegacyActionKindToken(actionKind);
+        }
+
+        public static InkFlowActionKind ParseActionKindToken(string token)
+        {
+            return ParseLegacyActionKindToken(token);
+        }
+        // ===== 變更結束 =====
     }
     // ===== 變更結束 =====
 

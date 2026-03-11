@@ -282,15 +282,19 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/25 Opsidanos (修改原因：對話/動作節點已拆分；actionKind 改由節點型別推導以保持舊欄位相容)
             // 預期結果：舊 sidecar 讀者仍可從 actionKind 判斷語意，且不依賴已移除的下拉 option
+            // ===== 變更開始 =====
+            // 2026/03/11 Opsidanos (修改原因：legacy actionKind token 改由 schema helper 明確提供，避免匯出器自己握有 mapping 細節)
+            // 預期結果：匯出器只表達「這是對話或動作」，實際 legacy token 由單一 helper 產生
             if (node is InkFlowStageActionNode)
             {
-                return InkFlowNodeSchema.ToActionKindToken(InkFlowActionKind.StageAction);
+                return InkFlowNodeSchema.ToLegacyActionKindToken(InkFlowActionKind.StageAction);
             }
 
             if (node is InkFlowDialogueNode)
             {
-                return InkFlowNodeSchema.ToActionKindToken(InkFlowActionKind.Dialogue);
+                return InkFlowNodeSchema.ToLegacyActionKindToken(InkFlowActionKind.Dialogue);
             }
+            // ===== 變更結束 =====
 
             return string.Empty;
             // ===== 變更結束 =====
@@ -363,9 +367,12 @@ namespace OpsidanosInk.Editor
                 }
 
                 // ===== 變更開始 =====
-                // 2026/02/21 Opsidanos (修改原因：依輸出契約 §6.2.3，action 內容不得藏流程結構，否則「圖不是權威」)
-                // 預期結果：action 內容若含 divert/choice/knot/gather 等 Ink 結構語法，匯出必須直接失敗並給明確錯誤訊息
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
+                // 2026/02/21 Opsidanos (修改原因：依輸出契約 §6.2.3，對話內容不得藏流程結構，否則「圖不是權威」)
+                // 預期結果：dialogue（含 legacy sidecar token `action`）內容若含 divert/choice/knot/gather 等 Ink 結構語法，匯出必須直接失敗並給明確錯誤訊息
+                // ===== 變更開始 =====
+                // 2026/03/11 Opsidanos (修改原因：匯出器不再自己硬編碼 `action`，改由 schema helper 統一辨識 dialogue 與 legacy token)
+                // 預期結果：未來若 sidecar 接受 canonical `dialogue` 或 legacy `action`，驗證邏輯都由單一 helper 決定
+                if (InkFlowNodeSchema.IsDialogueNodeType(exportNode.type))
                 {
                     if (!TryValidateActionContentForExport(exportNode, out errorMessage))
                     {
@@ -373,10 +380,11 @@ namespace OpsidanosInk.Editor
                     }
                 }
                 // ===== 變更結束 =====
+                // ===== 變更結束 =====
 
                 List<IPort> outputPorts = node.GetOutputPorts().ToList();
                 if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase)
+                    || InkFlowNodeSchema.IsDialogueNodeType(exportNode.type)
                     || string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
                 {
                     IPort flowOutputPort = node.GetOutputPortByName(InkFlowNodeSchema.FlowPortName);
@@ -761,7 +769,7 @@ namespace OpsidanosInk.Editor
         private static bool IsLinearNodeType(string nodeType)
         {
             return string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase)
+                || InkFlowNodeSchema.IsDialogueNodeType(nodeType)
                 || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase);
         }
         // ===== 變更結束 =====
@@ -771,38 +779,12 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/22 Opsidanos (修改原因：節點 type 字串改由共用 schema 常數輸出，避免匯出/匯入打字不一致)
             // 預期結果：節點 type 來源單一化（start/action/comment/choice/condition）
-            if (node is InkFlowStartNode)
-            {
-                return InkFlowNodeSchema.NodeTypeStart;
-            }
-
-            if (node is InkFlowStageActionNode)
-            {
-                return InkFlowNodeSchema.NodeTypeStageAction;
-            }
-
-            if (node is InkFlowDialogueNode)
-            {
-                return InkFlowNodeSchema.NodeTypeAction;
-            }
-
-            if (node is InkFlowCommentNode)
-            {
-                return InkFlowNodeSchema.NodeTypeComment;
-            }
-
-            if (node is InkFlowChoiceNode)
-            {
-                return InkFlowNodeSchema.NodeTypeChoice;
-            }
-
-            if (node is InkFlowConditionNode)
-            {
-                return InkFlowNodeSchema.NodeTypeCondition;
-            }
+            // ===== 變更開始 =====
+            // 2026/03/11 Opsidanos (修改原因：把 dialogue 的 current projection type 與 legacy token 集中到 schema helper，避免匯出器自行散落對應規則)
+            // 預期結果：匯出 sidecar 時，所有節點 type 都由同一個 helper 決定；對話節點固定輸出 current projection token
+            return InkFlowNodeSchema.GetCurrentProjectionNodeType(node);
             // ===== 變更結束 =====
-
-            return "unknown";
+            // ===== 變更結束 =====
         }
 
         private static string GetNodeContent(INode node)
@@ -951,7 +933,10 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
-                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
+                // ===== 變更開始 =====
+                // 2026/03/11 Opsidanos (修改原因：Ink 組裝時的對話節點判斷也統一走 schema helper，避免 build 階段再散落 legacy token 判斷)
+                // 預期結果：無論輸入 DTO 用 canonical `dialogue` 或 legacy `action`，都會被當成同一個對話節點處理
+                else if (InkFlowNodeSchema.IsDialogueNodeType(exportNode.type))
                 {
                     if (dialogueActionMap.TryGetValue(exportNode.id, out List<DialogueBoundAction> actions))
                     {
@@ -986,6 +971,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
+                // ===== 變更結束 =====
                 else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
                 {
                     // ===== 變更開始 =====

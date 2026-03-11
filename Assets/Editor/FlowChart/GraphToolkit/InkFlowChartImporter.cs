@@ -329,10 +329,14 @@ namespace OpsidanosInk.Editor
                 return new 開始();
             }
 
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeAction, StringComparison.OrdinalIgnoreCase))
+            // ===== 變更開始 =====
+            // 2026/03/11 Opsidanos (修改原因：匯入器改由 schema helper 統一辨識 canonical `dialogue` 與 legacy sidecar token `action`)
+            // 預期結果：未來即使 sidecar 同時出現 `dialogue` 與 `action`，匯入端也只需維護單一 mapping 規則
+            if (InkFlowNodeSchema.IsDialogueNodeType(nodeType))
             {
                 return new 對話();
             }
+            // ===== 變更結束 =====
 
             // ===== 變更開始 =====
             // 2026/02/25 Opsidanos (修改原因：新增動作節點型別，匯入時需可建立資料節點)

@@ -144,11 +144,25 @@ Canonical schema 需要穩定的節點型別集合。
 - `choice`
 - `condition`
 
+目前**不建議直接升格為 canonical 核心節點**，但可能存在於 projection / authoring data layer 的節點類型，至少包含：
+
+- `character`
+- `castBundle`
+
+它們目前更接近：
+
+- 作者工具的資料來源節點
+- projection / sidecar 為了維持角色候選來源而存在的搬運節點
+- runtime 資源映射（例如 `resource_map.json` / `InkResourceMap`）的上游作者資料設計
+
+而不是已被 canonical schema、匯入匯出邏輯與 round-trip 測試共同驗證過的最小核心語意。
+
 後續就算擴充更多型別，也應遵守同一原則：
 
 - 型別名稱描述語意，不描述 UI 呈現
 - 節點資料由 payload 表達，不靠自由文字偷藏規則
 - 分支、條件、流程結構不能退回到「從內文猜」
+- 若某節點目前只有 projection 契約，沒有穩定 payload / port / edge / round-trip 驗證，應先留在 projection-heavy 層，而不是搶先升格成 canonical core type
 
 ## 5. Graph Invariants
 
@@ -218,11 +232,13 @@ canonical graph
 - `.flowchart.json` 是目前 Graph v2 的 sidecar / interchange / round-trip 投影格式
 - `.ink` 是文本投影
 - `story.json` 是編譯後執行投影
+- `character / castBundle` 若目前存在於 Graph v2 文件與 sidecar 設計，較合理的定位也是 projection / authoring data-source nodes，而不是 canonical 最小核心節點
 
 關鍵原則：
 
 - projection 可以有自己的格式
 - projection 可以有為了搬運資料而存在的中繼欄位
+- projection 可以暫時保留 legacy token（例如 current sidecar 用 `type = "action"` 代表 canonical `dialogue`）
 - 但 projection 不應凌駕於 canonical schema 之上，變成新的真相來源
 
 ## 8. Runtime Adapter 的邊界

@@ -97,6 +97,11 @@ Projection 是把同一份真相投影到不同工作表面上。
 
 也就是說，GraphToolkit 不是「簡化外殼」，而是 **無資訊遺失的視覺外殼**。
 
+補充一個目前很容易混讀的點：
+
+- 像 `character / castBundle` 這類節點，若目前只存在於 Graph v2 文件、sidecar 設計或作者體驗描述中，較合理的定位應是 projection / authoring data-source layer
+- 它們可以很重要，但在真正有 stable schema、匯入匯出邏輯與 round-trip tests 前，不應自動被視為 canonical 最小核心節點
+
 ### 2.3 Runtime Adapter
 
 Runtime Adapter 是把同一份敘事圖語意接到某個執行環境上。
@@ -164,6 +169,7 @@ Validation Loop 是本專案非常重要的一層。
 - `story.json`
 - Unity Runtime 畫面
 - 自動化測試輸入與輸出
+- `character / castBundle` 這類目前主要服務作者資料搬運的節點設計
 
 這些都很重要，但它們的角色是：
 

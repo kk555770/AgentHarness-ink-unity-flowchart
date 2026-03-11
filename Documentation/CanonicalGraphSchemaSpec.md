@@ -72,6 +72,7 @@ Current implementation note：
 - 現況 Graph v2 sidecar 仍使用 `type = "action"`
 - 其實對應的是目前的 `InkFlowDialogueNode`
 - 因此 canonical schema 與現況 sidecar 之間需要一層明確 mapping
+- 若 `Documentation/DeveloperModeOutputContract.md` 在現況 projection 說明裡提到 `action`，應解讀成「current sidecar token」，不是 canonical 命名裁決回頭改回 `action`
 
 ## 3. Graph 結構
 
@@ -183,6 +184,19 @@ Current implementation note：
 - `choice`
 - `condition`
 
+目前**不納入 canonical 核心節點集合**，但可能存在於 current projection / authoring data layer 的節點：
+
+- `character`
+- `castBundle`
+
+原因不是它們不重要，而是：
+
+- 目前正式文件主要在 `Documentation/DeveloperModeOutputContract.md` 描述它們
+- 現階段尚未有對應的 canonical payload / port / edge spec
+- 也尚未看到和六大核心節點同等級的 GraphToolkit 實作主線與 round-trip 測試護欄
+
+因此在本 spec 中，`character / castBundle` 應先被視為 projection-heavy / authoring data-source nodes，而不是 AI API 預設必須支援的 canonical core types。
+
 ## 6.1 `start`
 
 ### Payload
@@ -232,6 +246,7 @@ Canonical `dialogue.payload` 最小欄位：
   - `actionKind = "dialogue"`
 - `ActionInputCount` 是目前 projection / authoring convenience 欄位，不應視為 canonical payload 正式欄位
 - `dialogue-action-in[index]` 在現況 projection 以 `ActionIn*` 命名
+- `Documentation/DeveloperModeOutputContract.md` 若在 current Graph v2 契約中使用 `action`，應讀成這裡的 legacy sidecar token，而不是 canonical `nodeType`
 
 ## 6.3 `stageAction`
 
@@ -441,6 +456,18 @@ Current implementation note：
   - GraphToolkit authoring convenience
 - `actionKind`
   - 在節點型別尚未完全正規化前的過渡欄位
+
+以下節點類型目前也更接近 projection / authoring data-source 設計，而不是 canonical core types：
+
+- `character`
+- `castBundle`
+
+若未來要升格它們，至少應先補齊：
+
+- stable payload
+- stable port / edge semantics
+- importer / exporter mapping
+- round-trip tests
 
 ## 11. AI API 含義
 

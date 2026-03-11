@@ -20,7 +20,11 @@
 | 11 | 已完成 | 重新盤點全部設計規範，確認先以 Plain JSON contract 作為第一個正式 wire contract，並保留 JSON-RPC 為後續 adapter 路線 |
 | 12 | 待提案 | 把 Plain JSON Contract 再往下補成 graph snapshot / result payload / error details 的細部規格 |
 | 13 | 已完成 | 透過既有 PlanningWithFiles 重新完整盤點目前文件、核心模組、測試與專案結構，驗證目前理解是否仍一致 |
-| 14 | 待提案 | 先處理 `dialogue` / legacy `action` 的文件與實作接縫，避免 canonical truth 與 current projection 繼續混讀 |
+| 14 | 已完成 | 已先處理 `dialogue` / legacy `action` 的文件接縫，明確切開 canonical 命名、current sidecar token 與 `stageAction` |
+| 15 | 已完成 | 已補 `character / castBundle` 的正式定位，先標成 projection-heavy / authoring data-source nodes，暫不升格 canonical core |
+| 16 | 已完成 | 已把 `dialogue <-> legacy action` mapping 收斂到 `InkFlowNodeSchema` 單一 helper / 常數層，並通過 GraphToolkit 安全測試 |
+| 17 | 已完成 | 已更新根 README 的 repo 定位與閱讀順序，先把新讀者導到 Architecture / Schema / Contract / Runtime 正確入口 |
+| 18 | 待提案 | 評估是否要新增短版 onboarding / 專案導讀文件，讓 README 只負責入口而不是承擔完整導覽 |
 
 ## 已知限制
 - 這次任務以觀察與解釋為主，不修改產品程式碼。
@@ -54,3 +58,8 @@
   - 先把 `dialogue` 與 legacy `action` 的責任邊界寫死
   - 再決定 `character / castBundle` 是否仍維持 projection-only
   - 最後才收斂到程式碼 mapping 與 README 入口
+- 目前這一刀已完成文件收斂；下一個最自然的接續工作，就是把 `character / castBundle` 的定位補成正式裁決。
+- `character / castBundle` 的定位已完成第二輪文件收斂；若要再往下做，下一個更值得處理的是程式碼中的 `dialogue <-> action` mapping 收斂，而不是先擴張更多未落地節點。
+- `dialogue <-> action` 的程式碼 mapping 已完成收斂；接下來若想再提高協作穩定性，最值得做的是 README 入口整理，而不是先擴張更多 schema 節點。
+- 根 README 的入口整理也已完成；目前最值得往下想的，會是是否要再補一份更短的 onboarding / 專案導讀，或維持目前由 README 承擔入口責任。
+- 若繼續優化文件入口，下一步最自然的是新增一份短版 onboarding / 專案導讀，讓 README 專注於入口與索引。

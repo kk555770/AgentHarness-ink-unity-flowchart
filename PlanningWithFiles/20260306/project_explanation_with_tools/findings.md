@@ -692,3 +692,125 @@
   2. 文件：`character / castBundle` 是否屬 canonical 的正式裁決
   3. 程式碼：把 `dialogue <-> action` 的 mapping 集中到單一 helper / 常數層
   4. 文件入口：更新根 `README.md` 的目前 repo 定位與閱讀順序
+
+## 第二十五輪：第一版文件收斂已完成
+- 已修改 `Documentation/DeveloperModeOutputContract.md`：
+  - 新增 `6.2.0 命名裁決與 legacy mapping`
+  - 明文切開：
+    - canonical `dialogue`
+    - current sidecar token `action`
+    - 真正的 `stageAction`
+  - 原本會把對話節點寫成 `action` 的段落，已改成 `dialogue`，並在需要處保留 `action` 作為 legacy token 註記
+- 已修改 `Documentation/CanonicalGraphSchemaSpec.md`：
+  - 補上對輸出契約文件的解讀註記
+  - 明確說明輸出契約若提到 `action`，應讀成 current sidecar token，而不是 canonical `nodeType`
+- 已修改 `Documentation/CanonicalGraphSchema.md`：
+  - 補上 projection 可以暫時保留 legacy token 的原則說明
+- 這一刀沒有改 sidecar 格式、沒有改 exporter/importer、沒有改 Runtime。
+- 收斂後的效果是：
+  - `dialogue` / `action` / `stageAction` 三者的邊界在正式文件裡更容易一眼看懂
+  - 後續若要補 `character / castBundle` 或再往下收斂 code mapping，起點會乾淨很多
+
+## 第二十六輪：`character / castBundle` 的現況落點
+- 目前 `character / castBundle` 的主要存在位置幾乎都在 `Documentation/DeveloperModeOutputContract.md`：
+  - 節點定義
+  - 資料線規則
+  - Addressable 規則
+  - sidecar 欄位
+  - 匯入相容策略
+- 但重新全文搜尋後，`Assets/Editor/FlowChart/GraphToolkit/` 與相關 EditMode 測試中，並沒有對應的 `character / castBundle` 節點程式主線、匯入匯出邏輯或 round-trip 測試。
+- 目前實際存在、且被程式與測試支撐的角色資料主線，反而是 Runtime / ResourceMap：
+  - `InkResourceMap`
+  - `InkTagCharacterPlayer`
+  - `InkTagCharacterStatePlayer`
+  - `resource_map.json`
+- 這代表 `character / castBundle` 目前更像：
+  - Graph v2 projection / authoring 設想
+  - 或尚未落地完成的資料層節點提案
+  而不是已被實作與測試收斂過的 canonical 核心節點。
+
+## 第二十七輪：第二版提案的傾向結論
+- 第二版若要低風險高報酬，最合理的方向不是立刻把 `character / castBundle` 升格為 canonical node。
+- 更合理的做法是：
+  - 先把它們正式標記為「目前屬 projection-heavy / authoring data-source nodes」
+  - 明確寫出「尚未正式進入 canonical 核心節點集合」
+  - 待未來真的有 GraphToolkit 節點實作、sidecar 穩定格式、匯入匯出邏輯與 round-trip 測試後，再考慮升格
+
+## 第二十八輪：第二版文件收斂已完成
+- 已修改 `Documentation/CanonicalGraphSchema.md`：
+  - 正式把 `character / castBundle` 排除在目前 canonical 核心節點集合之外
+  - 補上「若某節點只有 projection 契約、沒有 stable payload / port / edge / round-trip 驗證，就不應搶先升格 canonical core」的原則
+- 已修改 `Documentation/CanonicalGraphSchemaSpec.md`：
+  - 明確列出 `character / castBundle` 目前不納入 canonical core types
+  - 補上未來若要升格所需的門檻：
+    - stable payload
+    - stable port / edge semantics
+    - importer / exporter mapping
+    - round-trip tests
+- 已修改 `Documentation/DeveloperModeOutputContract.md`：
+  - 明文把 `character / castBundle` 定位成 current Graph v2 的 projection-heavy / authoring data-source nodes
+  - 保留目前 Graph v2 sidecar / importer contract 細節，但避免被誤讀成 canonical 裁決
+- 已修改 `Documentation/NarrativeGraphArchitecture.md`：
+  - 在 Projection 與工作投影段落補上 `character / castBundle` 的總體定位
+- 這一輪的實際效果是：
+  - `character / castBundle` 不再看起來像「文件寫很多，所以已經是 canonical truth」
+  - 後續若真的要升格，文件上已經先明確列出升格門檻
+
+## 第二十九輪：`dialogue <-> legacy action` 的程式碼 mapping 已收斂
+- 已修改 `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartNodes.cs`：
+  - 新增明確常數：
+    - `CanonicalNodeTypeDialogue = "dialogue"`
+    - `LegacySidecarDialogueNodeType = "action"`
+  - 保留 `NodeTypeAction` 作為 legacy alias，避免現有 code 與測試全面破裂
+  - 新增集中 helper：
+    - `IsDialogueNodeType(...)`
+    - `GetCurrentProjectionNodeType(...)`
+    - `ToLegacyActionKindToken(...)`
+    - `ParseLegacyActionKindToken(...)`
+- 已修改 `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartExporter.cs`：
+  - 不再自己硬編碼 `type == "action"` 來判斷對話節點
+  - 改由 `InkFlowNodeSchema.IsDialogueNodeType(...)` 統一判斷
+  - 匯出 sidecar type 時，改由 `InkFlowNodeSchema.GetCurrentProjectionNodeType(...)` 決定
+  - `actionKind` 的 legacy token 也改由 schema helper 提供
+- 已修改 `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartImporter.cs`：
+  - 匯入時改由 `InkFlowNodeSchema.IsDialogueNodeType(...)` 同時接受 canonical `dialogue` 與 legacy `action`
+- 這一輪的效果是：
+  - canonical / projection / legacy token 的 mapping 終於不再散落在 exporter / importer 多處
+  - 若未來 sidecar 命名再收斂，主要只需要改 `InkFlowNodeSchema`
+
+## 第三十輪：程式碼收斂驗證結果
+- 已跑 Unity EditMode 測試：
+  - 類別篩選：`GraphToolkitFlowSafe`
+  - 結果：12 / 12 通過
+- 驗證涵蓋：
+  - `InkFlowChartImportTests`
+  - `InkFlowChartRoundTripTests`
+- 這代表這次 mapping 收斂沒有打壞目前最重要的 GraphToolkit 匯入 / 匯出 / round-trip 主線。
+
+## 第三十一輪：根 README 入口整理已完成
+- 已修改根 `README.md`，在最前面補上：
+  - repo 現況定位
+  - 建議閱讀順序
+  - 目前最重要的幾件事
+  - 與下方上游說明的關係
+- 這次調整的重點不是重寫整份 README，而是：
+  - 保留上游 `ink-unity-integration` 說明作為參考
+  - 但先把新讀者導到真正的當前入口：
+    - `Documentation/NarrativeGraphArchitecture.md`
+    - `Documentation/CanonicalGraphSchema.md`
+    - `Documentation/CanonicalGraphSchemaSpec.md`
+    - `Documentation/DeveloperModeOutputContract.md`
+    - `Packages/com.opsidanos.ink/README.md`
+- 這一輪的效果是：
+  - 新讀者不會再只看上游段落就把整個 repo 誤判成單純的 Ink Unity Integration 倉庫
+  - README 與目前文件分層、Runtime 主線、GraphToolkit 主線的說法已基本對齊
+
+## 第三十二輪：README 入口整理後的下一步判斷
+- README 現在已適合扮演：
+  - repo 現況公告
+  - 建議閱讀順序
+  - 文件入口索引
+- 若再把更多解釋硬塞進 README，容易又回到「入口文件過重」的問題。
+- 因此若要再往下改善 onboarding，較合理的下一步是：
+  - 新增一份短版專案導讀文件
+  - README 只負責把人導過去
