@@ -1,7 +1,8 @@
 # Canonical Graph API Spec
 
-> 最後更新：2026/03/06  
-> 目的：定義 AI 與程式要如何操作 canonical graph，讓控制面建立在 schema 語意上，而不是建立在 GraphToolkit 或 Unity Editor 手勢上。
+> 最後更新：2026/03/17  
+> 文件角色：**控制面語意層 / How to Operate 層**  
+> 目的：定義 AI 與程式要如何操作 canonical graph，讓控制面建立在 schema 語意上，而不是建立在 GraphToolkit、Web 前端細節或 Unity Editor 手勢上。
 
 ## 0. 先講結論
 
@@ -31,6 +32,10 @@
 
 它不取代其他文件：
 
+- `Documentation/DocsIndex.md`
+  - 負責給新讀者一張文件地圖
+- `Documentation/AuthoringToolStrategy.md`
+  - 負責回答作者工具策略為什麼往 Web-first 收斂，以及這對控制面的意義
 - `Documentation/NarrativeGraphArchitecture.md`
   - 解釋為什麼要 schema-first
 - `Documentation/CanonicalGraphSchema.md`
@@ -49,6 +54,11 @@
 - schema spec：真相長什麼樣
 - API spec：怎麼動真相
 - JSON contract：怎麼把這些操作包成第一個正式 JSON 介面
+
+如果用更直接的工程語言講：
+
+- 這一層是給 C#、AI agent、MCP、Playwright 自動化與未來 Web 作者工具共同對接的語意控制面
+- 它不應該要求呼叫端知道 GraphToolkit 視窗怎麼拖，也不應要求呼叫端知道某個前端框架的 component tree
 
 ## 2. 設計原則
 

@@ -1,6 +1,7 @@
 {
   "name": "OpsidanosInk.EditModeTests",
   "references": [
+    "OpsidanosInk.CanonicalGraph",
     "OpsidanosInk.Runtime",
     "OpsidanosInk.FlowChartEditor",
     "Ink-Libraries",

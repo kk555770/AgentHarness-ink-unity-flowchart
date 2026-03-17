@@ -1,7 +1,8 @@
 # 敘事圖架構總覽
 
-> 最後更新：2026/03/06  
-> 目的：把本專案真正的架構北極星寫清楚，避免把過渡期的驗證手段誤認成最終真相來源。
+> 最後更新：2026/03/17  
+> 文件角色：**架構北極星 / Why 層**  
+> 目的：把本專案真正的架構北極星寫清楚，避免把過渡期的驗證手段誤認成最終真相來源，並補上目前作者工具策略的方向。
 
 ## 0. 先講結論
 
@@ -11,8 +12,13 @@
 
 - 以 `Graph JSON / Schema / API` 作為唯一語意真相
 - 讓 AI 與人類都能操作同一份敘事圖
-- 讓 GraphToolkit 成為「完整表現真相」的人類可視化編輯外殼
+- 讓作者工具只是「完整表現真相」的人類可視化外殼，而不是新的真相來源
 - 讓 Unity 成為其中一個播放器、驗證器、自動化測試環境
+
+目前策略補充：
+
+- `GraphToolkit` 是**目前仍可工作的作者工具外殼與回歸基準**
+- 長期作者工具策略傾向 `Web-first` control surface，讓 AI、自動化與前端演進不綁死在 Unity Editor experimental tooling 上
 
 一句話版本：
 
@@ -350,8 +356,16 @@ Canonical Schema
 - 真相在哪裡
 - 各層扮演什麼角色
 - 為什麼現在 repo 看起來像多重真相
+- 為什麼作者工具策略不應長期綁死在 GraphToolkit
 
 它不取代下列文件：
+
+- `Documentation/DocsIndex.md`
+  - 負責給新讀者一張文件地圖
+- `Documentation/AuthoringToolStrategy.md`
+  - 負責把目前作者工具策略、Web-first 方向與 GraphToolkit 過渡定位寫清楚
+- `Documentation/CurrentAuthoringWorkflow.md`
+  - 負責把目前 GraphToolkit / sidecar / ink round-trip 工作流集中說清楚
 
 - `Documentation/CanonicalGraphSchema.md`
   - 負責定義 canonical truth 應包含哪些圖語意與 API 邊界
@@ -377,4 +391,4 @@ Canonical Schema
 
 而是做一個：
 
-> **以敘事圖 schema 為核心，能被 AI 與人類共同操作，並能投影到 GraphToolkit、Ink、Unity 與測試系統的敘事圖協定。**
+> **以敘事圖 schema 為核心，能被 AI 與人類共同操作，並能投影到 current GraphToolkit、未來 Web 作者工具、Ink、Unity 與測試系統的敘事圖協定。**

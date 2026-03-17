@@ -1,7 +1,8 @@
 # Canonical Graph Schema
 
-> 最後更新：2026/03/06  
-> 目的：定義本專案的唯一語意真相應該長什麼樣，並把它和 sidecar、GraphToolkit、Unity runtime 的責任邊界切開。
+> 最後更新：2026/03/17  
+> 文件角色：**真相層 / What 層**  
+> 目的：定義本專案的唯一語意真相應該長什麼樣，並把它和 sidecar、GraphToolkit、Web 作者工具、Unity runtime 的責任邊界切開。
 
 ## 0. 先講結論
 
@@ -24,6 +25,12 @@
 - 匯出器投影到 Ink / sidecar
 - runtime adapter 載入並執行
 
+重點是：
+
+- 人類用的圖形工具可以是 GraphToolkit
+- 也可以是未來的 WebView / Browser / Electron 作者介面
+- 但不管前端殼長什麼樣，它們都不應升格成 canonical truth 本體
+
 ## 1. 這份文件和其他文件的關係
 
 本文件只回答一件事：
@@ -31,6 +38,11 @@
 > **canonical truth 應該包含哪些語意，以及哪些東西不能混進來。**
 
 它不取代其他文件：
+
+- `Documentation/DocsIndex.md`
+  - 負責給新讀者一張文件地圖
+- `Documentation/AuthoringToolStrategy.md`
+  - 負責回答作者工具為什麼會往 Web-first 收斂，以及 current GraphToolkit 的過渡定位
 
 - `Documentation/NarrativeGraphArchitecture.md`
   - 負責回答整體北極星、四層架構與責任邊界
@@ -69,6 +81,7 @@ Canonical schema 應只負責定義以下內容：
 Canonical schema **不應**直接包含：
 
 - GraphToolkit 視窗位置、折疊狀態、選取狀態
+- Web 前端框選狀態、面板開關、縮放比例
 - Unity 專用 component 引用
 - 某個 runtime 才有的臨時狀態
 - 純粹為了投影或編譯方便才出現的中繼格式技巧

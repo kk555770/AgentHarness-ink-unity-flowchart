@@ -2,10 +2,31 @@
 
 這是一個 UPM 套件（`com.opsidanos.ink`），用 **Ink + UI Toolkit** 做「文字冒險 / 視覺小說」的可重用框架。
 
-## 核心管線（新規定）
-1. 開發者模式（Editor）：製作 Flow Chart → 輸出 `.ink`
+先講清楚這份 README 的角色：
+
+- 它是**目前 Unity 玩家模式（Runtime）入口手冊**
+- 它不是 canonical schema 文件
+- 它不是作者工具策略文件
+- 它也不是整個 repo 的總覽
+
+如果你想先看整張地圖，請先讀：
+
+- `Documentation/DocsIndex.md`
+
+如果你想知道為什麼作者工具策略正在往 Web-first 收斂，請讀：
+
+- `Documentation/AuthoringToolStrategy.md`
+
+## 目前 Unity Runtime 接線方式（現況工作流）
+1. 開發者模式（目前常見工作流）：製作 Flow Chart → 輸出 `.ink`
 2. Ink Unity Integration：把 `.ink` 編譯成 `.json`
 3. 玩家模式（Runtime）：只讀 `.json` 播放
+
+注意：
+
+- 上面這條線描述的是**目前最常用的 Unity 工作流**
+- 它不代表 GraphToolkit 是最終唯一作者平台
+- 它也不代表 `.flowchart.json` 或 `story.json` 是 canonical truth
 
 ## 快速開始（玩家模式）
 1. 打開 Unity → Package Manager → 選擇 `OpsidanosInk` → Import `玩家模式快速開始`
@@ -143,7 +164,7 @@
 - 你可以用 `raise` 與 `raiseActors` 控制「本步是否會改變層級」：
   - `raise`（bool，預設 `true`）：`true` 代表「本步有動作的角色」會自動暫時置頂；`false` 代表不自動置頂
   - `raiseActors`（string[]）：不管有沒有動作，都會先把指定 actor 暫時置頂（如果該 actor 可能需要進場，請把 `raiseActors` 放在包含 `appear` 的那一步）
-- 如果你是 Flow Chart/GraphToolkit 匯出（可重播/快照式），只要你有輸出 `steps`，就應該把 `appear/move/disappear` 三種動作都排進去（各最多一次），避免在不同起始狀態（例如讀檔後空畫面）觸發紅字 Error
+- 如果你是目前的 Flow Chart/GraphToolkit 匯出（可重播/快照式），只要你有輸出 `steps`，就應該把 `appear/move/disappear` 三種動作都排進去（各最多一次），避免在不同起始狀態（例如讀檔後空畫面）觸發紅字 Error
 - 若你漏掉必要動作（例如有角色要進場，但 steps 沒寫 `appear`），系統會印 Error，並把缺的動作補到排程最後面，避免畫面狀態不正確（但紅字代表你的輸出不完整）
 - Flow Chart/GraphToolkit 的正式輸出契約請以 `Documentation/DeveloperModeOutputContract.md` 為準
 

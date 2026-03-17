@@ -1,7 +1,8 @@
 # Canonical Graph JSON Contract
 
-> 最後更新：2026/03/06  
-> 目的：定義 canonical graph 的第一個正式 JSON wire contract，讓 AI 與程式可以用機械可讀的方式呼叫語意 API，同時不把 transport 外殼誤當成真相本體。
+> 最後更新：2026/03/17  
+> 文件角色：**控制面封裝層 / Wire Contract 層**  
+> 目的：定義 canonical graph 的第一個正式 JSON wire contract，讓 AI、Web 作者工具與程式可以用機械可讀的方式呼叫語意 API，同時不把 transport 外殼誤當成真相本體。
 
 ## 0. 先講結論
 
@@ -35,6 +36,10 @@
 
 它不取代其他文件：
 
+- `Documentation/DocsIndex.md`
+  - 負責給新讀者一張文件地圖
+- `Documentation/AuthoringToolStrategy.md`
+  - 負責回答作者工具策略與 Web-first 方向
 - `Documentation/NarrativeGraphArchitecture.md`
   - 解釋為什麼 schema-first 與 transport 分層很重要
 - `Documentation/CanonicalGraphSchema.md`
@@ -51,6 +56,12 @@
 - 本文件不重新發明 `CreateNode`
 - 本文件也不重新定義 `dialogue` / `choice` / `condition`
 - 本文件只把既有語意 API 包成固定 JSON 形狀
+
+目前策略上的實際含義是：
+
+- 這份 contract 應能被 AI agent 直接產生與消費
+- 也應能成為未來 Web 作者工具與本地 core 之間的穩定橋接格式
+- 它不應被寫死成 Unity 專用或 GraphToolkit 專用 transport
 
 ## 2. 設計原則
 

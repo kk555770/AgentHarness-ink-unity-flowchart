@@ -1,7 +1,7 @@
 # ink-Unity integration
 
 > 目前狀態更新：**這個 repo 已不只是上游 `ink-unity-integration` 套件鏡像**。  
-> 到 **2026/03/11** 為止，這裡更接近一個「`OpsidanosInk` Runtime + Graph 作者工具 + 輸出契約 + 驗證閉環」的工作倉庫。
+> 到 **2026/03/17** 為止，這裡更接近一個「canonical 敘事圖規格 + current Unity Runtime + current Graph 作者工具工作流 + 驗證閉環」的工作倉庫。
 
 ## 先看這裡
 
@@ -11,7 +11,7 @@
 
 ```text
 Canonical narrative graph
-  -> GraphToolkit / .flowchart.json（作者投影與 round-trip 載體）
+  -> current GraphToolkit / .flowchart.json（目前作者投影與 round-trip 載體）
   -> .ink
   -> story.json
   -> Unity Runtime 播放
@@ -20,14 +20,43 @@ Canonical narrative graph
 
 也就是說：
 
-- `Packages/com.opsidanos.ink/` 才是目前最接近產品主體的 Runtime / UI / Save / Presentation 套件
-- `Assets/Editor/FlowChart/GraphToolkit/` 是目前重要的作者工具主線
-- `Documentation/` 裡的架構稿、schema、contract，才是理解 repo 北極星的正確入口
+- `Documentation/` 裡的架構稿、schema、contract 與作者工具策略，才是理解 repo 北極星的正確入口
+- `Packages/com.opsidanos.ink/` 是目前最成熟的 Unity Runtime / UI / Save / Presentation 套件
+- `Assets/Editor/FlowChart/GraphToolkit/` 是**目前**仍可工作的作者工具主線，但不應被誤讀成未來唯一長期平台
 - 本 README 後半保留了大量上游 `ink-unity-integration` 說明，**它仍有參考價值，但不等於這個 repo 的完整現況**
+
+再講更白一點：
+
+- **真相層**：`canonical schema / API / JSON contract`
+- **現況作者工具層**：`GraphToolkit + .flowchart.json + .inkfc`
+- **現況播放層**：`OpsidanosInk Runtime + story.json`
+- **策略方向**：作者工具長期傾向 `Web-first`，而不是長期綁在 GraphToolkit 上
+- **現況工作流文件**：`Documentation/CurrentAuthoringWorkflow.md`
+- **重製邊界文件**：`Documentation/AuthoringRefactorBoundaries.md`
+- **第一階段實作計畫**：`Documentation/AuthoringPhase1ImplementationPlan.md`
+- **第一階段逐批次提案**：`Documentation/AuthoringPhase1ImplementationProposal.md`
+- **Batch 0 開工清單**：`Documentation/AuthoringPhase1Batch0Kickoff.md`
+
+若你想先看一張總地圖，請先讀：
+
+- `Documentation/DocsIndex.md`
 
 ## 建議閱讀順序
 
-### 1. 想先知道「這個專案到底在做什麼」
+### 1. 想先知道「整個 repo 的文件地圖」
+
+先讀：
+
+- `Documentation/DocsIndex.md`
+
+這份文件會先告訴你：
+
+- 哪些是北極星文件
+- 哪些是現況工作流文件
+- 哪些是 Runtime 使用入口
+- 哪些是過渡層，不要誤讀成最終真相
+
+### 2. 想先知道「這個專案到底在做什麼」
 
 先讀：
 
@@ -38,12 +67,79 @@ Canonical narrative graph
 這三份文件會先把：
 
 - 真相在哪裡
-- GraphToolkit / `.flowchart.json` / `.ink` / `story.json` 各是什麼
+- current GraphToolkit / `.flowchart.json` / `.ink` / `story.json` 各是什麼
 - 哪些是 canonical core，哪些只是 projection / runtime adapter
 
 講清楚。
 
-### 2. 想知道「目前 Graph 作者工具輸出必須遵守什麼」
+### 3. 想知道「為什麼作者工具策略會往 Web-first 收斂」
+
+先讀：
+
+- `Documentation/AuthoringToolStrategy.md`
+
+這份文件處理的是：
+
+- 為什麼 AI 接入比較適合 web control surface
+- GraphToolkit 在本 repo 的現況定位
+- WebView / Browser / Electron 各自扮演什麼角色
+- 為什麼現在不該把 GraphToolkit 當長期唯一平台
+
+### 4. 想知道「之後重製時，應該先切哪一刀」
+
+先讀：
+
+- `Documentation/AuthoringRefactorBoundaries.md`
+
+這份文件處理的是：
+
+- 目前 GraphToolkit 腳本裡哪些責任混在一起
+- 哪些該留在 current tooling shell
+- 哪些該抽成 canonical core / projection adapter / future bridge
+
+### 5. 想知道「第一階段真正要先改哪些檔」
+
+先讀：
+
+- `Documentation/AuthoringPhase1ImplementationPlan.md`
+
+這份文件處理的是：
+
+- 第一階段做什麼、不做什麼
+- 先改哪些檔、先不動哪些檔
+- 要跑哪些測試來守住 round-trip 與 Runtime 閉環
+
+### 6. 想知道「第一階段要分幾批做」
+
+先讀：
+
+- `Documentation/AuthoringPhase1ImplementationProposal.md`
+
+這份文件處理的是：
+
+- 第一階段應拆成哪幾批
+- 每一批先改哪些檔
+- 每一批的 gate 測試是什麼
+- 哪些情況下不該硬進下一批
+
+### 7. 想知道「現在第一批就先做什麼」
+
+先讀：
+
+- `Documentation/AuthoringPhase1Batch0Kickoff.md`
+
+這份文件處理的是：
+
+- 第一批要新增哪些檔
+- 哪個 asmdef 要先改
+- 最小 core 測試先補哪幾支
+- 什麼狀況下才算可以進 Batch 1
+
+### 8. 想知道「目前作者工具輸出必須遵守什麼」
+
+若你想先知道「這條 current GraphToolkit workflow 本身怎麼跑」，先讀：
+
+- `Documentation/CurrentAuthoringWorkflow.md`
 
 先讀：
 
@@ -51,11 +147,24 @@ Canonical narrative graph
 
 這份文件處理的是：
 
-- Flow Chart / GraphToolkit 輸出 `.ink + .flowchart.json` 的合法契約
+- current Flow Chart / GraphToolkit 工作流輸出 `.ink + .flowchart.json` 的合法契約
 - `char` JSON、`transition.steps`
 - Restore / Rollback / 可重播閉環
 
-### 3. 想知道「Unity 玩家模式怎麼接起來」
+### 9. 想知道「AI / 程式之後會接什麼控制面」
+
+先讀：
+
+- `Documentation/CanonicalGraphApiSpec.md`
+- `Documentation/CanonicalGraphJsonContract.md`
+
+這兩份文件處理的是：
+
+- AI / 程式應操作哪一層
+- 為什麼控制面應建立在 canonical graph 上
+- 為什麼 Plain JSON contract 是第一個正式控制面
+
+### 10. 想知道「Unity 玩家模式怎麼接起來」
 
 先讀：
 
@@ -71,7 +180,7 @@ Canonical narrative graph
 
 怎麼在 Unity 場景裡接起來。
 
-### 4. 想看目前 code 主線
+### 11. 想看目前 code 主線
 
 常看的位置：
 
@@ -88,7 +197,8 @@ Canonical narrative graph
 - **Schema-first**：真正的語意真相不應該綁死在 GraphToolkit、Unity 或某一份 sidecar。
 - **Projection-aware**：`.flowchart.json`、`.ink`、`story.json`、Unity 畫面都很重要，但它們是投影或 adapter，不是 canonical truth 本體。
 - **Runtime 已經很成熟**：目前最穩的是 `StoryOutput`、Tag router、演出播放器、Save/Load/Rollback、UI 節奏控制。
-- **GraphToolkit 已有正式主線**：`.inkfc <-> .flowchart.json + .ink` 的匯入、匯出、round-trip 都已經有測試護欄。
+- **GraphToolkit 已有正式主線**：`.inkfc <-> .flowchart.json + .ink` 的匯入、匯出、round-trip 都已經有測試護欄，但它目前更像 current tooling baseline，不是未來唯一長期平台。
+- **Authoring strategy 已開始轉向**：長期作者工具策略傾向 `Web-first` control surface，讓 AI、瀏覽器自動化與前端演進不必綁死在 Unity Editor experimental 套件上。
 
 ## 與下方內容的關係
 

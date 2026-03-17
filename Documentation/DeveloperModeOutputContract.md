@@ -1,6 +1,7 @@
-# 開發者模式輸出契約（Flow Chart / GraphToolkit → Ink → 玩家模式）
+# 開發者模式輸出契約（Current Flow Projection → Ink → 玩家模式）
 
-> 最後更新：2026/03/06  
+> 最後更新：2026/03/17  
+> 文件角色：**現況投影契約層 / Current Projection Contract**  
 > 適用範圍：開發者模式（Editor）輸出 `.ink`（含 `.flowchart.json` sidecar）給玩家模式（Runtime）播放與存讀檔
 
 ## 0. 這份契約在解決什麼問題
@@ -12,6 +13,17 @@
   - 倒帶（Rollback）
   - 在任意畫面狀態下套用同一筆輸出（例如：進入場景後立刻讀檔）
   - 圖上有分岔時，玩家模式也必須真的能走到分岔（不能只走第一條，其他變成死線）
+
+先講清楚這份文件的定位：
+
+- 它主要描述的是 **current Graph v2 / Flow Chart 工作流** 的 projection contract
+- 它不是 canonical truth 本體
+- 它也不是作者工具策略文件
+- 未來如果作者工具前端改成 WebView / Browser / Electron，只要仍產出相同 projection semantics，這份契約依然適用
+
+如果你想先看「目前這條作者工具工作流怎麼跑」，請先讀：
+
+- `Documentation/CurrentAuthoringWorkflow.md`
 
 ## 1. 先講清楚：什麼是「可重播（快照式）」輸出
 用 8 歲小孩也懂的例子：

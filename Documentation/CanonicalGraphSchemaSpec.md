@@ -1,11 +1,20 @@
 # Canonical Graph Schema Spec
 
-> 最後更新：2026/03/06  
+> 最後更新：2026/03/17  
+> 文件角色：**真相結構層 / Concrete Shape 層**  
 > 目的：把 canonical graph 的最小結構、節點型別、port/edge 語意、圖規則，以及目前 sidecar / GraphToolkit 的映射正式寫清楚。
 
 ## 0. 讀這份文件前先知道
 
 這份文件是 **schema spec**，不是目前 script 的逐行翻譯。
+
+它要處理的是「真相長什麼樣」；
+不是「目前哪個前端殼比較順手」。
+
+所以：
+
+- 現況 mapping 範例多半會以 current GraphToolkit / sidecar 為例
+- 但未來作者工具若改成 WebView / Browser / Electron，只要它們操作的是同一份 canonical graph，本 spec 一樣成立
 
 如果 script 現況與更能標準化、可長期維護的 schema 設計衝突，**以本 spec 的規範層為優先**。
 
