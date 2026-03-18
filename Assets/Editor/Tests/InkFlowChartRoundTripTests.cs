@@ -8,6 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+// ===== 變更開始 =====
+// 2026/03/18 Opsidanos (修改原因：current projection DTO 已搬到 shared core seam，round-trip 測試需與 importer/exporter 共用同一份 DTO)
+// 預期結果：round-trip 測試建立與解析的 `.flowchart.json` 都走 shared projection model，不再依賴 GraphToolkit 私有 DTO 檔
+using OpsidanosInk.CanonicalGraph;
+// ===== 變更結束 =====
 using OpsidanosInk.Editor;
 using UnityEditor;
 using UnityEngine;
