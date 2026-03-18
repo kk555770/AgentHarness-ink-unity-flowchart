@@ -1,6 +1,7 @@
 {
   "name": "OpsidanosInk.FlowChartEditor",
   "references": [
+    "OpsidanosInk.CanonicalGraph",
     "Unity.GraphToolkit.Common.Editor",
     "Unity.GraphToolkit.Utility.Editor",
     "Unity.GraphToolkit.Editor"

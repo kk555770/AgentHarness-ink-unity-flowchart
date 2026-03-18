@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using OpsidanosInk.CanonicalGraph;
 using Unity.GraphToolkit.Editor;
 using UnityEditor;
 using UnityEngine;
@@ -41,7 +42,7 @@ namespace OpsidanosInk.Editor
         // ===== 變更開始 =====
         // 2026/02/22 Opsidanos (修改原因：Flow port key 改由共用 schema 常數提供，避免匯出匯入 key 漂移)
         // 預期結果：匯入端與節點定義端共用同一個 Flow key
-        private const string FlowPortName = InkFlowNodeSchema.FlowPortName;
+        private const string FlowPortName = CanonicalPortSemantics.Flow;
         // ===== 變更結束 =====
         private const string FlowchartJsonSuffix = ".flowchart.json";
 
@@ -324,7 +325,7 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/23 Opsidanos (修改原因：GraphToolkit 標題取決於類別名，匯入時改建立中文節點型別)
             // 預期結果：從 sidecar 匯入的節點在圖上直接顯示繁中節點名
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
             {
                 return new 開始();
             }
@@ -332,7 +333,7 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/03/11 Opsidanos (修改原因：匯入器改由 schema helper 統一辨識 canonical `dialogue` 與 legacy sidecar token `action`)
             // 預期結果：未來即使 sidecar 同時出現 `dialogue` 與 `action`，匯入端也只需維護單一 mapping 規則
-            if (InkFlowNodeSchema.IsDialogueNodeType(nodeType))
+            if (CurrentFlowProjectionNaming.IsDialogueNodeType(nodeType))
             {
                 return new 對話();
             }
@@ -341,23 +342,23 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/25 Opsidanos (修改原因：新增動作節點型別，匯入時需可建立資料節點)
             // 預期結果：sidecar type=stageAction 可還原成中文可見節點「動作」
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase))
             {
                 return new 動作();
             }
             // ===== 變更結束 =====
 
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, CanonicalNodeKinds.Comment, StringComparison.OrdinalIgnoreCase))
             {
                 return new 註解();
             }
 
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
             {
                 return new 選項();
             }
 
-            if (string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
             {
                 return new 條件();
             }
@@ -508,7 +509,7 @@ namespace OpsidanosInk.Editor
             {
                 ExportNodeDto node = graphDto.nodes[i];
                 if (node == null
-                    || !string.Equals(node.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(node.type, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase)
                     || node.outputs == null)
                 {
                     continue;
@@ -522,8 +523,7 @@ namespace OpsidanosInk.Editor
                         continue;
                     }
 
-                    int order = InkFlowNodeSchema.ParseDialogueActionInputOrder(output.toPortName);
-                    if (order != int.MaxValue && order > maxOrder)
+                    if (CanonicalPortSemantics.TryParseActionInputOrder(output.toPortName, out int order) && order > maxOrder)
                     {
                         maxOrder = order;
                     }

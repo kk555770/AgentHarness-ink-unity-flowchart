@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using OpsidanosInk.CanonicalGraph;
 using Unity.GraphToolkit.Editor;
 using UnityEngine;
 
@@ -162,7 +163,7 @@ namespace OpsidanosInk.Editor
 
                 if (exportNode.outputs.Count == 1
                     && IsLinearNodeType(exportNode.type)
-                    && string.Equals(exportNode.outputs[0].portName, InkFlowNodeSchema.FlowPortName, StringComparison.Ordinal))
+                    && string.Equals(exportNode.outputs[0].portName, CanonicalPortSemantics.Flow, StringComparison.Ordinal))
                 {
                     ExportNodeOutputDto output = exportNode.outputs[0];
                     if (!string.IsNullOrEmpty(output.toNodeId))
@@ -185,20 +186,20 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/22 Opsidanos (修改原因：choice/condition 的 option key 與 type 判斷改由 schema 常數管理)
             // 預期結果：BuildNodeOutputs 不再硬編碼字串，避免 key 或 type 拼字漂移
-            if (typedNode != null && string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
+            if (typedNode != null && string.Equals(nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
             {
                 choiceLabels = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ChoiceTextsOptionName));
             }
 
-            if (typedNode != null && string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
+            if (typedNode != null && string.Equals(nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
             {
                 conditionExpressions = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ConditionTextsOptionName));
             }
 
             var connectedPorts = new List<IPort>();
             List<IPort> outputPorts = node.GetOutputPorts().ToList();
-            bool includeAllOutputs = string.Equals(nodeType, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase);
+            bool includeAllOutputs = string.Equals(nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase);
             // ===== 變更結束 =====
             for (int outputIndex = 0; outputIndex < outputPorts.Count; outputIndex++)
             {
@@ -287,12 +288,12 @@ namespace OpsidanosInk.Editor
             // 預期結果：匯出器只表達「這是對話或動作」，實際 legacy token 由單一 helper 產生
             if (node is InkFlowStageActionNode)
             {
-                return InkFlowNodeSchema.ToLegacyActionKindToken(InkFlowActionKind.StageAction);
+                return CurrentFlowProjectionNaming.StageActionActionKindToken;
             }
 
             if (node is InkFlowDialogueNode)
             {
-                return InkFlowNodeSchema.ToLegacyActionKindToken(InkFlowActionKind.Dialogue);
+                return CurrentFlowProjectionNaming.DialogueActionKindToken;
             }
             // ===== 變更結束 =====
 
@@ -341,7 +342,7 @@ namespace OpsidanosInk.Editor
                 return true;
             }
 
-            int startNodeCount = exportDto.nodes.Count(node => node != null && string.Equals(node.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase));
+            int startNodeCount = exportDto.nodes.Count(node => node != null && string.Equals(node.type, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
             if (startNodeCount != 1)
             {
                 errorMessage = $"Graph v2 必須有且只有 1 個 start 節點，但目前有 {startNodeCount} 個。";
@@ -372,7 +373,7 @@ namespace OpsidanosInk.Editor
                 // ===== 變更開始 =====
                 // 2026/03/11 Opsidanos (修改原因：匯出器不再自己硬編碼 `action`，改由 schema helper 統一辨識 dialogue 與 legacy token)
                 // 預期結果：未來若 sidecar 接受 canonical `dialogue` 或 legacy `action`，驗證邏輯都由單一 helper 決定
-                if (InkFlowNodeSchema.IsDialogueNodeType(exportNode.type))
+                if (CurrentFlowProjectionNaming.IsDialogueNodeType(exportNode.type))
                 {
                     if (!TryValidateActionContentForExport(exportNode, out errorMessage))
                     {
@@ -383,11 +384,11 @@ namespace OpsidanosInk.Editor
                 // ===== 變更結束 =====
 
                 List<IPort> outputPorts = node.GetOutputPorts().ToList();
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
-                    || InkFlowNodeSchema.IsDialogueNodeType(exportNode.type)
-                    || string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+                    || CurrentFlowProjectionNaming.IsDialogueNodeType(exportNode.type)
+                    || string.Equals(exportNode.type, CanonicalNodeKinds.Comment, StringComparison.OrdinalIgnoreCase))
                 {
-                    IPort flowOutputPort = node.GetOutputPortByName(InkFlowNodeSchema.FlowPortName);
+                    IPort flowOutputPort = node.GetOutputPortByName(CanonicalPortSemantics.Flow);
                     if (flowOutputPort == null)
                     {
                         errorMessage = $"節點 id=\"{exportNode.id}\" type=\"{exportNode.type}\" 缺少 Flow 輸出埠。";
@@ -397,7 +398,7 @@ namespace OpsidanosInk.Editor
                     connectedPorts.Clear();
                     flowOutputPort.GetConnectedPorts(connectedPorts);
 
-                    if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(exportNode.type, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
                     {
                         if (connectedPorts.Count != 1)
                         {
@@ -419,7 +420,7 @@ namespace OpsidanosInk.Editor
                         ExportNodeOutputDto outputDto = exportNode.outputs != null && exportNode.outputs.Count > 0 ? exportNode.outputs[0] : null;
                         if (outputDto == null
                             || string.IsNullOrEmpty(outputDto.toNodeId)
-                            || !string.Equals(outputDto.toPortName, InkFlowNodeSchema.FlowPortName, StringComparison.Ordinal))
+                            || !string.Equals(outputDto.toPortName, CanonicalPortSemantics.Flow, StringComparison.Ordinal))
                         {
                             errorMessage = $"節點 id=\"{exportNode.id}\" type=\"{exportNode.type}\" 的 Flow 連線未指向可匯出的節點（可能連到非 Flow 節點）。";
                             return false;
@@ -429,12 +430,12 @@ namespace OpsidanosInk.Editor
                     continue;
                 }
 
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase))
                 {
-                    IPort dataOutputPort = node.GetOutputPortByName(InkFlowNodeSchema.StageActionDataOutputPortName);
+                    IPort dataOutputPort = node.GetOutputPortByName(CanonicalPortSemantics.ActionData);
                     if (dataOutputPort == null)
                     {
-                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 缺少資料輸出埠 `{InkFlowNodeSchema.StageActionDataOutputPortName}`。";
+                        errorMessage = $"動作節點 id=\"{exportNode.id}\" 缺少資料輸出埠 `{CanonicalPortSemantics.ActionData}`。";
                         return false;
                     }
 
@@ -465,8 +466,7 @@ namespace OpsidanosInk.Editor
                         return false;
                     }
 
-                    int actionInputOrder = InkFlowNodeSchema.ParseDialogueActionInputOrder(outputDto.toPortName);
-                    if (actionInputOrder == int.MaxValue)
+                    if (!CanonicalPortSemantics.TryParseActionInputOrder(outputDto.toPortName, out _))
                     {
                         errorMessage = $"動作節點 id=\"{exportNode.id}\" 連到的目標輸入埠 `{outputDto.toPortName}` 不是合法對話動作輸入埠（ActionIn*）。";
                         return false;
@@ -475,7 +475,7 @@ namespace OpsidanosInk.Editor
                     continue;
                 }
 
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
                 {
                     if (outputPorts.Count < 1)
                     {
@@ -529,7 +529,7 @@ namespace OpsidanosInk.Editor
                     continue;
                 }
 
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
                 {
                     if (outputPorts.Count < 2)
                     {
@@ -768,9 +768,9 @@ namespace OpsidanosInk.Editor
         // 預期結果：stageAction 的資料輸出不會污染 v1 相容欄位 nextIds
         private static bool IsLinearNodeType(string nodeType)
         {
-            return string.Equals(nodeType, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase)
-                || InkFlowNodeSchema.IsDialogueNodeType(nodeType)
-                || string.Equals(nodeType, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(nodeType, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+                || CurrentFlowProjectionNaming.IsDialogueNodeType(nodeType)
+                || string.Equals(nodeType, CanonicalNodeKinds.Comment, StringComparison.OrdinalIgnoreCase);
         }
         // ===== 變更結束 =====
 
@@ -782,7 +782,7 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/03/11 Opsidanos (修改原因：把 dialogue 的 current projection type 與 legacy token 集中到 schema helper，避免匯出器自行散落對應規則)
             // 預期結果：匯出 sidecar 時，所有節點 type 都由同一個 helper 決定；對話節點固定輸出 current projection token
-            return InkFlowNodeSchema.GetCurrentProjectionNodeType(node);
+            return InkFlowCurrentProjectionAdapter.GetCurrentProjectionNodeType(node);
             // ===== 變更結束 =====
             // ===== 變更結束 =====
         }
@@ -856,7 +856,7 @@ namespace OpsidanosInk.Editor
 
             foreach (ExportNodeDto node in exportDto.nodes)
             {
-                if (node == null || !string.Equals(node.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                if (node == null || !string.Equals(node.type, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -874,7 +874,9 @@ namespace OpsidanosInk.Editor
                         continue;
                     }
 
-                    int inputOrder = InkFlowNodeSchema.ParseDialogueActionInputOrder(output.toPortName);
+                    int inputOrder = CanonicalPortSemantics.TryParseActionInputOrder(output.toPortName, out int parsedOrder)
+                        ? parsedOrder
+                        : int.MaxValue;
                     var action = new DialogueBoundAction(output.toNodeId, node.id, node.content, inputOrder);
 
                     if (!map.TryGetValue(output.toNodeId, out List<DialogueBoundAction> list))
@@ -914,14 +916,14 @@ namespace OpsidanosInk.Editor
 
             foreach (ExportNodeDto exportNode in exportDto.nodes)
             {
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStageAction, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
                 inkBuilder.AppendLine($"=== knot_{exportNode.id} ===");
 
-                if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeStart, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(exportNode.type, CanonicalNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
                 {
                     string nextId = exportNode.outputs != null && exportNode.outputs.Count > 0 ? exportNode.outputs[0].toNodeId : string.Empty;
                     if (!string.IsNullOrEmpty(nextId))
@@ -936,7 +938,7 @@ namespace OpsidanosInk.Editor
                 // ===== 變更開始 =====
                 // 2026/03/11 Opsidanos (修改原因：Ink 組裝時的對話節點判斷也統一走 schema helper，避免 build 階段再散落 legacy token 判斷)
                 // 預期結果：無論輸入 DTO 用 canonical `dialogue` 或 legacy `action`，都會被當成同一個對話節點處理
-                else if (InkFlowNodeSchema.IsDialogueNodeType(exportNode.type))
+                else if (CurrentFlowProjectionNaming.IsDialogueNodeType(exportNode.type))
                 {
                     if (dialogueActionMap.TryGetValue(exportNode.id, out List<DialogueBoundAction> actions))
                     {
@@ -972,7 +974,7 @@ namespace OpsidanosInk.Editor
                     }
                 }
                 // ===== 變更結束 =====
-                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeComment, StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(exportNode.type, CanonicalNodeKinds.Comment, StringComparison.OrdinalIgnoreCase))
                 {
                     // ===== 變更開始 =====
                     // 2026/02/21 Opsidanos (修改原因：comment 內容可能多行；若只在第一行加 //，後續行會變成真正內容而破壞 Ink)
@@ -1001,7 +1003,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine("-> END");
                     }
                 }
-                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeChoice, StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(exportNode.type, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
                 {
                     string bullet = exportNode.choiceMode == "+" ? "+" : "*";
                     foreach (ExportNodeOutputDto output in exportNode.outputs)
@@ -1009,7 +1011,7 @@ namespace OpsidanosInk.Editor
                         inkBuilder.AppendLine($"{bullet} [{output.label}] -> knot_{output.toNodeId}");
                     }
                 }
-                else if (string.Equals(exportNode.type, InkFlowNodeSchema.NodeTypeCondition, StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(exportNode.type, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
                 {
                     inkBuilder.AppendLine("{");
                     foreach (ExportNodeOutputDto output in exportNode.outputs)

@@ -2,6 +2,7 @@
 // 2026/02/06 Opsidanos (修改原因：建立 Graph Toolkit 版最小節點集合，先讓拉線與內容欄位可運作)
 // 預期結果：開始/流程/註解節點可在 Graph Toolkit 視窗新增、拖曳與連線
 using System;
+using OpsidanosInk.CanonicalGraph;
 using Unity.GraphToolkit.Editor;
 // ===== 變更開始 =====
 // 2026/02/23 Opsidanos (修改原因：ActionKind 下拉要顯示繁中名稱，需使用 InspectorName 標註)
@@ -16,34 +17,17 @@ namespace OpsidanosInk.Editor
     // 預期結果：Editor 顯示名稱與匯出匯入 key 可由同一處調整，後續改名不需多檔同步手改
     public static class InkFlowNodeSchema
     {
-        public const string FlowPortName = "Flow";
-
-        public const string NodeTypeStart = "start";
         // ===== 變更開始 =====
-        // 2026/03/11 Opsidanos (修改原因：把 canonical dialogue 與 legacy sidecar action 拆成不同常數，避免 exporter/importer 各自散落命名判斷)
-        // 預期結果：GraphToolkit 相關程式統一從這裡取得 canonical / current projection 的對話節點命名，不再混用 `dialogue` 與 `action`
-        public const string CanonicalNodeTypeDialogue = "dialogue";
-        public const string LegacySidecarDialogueNodeType = "action";
-        public const string NodeTypeAction = LegacySidecarDialogueNodeType;
-        // ===== 變更結束 =====
-        public const string NodeTypeStageAction = "stageAction";
-        public const string NodeTypeComment = "comment";
-        public const string NodeTypeChoice = "choice";
-        public const string NodeTypeCondition = "condition";
-
-        public const string ActionKindOptionName = "ActionKind";
+        // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 1，把 node type 與 port naming 的真相來源改接到 core seam，讓 GraphToolkit schema 退成 adapter)
+        // 預期結果：`InkFlowNodeSchema` 只保留 GraphToolkit option key 與顯示設定；canonical/current projection 命名改由 core 統一提供
         public const string DialogueContentOptionName = "Content";
         public const string DialogueContentOptionDisplayName = "對話內容";
         public const string DialogueActionInputCountOptionName = "ActionInputCount";
         public const string DialogueActionInputCountOptionDisplayName = "動作輸入數量";
         public const int DialogueActionInputCountDefaultValue = 1;
-        public const string DialogueActionInputPortNamePrefix = "ActionIn";
-        public const string DialogueActionInputDisplayNamePrefix = "動作";
 
         public const string StageActionContentOptionName = "Content";
         public const string StageActionContentOptionDisplayName = "動作內容";
-        public const string StageActionDataOutputPortName = "ActionData";
-        public const string StageActionDataOutputPortDisplayName = "動作資料";
 
         public const string CommentNoteOptionName = "Note";
         public const string CommentNoteOptionDisplayName = "註解";
@@ -61,138 +45,6 @@ namespace OpsidanosInk.Editor
         public const string ConditionOutputCountOptionDisplayName = "分支數量（含否則）";
         public const string ConditionTextsOptionDisplayName = "條件（每行一個；最後一個輸出埠為否則）";
         public const string ConditionTextsDefaultValue = "favor > 7";
-        public const string ConditionElsePortDisplayName = "否則";
-
-        // ===== 變更開始 =====
-        // 2026/03/11 Opsidanos (修改原因：legacy sidecar 的 actionKind token 仍需相容，但名稱要明確標示它是 legacy mapping)
-        // 預期結果：讀 code 時能一眼分辨 canonical node type 與 legacy actionKind token，不再誤會兩者是同一層命名
-        private const string LegacyActionKindDialogueToken = "dialogue";
-        private const string LegacyActionKindStageActionToken = "action";
-        private const string LegacyActionKindCustomToken = "custom";
-        // ===== 變更結束 =====
-
-        public static string GetChoicePortFallbackLabel(int order)
-        {
-            return $"選項{order}";
-        }
-
-        public static string GetConditionPortFallbackLabel(int order)
-        {
-            return $"條件{order}";
-        }
-
-        public static string BuildDialogueActionInputPortName(int order)
-        {
-            return $"{DialogueActionInputPortNamePrefix}{order}";
-        }
-
-        public static string GetDialogueActionInputDisplayName(int order)
-        {
-            return $"{DialogueActionInputDisplayNamePrefix}{order + 1}";
-        }
-
-        public static int ParseDialogueActionInputOrder(string toPortName)
-        {
-            if (string.IsNullOrEmpty(toPortName))
-            {
-                return int.MaxValue;
-            }
-
-            if (!toPortName.StartsWith(DialogueActionInputPortNamePrefix, StringComparison.Ordinal))
-            {
-                return int.MaxValue;
-            }
-
-            string suffix = toPortName.Substring(DialogueActionInputPortNamePrefix.Length);
-            if (int.TryParse(suffix, out int order) && order >= 0)
-            {
-                return order;
-            }
-
-            return int.MaxValue;
-        }
-
-        // ===== 變更開始 =====
-        // 2026/03/11 Opsidanos (修改原因：集中提供 dialogue/action 的 canonical 與 legacy mapping helper，讓匯出匯入不再自己手寫判斷)
-        // 預期結果：只要對話節點命名未來再收斂，最多只改這一處 helper，其餘 GraphToolkit 程式不需同步散改
-        public static bool IsDialogueNodeType(string nodeType)
-        {
-            return string.Equals(nodeType, CanonicalNodeTypeDialogue, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(nodeType, LegacySidecarDialogueNodeType, StringComparison.OrdinalIgnoreCase);
-        }
-
-        public static string GetCurrentProjectionNodeType(INode node)
-        {
-            if (node is InkFlowStartNode)
-            {
-                return NodeTypeStart;
-            }
-
-            if (node is InkFlowStageActionNode)
-            {
-                return NodeTypeStageAction;
-            }
-
-            if (node is InkFlowDialogueNode)
-            {
-                return LegacySidecarDialogueNodeType;
-            }
-
-            if (node is InkFlowCommentNode)
-            {
-                return NodeTypeComment;
-            }
-
-            if (node is InkFlowChoiceNode)
-            {
-                return NodeTypeChoice;
-            }
-
-            if (node is InkFlowConditionNode)
-            {
-                return NodeTypeCondition;
-            }
-
-            return "unknown";
-        }
-
-        public static string ToLegacyActionKindToken(InkFlowActionKind actionKind)
-        {
-            switch (actionKind)
-            {
-                case InkFlowActionKind.StageAction:
-                    return LegacyActionKindStageActionToken;
-                case InkFlowActionKind.Custom:
-                    return LegacyActionKindCustomToken;
-                default:
-                    return LegacyActionKindDialogueToken;
-            }
-        }
-
-        public static InkFlowActionKind ParseLegacyActionKindToken(string token)
-        {
-            if (string.Equals(token, LegacyActionKindStageActionToken, StringComparison.OrdinalIgnoreCase))
-            {
-                return InkFlowActionKind.StageAction;
-            }
-
-            if (string.Equals(token, LegacyActionKindCustomToken, StringComparison.OrdinalIgnoreCase))
-            {
-                return InkFlowActionKind.Custom;
-            }
-
-            return InkFlowActionKind.Dialogue;
-        }
-
-        public static string ToActionKindToken(InkFlowActionKind actionKind)
-        {
-            return ToLegacyActionKindToken(actionKind);
-        }
-
-        public static InkFlowActionKind ParseActionKindToken(string token)
-        {
-            return ParseLegacyActionKindToken(token);
-        }
         // ===== 變更結束 =====
     }
     // ===== 變更結束 =====
@@ -206,28 +58,10 @@ namespace OpsidanosInk.Editor
     }
     // ===== 變更結束 =====
 
-    // ===== 變更開始 =====
-    // 2026/02/22 Opsidanos (修改原因：提供 Action 節點可下拉的內容類型，讓一般使用者不用先背格式)
-    // 預期結果：Action 節點可直接從下拉選「對話 / 動作 / 自訂」，再填對應內容
-    public enum InkFlowActionKind
-    {
-        // ===== 變更開始 =====
-        // 2026/02/23 Opsidanos (修改原因：將下拉選單值改為繁中顯示，避免作者看到英文)
-        // 預期結果：ActionKind 下拉顯示為「對話/動作/自訂」
-        [InspectorName("對話")]
-        Dialogue = 0,
-        [InspectorName("動作")]
-        StageAction = 1,
-        [InspectorName("自訂")]
-        Custom = 2
-        // ===== 變更結束 =====
-    }
-    // ===== 變更結束 =====
-
     [Serializable]
     public abstract class InkFlowBaseNode : Node
     {
-        protected const string FlowPortName = InkFlowNodeSchema.FlowPortName;
+        protected const string FlowPortName = CanonicalPortSemantics.Flow;
         // ===== 變更開始 =====
         // 2026/02/23 Opsidanos (修改原因：GraphToolkit 節點標題來源是類別名稱，移除無效的反射覆寫 Title)
         // 預期結果：節點標題由節點類別名稱穩定決定，避免繼續誤以為可用反射改標題
@@ -288,8 +122,8 @@ namespace OpsidanosInk.Editor
             int actionInputCount = Mathf.Max(0, GetNodeOptionInt(InkFlowNodeSchema.DialogueActionInputCountOptionName));
             for (int i = 0; i < actionInputCount; i++)
             {
-                string portName = InkFlowNodeSchema.BuildDialogueActionInputPortName(i);
-                string displayName = InkFlowNodeSchema.GetDialogueActionInputDisplayName(i);
+                string portName = CanonicalPortSemantics.BuildActionInputPortName(i);
+                string displayName = CanonicalNodeDisplayNames.BuildDialogueActionInputDisplayName(i);
                 context.AddInputPort<InkFlowActionPayload>(portName)
                     .WithDisplayName(displayName)
                     .WithConnectorUI(PortConnectorUI.Circle)
@@ -338,8 +172,12 @@ namespace OpsidanosInk.Editor
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
         {
-            context.AddOutputPort<InkFlowActionPayload>(InkFlowNodeSchema.StageActionDataOutputPortName)
-                .WithDisplayName(InkFlowNodeSchema.StageActionDataOutputPortDisplayName)
+            context.AddOutputPort<InkFlowActionPayload>(CanonicalPortSemantics.ActionData)
+                // ===== 變更開始 =====
+                // 2026/03/18 Opsidanos (修改原因：動作資料輸出埠顯示名稱改由 core seam 提供，避免 GraphToolkit 自己保管顯示語意)
+                // 預期結果：GraphToolkit 與未來作者工具可共用同一個「動作資料」顯示名稱來源
+                .WithDisplayName(CanonicalNodeDisplayNames.StageActionDataPort)
+                // ===== 變更結束 =====
                 .WithConnectorUI(PortConnectorUI.Circle)
                 .Build();
         }
@@ -401,7 +239,7 @@ namespace OpsidanosInk.Editor
             for (int i = 0; i < outputCount; i++)
             {
                 string portName = BuildOutputPortName(i);
-                string displayName = GetLineOrFallback(choiceLines, i, InkFlowNodeSchema.GetChoicePortFallbackLabel(i + 1));
+                string displayName = GetLineOrFallback(choiceLines, i, CanonicalNodeDisplayNames.GetChoicePortFallbackLabel(i + 1));
                 context.AddOutputPort(portName)
                     .WithDisplayName(displayName)
                     .WithConnectorUI(PortConnectorUI.Arrowhead)
@@ -502,8 +340,12 @@ namespace OpsidanosInk.Editor
             {
                 string portName = BuildOutputPortName(i);
                 string displayName = i == outputCount - 1
-                    ? InkFlowNodeSchema.ConditionElsePortDisplayName
-                    : GetLineOrFallback(conditionLines, i, InkFlowNodeSchema.GetConditionPortFallbackLabel(i + 1));
+                    // ===== 變更開始 =====
+                    // 2026/03/18 Opsidanos (修改原因：condition 的 else 顯示名稱改由 core seam 統一提供)
+                    // 預期結果：GraphToolkit 不再自己保管 else 標籤字串，後續其他前端也能共用同一組命名
+                    ? CanonicalNodeDisplayNames.ConditionElsePort
+                    // ===== 變更結束 =====
+                    : GetLineOrFallback(conditionLines, i, CanonicalNodeDisplayNames.GetConditionPortFallbackLabel(i + 1));
                 context.AddOutputPort(portName)
                     .WithDisplayName(displayName)
                     .WithConnectorUI(PortConnectorUI.Arrowhead)
