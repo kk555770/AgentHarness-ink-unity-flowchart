@@ -43,6 +43,23 @@
 |------|-------|----------|--------|--------|
 | 完整 EditMode gate | `Batch3ShellBaselineGateResults.xml` | 薄化 `InkFlowChartGraph` 後，GraphToolkit baseline 仍能守住 GraphSmoke / Export / Import / RoundTrip | `261 passed / 0 failed / 4 skipped`，其中 `OpsidanosInk.EditModeTests.dll` 為 `47/47 passed` | ✓ |
 | PlayMode gate | `Batch3ShellBaselinePlayModeResults.xml` | shell baseline 第一刀不影響玩家閉環 | `130 passed / 0 failed / 91 skipped`，其中 `OpsidanosInk.PlayModeTests.dll` 為 `17/17 passed` | ✓ |
+| 完整 EditMode gate | `Batch3NodeShellGateResults.xml` | 薄化 node shell 與 graph 綁定後，GraphToolkit baseline 仍能守住 GraphSmoke / Export / Import / RoundTrip | `261 passed / 0 failed / 4 skipped`，其中 `OpsidanosInk.EditModeTests.dll` 為 `47/47 passed` | ✓ |
+| PlayMode gate | `Batch3NodeShellPlayModeResults.xml` | node shell 第二刀不影響玩家閉環 | `130 passed / 0 failed / 91 skipped`，其中 `OpsidanosInk.PlayModeTests.dll` 為 `17/17 passed` | ✓ |
+
+### Phase 4：薄化 node shell 與 graph 綁定
+- **Status:** complete
+- Actions taken:
+  - 新增 `InkFlowChartVisibleNodes.cs`，將 graph-specific 可見節點註冊從 `InkFlowChartNodes.cs` 抽離
+  - 新增 `InkFlowChartNodeShellUtility.cs`，集中 node option 讀值與 branch output label 小工具
+  - 將 `InkFlowChartNodes.cs` 改成改接共用 utility，並移除 graph-specific 可見節點註冊
+  - 跑完整 EditMode gate，確認 node shell 第二刀沒有打壞 GraphSmoke / Export / Import / RoundTrip
+  - 補跑 PlayMode gate，確認第二刀沒有側面影響玩家閉環
+  - restore `Assets/OffMeshLinkScene.unity` 測試噪音
+  - 刪除 `Batch3NodeShellGateResults.xml` 與 `Batch3NodeShellPlayModeResults.xml` 暫存 XML
+- Files created/modified:
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartVisibleNodes.cs`（created）
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartNodeShellUtility.cs`（created）
+  - `Assets/Editor/FlowChart/GraphToolkit/InkFlowChartNodes.cs`（updated）
 
 ## 錯誤紀錄
 | Timestamp | Error | Attempt | Resolution |
@@ -51,8 +68,8 @@
 ## 5 題重啟檢查
 | Question | Answer |
 |----------|--------|
-| Where am I? | Batch 3 第一刀已完成，正在整理可提交結論 |
+| Where am I? | Batch 3 第二刀也已完成，正在整理可提交結論 |
 | Where am I going? | 視需要整理成 commit，或繼續往更細的 GraphToolkit baseline seam 前進 |
 | What's the goal? | 讓 GraphToolkit 更像 baseline shell，而不是 authoring 真相中心 |
-| What have I learned? | `InkFlowChartGraph.cs` 最適合先抽走 MenuItem 與 shell 驗證橋接，讓 Graph 類別回到資產殼 |
-| What have I done? | 已完成 Batch 3 第一刀，抽出 editor commands 與 shell validator，並用完整 EditMode gate 驗證通過 |
+| What have I learned? | `InkFlowChartNodes.cs` 裡的 graph-specific 可見節點註冊與 node shell helper 也很適合抽開，因為這些都屬於 baseline shell，而不是節點本體 |
+| What have I done? | 已完成 Batch 3 第一刀與第二刀，抽出 editor commands、shell validator、visible node registration 與 node shell utility，並用完整 gate 驗證通過 |

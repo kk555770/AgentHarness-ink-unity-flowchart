@@ -19,6 +19,12 @@ namespace OpsidanosInk.Editor
     // ===== 變更結束 =====
 
     // ===== 變更開始 =====
+    // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 3 下一刀，將 graph-specific 可見節點註冊與 node shell 小工具從節點檔抽離)
+    // 預期結果：`InkFlowChartNodes.cs` 更專注在節點本體；graph 綁定與 helper 會移到獨立檔案
+    // `InkFlowChartVisibleNodes` 與 `InkFlowChartNodeShellUtility` 已移到獨立檔案。
+    // ===== 變更結束 =====
+
+    // ===== 變更開始 =====
     // 2026/02/25 Opsidanos (修改原因：新增「資料連線」型別，讓動作節點與對話節點用型別線區分流程線)
     // 預期結果：GraphToolkit 會把資料連線視為 typed wire，與 Flow 線在視覺與連線規則上分離
     [Serializable]
@@ -87,8 +93,11 @@ namespace OpsidanosInk.Editor
             // 預期結果：Flow 線只負責主流程，動作節點用資料線接到對話節點，不會誤接成流程分支
             AddInputFlowPort(context);
             AddOutputFlowPort(context);
-
-            int actionInputCount = Mathf.Max(0, GetNodeOptionInt(InkFlowNodeOptionSchema.DialogueActionInputCountOptionName));
+            // ===== 變更開始 =====
+            // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 3 下一刀，把 option 讀值 helper 從節點檔抽成共用 node shell utility)
+            // 預期結果：對話節點仍可依 option 建立動作輸入埠，但 `InkFlowChartNodes.cs` 不再自己保存重複的 option 讀值方法
+            int actionInputCount = Mathf.Max(0, InkFlowChartNodeShellUtility.GetNodeOptionInt(this, InkFlowNodeOptionSchema.DialogueActionInputCountOptionName));
+            // ===== 變更結束 =====
             for (int i = 0; i < actionInputCount; i++)
             {
                 string portName = CanonicalPortSemantics.BuildActionInputPortName(i);
@@ -99,22 +108,6 @@ namespace OpsidanosInk.Editor
                     .Build();
             }
             // ===== 變更結束 =====
-        }
-
-        private int GetNodeOptionInt(string optionName)
-        {
-            INodeOption option = GetNodeOptionByName(optionName);
-            if (option == null)
-            {
-                return 0;
-            }
-
-            if (option.TryGetValue(out int value))
-            {
-                return value;
-            }
-
-            return 0;
         }
     }
 
@@ -201,83 +194,23 @@ namespace OpsidanosInk.Editor
         {
             AddInputFlowPort(context);
 
-            int outputCount = GetNodeOptionInt(InkFlowNodeOptionSchema.ChoiceOutputCountOptionName);
-            string choiceTexts = GetNodeOptionString(InkFlowNodeOptionSchema.ChoiceTextsOptionName);
-            string[] choiceLines = SplitLines(choiceTexts);
+            // ===== 變更開始 =====
+            // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 3 下一刀，把 choice 的 option / branch label 小工具抽成共用 node shell utility)
+            // 預期結果：choice 節點的輸出埠命名與顯示規則維持不變，但節點檔不再自己保存重複 helper
+            int outputCount = InkFlowChartNodeShellUtility.GetNodeOptionInt(this, InkFlowNodeOptionSchema.ChoiceOutputCountOptionName);
+            string choiceTexts = InkFlowChartNodeShellUtility.GetNodeOptionString(this, InkFlowNodeOptionSchema.ChoiceTextsOptionName);
+            string[] choiceLines = InkFlowChartNodeShellUtility.SplitLines(choiceTexts);
+            // ===== 變更結束 =====
 
             for (int i = 0; i < outputCount; i++)
             {
-                string portName = BuildOutputPortName(i);
-                string displayName = GetLineOrFallback(choiceLines, i, CanonicalNodeDisplayNames.GetChoicePortFallbackLabel(i + 1));
+                string portName = InkFlowChartNodeShellUtility.BuildOutputPortName(i);
+                string displayName = InkFlowChartNodeShellUtility.GetLineOrFallback(choiceLines, i, CanonicalNodeDisplayNames.GetChoicePortFallbackLabel(i + 1));
                 context.AddOutputPort(portName)
                     .WithDisplayName(displayName)
                     .WithConnectorUI(PortConnectorUI.Arrowhead)
                     .Build();
             }
-        }
-
-        private static string BuildOutputPortName(int index)
-        {
-            return $"Out{index}";
-        }
-
-        private string GetNodeOptionString(string optionName)
-        {
-            INodeOption option = GetNodeOptionByName(optionName);
-            if (option == null)
-            {
-                return string.Empty;
-            }
-
-            if (option.TryGetValue(out string value))
-            {
-                return value ?? string.Empty;
-            }
-
-            return string.Empty;
-        }
-
-        private int GetNodeOptionInt(string optionName)
-        {
-            INodeOption option = GetNodeOptionByName(optionName);
-            if (option == null)
-            {
-                return 0;
-            }
-
-            if (option.TryGetValue(out int value))
-            {
-                return value;
-            }
-
-            return 0;
-        }
-
-        private static string[] SplitLines(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return Array.Empty<string>();
-            }
-
-            return text
-                .Replace("\r\n", "\n")
-                .Replace("\r", "\n")
-                .Split('\n');
-        }
-
-        private static string GetLineOrFallback(string[] lines, int index, string fallback)
-        {
-            if (lines != null && index >= 0 && index < lines.Length)
-            {
-                string value = lines[index];
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value.Trim();
-                }
-            }
-
-            return fallback;
         }
     }
 
@@ -301,134 +234,30 @@ namespace OpsidanosInk.Editor
         {
             AddInputFlowPort(context);
 
-            int outputCount = GetNodeOptionInt(InkFlowNodeOptionSchema.ConditionOutputCountOptionName);
-            string conditionTexts = GetNodeOptionString(InkFlowNodeOptionSchema.ConditionTextsOptionName);
-            string[] conditionLines = SplitLines(conditionTexts);
+            // ===== 變更開始 =====
+            // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 3 下一刀，把 condition 的 option / branch label 小工具抽成共用 node shell utility)
+            // 預期結果：condition 節點的輸出埠命名與顯示規則維持不變，但節點檔不再自己保存重複 helper
+            int outputCount = InkFlowChartNodeShellUtility.GetNodeOptionInt(this, InkFlowNodeOptionSchema.ConditionOutputCountOptionName);
+            string conditionTexts = InkFlowChartNodeShellUtility.GetNodeOptionString(this, InkFlowNodeOptionSchema.ConditionTextsOptionName);
+            string[] conditionLines = InkFlowChartNodeShellUtility.SplitLines(conditionTexts);
+            // ===== 變更結束 =====
 
             for (int i = 0; i < outputCount; i++)
             {
-                string portName = BuildOutputPortName(i);
+                string portName = InkFlowChartNodeShellUtility.BuildOutputPortName(i);
                 string displayName = i == outputCount - 1
                     // ===== 變更開始 =====
                     // 2026/03/18 Opsidanos (修改原因：condition 的 else 顯示名稱改由 core seam 統一提供)
                     // 預期結果：GraphToolkit 不再自己保管 else 標籤字串，後續其他前端也能共用同一組命名
                     ? CanonicalNodeDisplayNames.ConditionElsePort
                     // ===== 變更結束 =====
-                    : GetLineOrFallback(conditionLines, i, CanonicalNodeDisplayNames.GetConditionPortFallbackLabel(i + 1));
+                    : InkFlowChartNodeShellUtility.GetLineOrFallback(conditionLines, i, CanonicalNodeDisplayNames.GetConditionPortFallbackLabel(i + 1));
                 context.AddOutputPort(portName)
                     .WithDisplayName(displayName)
                     .WithConnectorUI(PortConnectorUI.Arrowhead)
                     .Build();
             }
         }
-
-        private static string BuildOutputPortName(int index)
-        {
-            return $"Out{index}";
-        }
-
-        private string GetNodeOptionString(string optionName)
-        {
-            INodeOption option = GetNodeOptionByName(optionName);
-            if (option == null)
-            {
-                return string.Empty;
-            }
-
-            if (option.TryGetValue(out string value))
-            {
-                return value ?? string.Empty;
-            }
-
-            return string.Empty;
-        }
-
-        private int GetNodeOptionInt(string optionName)
-        {
-            INodeOption option = GetNodeOptionByName(optionName);
-            if (option == null)
-            {
-                return 0;
-            }
-
-            if (option.TryGetValue(out int value))
-            {
-                return value;
-            }
-
-            return 0;
-        }
-
-        private static string[] SplitLines(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return Array.Empty<string>();
-            }
-
-            return text
-                .Replace("\r\n", "\n")
-                .Replace("\r", "\n")
-                .Split('\n');
-        }
-
-        private static string GetLineOrFallback(string[] lines, int index, string fallback)
-        {
-            if (lines != null && index >= 0 && index < lines.Length)
-            {
-                string value = lines[index];
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value.Trim();
-                }
-            }
-
-            return fallback;
-        }
     }
-    // ===== 變更開始 =====
-    // 2026/02/23 Opsidanos (修改原因：GraphToolkit 以類別名顯示節點標題，新增中文節點型別做為作者可見節點)
-    // 預期結果：新增節點時直接顯示「開始/對話/註解/選項/條件」，避免再出現英文類別名稱
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 開始 : InkFlowStartNode
-    {
-    }
-
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 對話 : InkFlowActionNode
-    {
-    }
-
-    // ===== 變更開始 =====
-    // 2026/02/25 Opsidanos (修改原因：新增作者可見的「動作」節點，對應資料連線語意)
-    // 預期結果：Graph 視圖可直接新增「動作」節點並用資料線接到「對話」節點
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 動作 : InkFlowStageActionNode
-    {
-    }
-    // ===== 變更結束 =====
-
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 註解 : InkFlowCommentNode
-    {
-    }
-
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 選項 : InkFlowChoiceNode
-    {
-    }
-
-    [Serializable]
-    [UseWithGraph(typeof(InkFlowChartGraph))]
-    public sealed class 條件 : InkFlowConditionNode
-    {
-    }
-    // ===== 變更結束 =====
-    // ===== 變更結束 =====
 }
 // ===== 變更結束 =====

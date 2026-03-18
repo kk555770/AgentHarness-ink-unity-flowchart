@@ -4,7 +4,7 @@
 開始落地 Batch 3：讓 GraphToolkit editor 進一步退成 baseline shell，減少它同時保管 editor 殼、語意入口、projection 入口與 adapter 細節的混合責任。
 
 ## 當前階段
-Phase 3
+Phase 4
 
 ## 階段
 
@@ -25,6 +25,13 @@ Phase 3
 - [x] 整理 findings / progress / commit 準備
 - **Status:** complete
 
+### Phase 4：薄化 node shell 與 graph 綁定
+- [x] 將 graph-specific 可見節點註冊從 `InkFlowChartNodes.cs` 抽離
+- [x] 將 node option / branch label 小工具從 `InkFlowChartNodes.cs` 抽離
+- [x] 跑完整 EditMode 與必要 PlayMode gate
+- [x] 清理暫存輸出並整理結果
+- **Status:** complete
+
 ## 關鍵問題
 1. Batch 3 第一刀最值得先切的是 asmdef 邊界、Graph 類別入口，還是 node / shell 類型註冊？
 2. 哪些責任現在仍明顯屬於 GraphToolkit shell，不該再和 shared core / projection service 混在一起？
@@ -37,6 +44,7 @@ Phase 3
 | 先平行盤點文件與 editor shell | 一邊看北極星，一邊看現況，才不會只憑感覺動刀 |
 | Batch 3 第一刀先薄化 `InkFlowChartGraph.cs` | 這是目前最混、但又能低風險驗證 shell baseline 方向的切點 |
 | 第一刀先不硬改 asmdef | 現況依賴方向已大致正確，先切類別責任比先動組件邊界更穩 |
+| Batch 3 下一刀先薄化 `InkFlowChartNodes.cs` | 這個檔仍混著節點本體、graph-specific 可見註冊與 option/branch helper，低風險且符合 shell baseline 方向 |
 
 ## 錯誤紀錄
 | Error | Attempt | Resolution |
@@ -51,6 +59,16 @@ Phase 3
   - `InkFlowChartImportTests`：`9/9 passed`
   - `InkFlowChartRoundTripTests`：`3/3 passed`
 - Batch 3 第一刀 PlayMode gate 也已通過：
+  - `OpsidanosInk.PlayModeTests.dll`：`17/17 passed`
+  - `OpsidanosInkPlayModeTests`：`7/7 passed`
+  - `OpsidanosInkPlayModeUiClickTests`：`10/10 passed`
+- Batch 3 第二刀完整 EditMode gate 已通過：
+  - `OpsidanosInk.EditModeTests.dll`：`47/47 passed`
+  - `InkFlowChartGraphSmokeTests`：`1/1 passed`
+  - `InkFlowChartExportTests`：`6/6 passed`
+  - `InkFlowChartImportTests`：`9/9 passed`
+  - `InkFlowChartRoundTripTests`：`3/3 passed`
+- Batch 3 第二刀 PlayMode gate 也已通過：
   - `OpsidanosInk.PlayModeTests.dll`：`17/17 passed`
   - `OpsidanosInkPlayModeTests`：`7/7 passed`
   - `OpsidanosInkPlayModeUiClickTests`：`10/10 passed`
