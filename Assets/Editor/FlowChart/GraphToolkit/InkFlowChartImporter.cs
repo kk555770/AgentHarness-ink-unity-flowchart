@@ -383,15 +383,15 @@ namespace OpsidanosInk.Editor
             {
                 int maxActionInputOrder = GetMaxDialogueActionInputOrder(graphDto, exportNode.id);
                 int actionInputCount = maxActionInputOrder >= 0
-                    ? Mathf.Max(InkFlowNodeSchema.DialogueActionInputCountDefaultValue, maxActionInputOrder + 1)
-                    : InkFlowNodeSchema.DialogueActionInputCountDefaultValue;
+                    ? Mathf.Max(InkFlowNodeOptionSchema.DialogueActionInputCountDefaultValue, maxActionInputOrder + 1)
+                    : InkFlowNodeOptionSchema.DialogueActionInputCountDefaultValue;
 
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.DialogueActionInputCountOptionName, actionInputCount, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.DialogueActionInputCountOptionName, actionInputCount, out errorMessage))
                 {
                     return false;
                 }
 
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.DialogueContentOptionName, exportNode.content ?? string.Empty, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.DialogueContentOptionName, exportNode.content ?? string.Empty, out errorMessage))
                 {
                     return false;
                 }
@@ -402,7 +402,7 @@ namespace OpsidanosInk.Editor
 
             if (node is InkFlowStageActionNode)
             {
-                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.StageActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
+                return TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.StageActionContentOptionName, exportNode.content ?? string.Empty, out errorMessage);
             }
             // ===== 變更結束 =====
 
@@ -411,7 +411,7 @@ namespace OpsidanosInk.Editor
             // 預期結果：Comment/Choice/Condition 匯入讀寫 key 與節點定義保持一致
             if (node is InkFlowCommentNode)
             {
-                return TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.CommentNoteOptionName, exportNode.content ?? string.Empty, out errorMessage);
+                return TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.CommentNoteOptionName, exportNode.content ?? string.Empty, out errorMessage);
             }
 
             if (node is InkFlowChoiceNode)
@@ -422,19 +422,19 @@ namespace OpsidanosInk.Editor
                     return false;
                 }
 
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.ChoiceOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
                 {
                     return false;
                 }
 
                 string choiceTexts = BuildJoinedLabels(exportNode.outputs);
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceTextsOptionName, choiceTexts, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.ChoiceTextsOptionName, choiceTexts, out errorMessage))
                 {
                     return false;
                 }
 
                 InkFlowChoiceMode mode = exportNode.choiceMode == "+" ? InkFlowChoiceMode.Repeatable : InkFlowChoiceMode.Once;
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ChoiceModeOptionName, mode, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.ChoiceModeOptionName, mode, out errorMessage))
                 {
                     return false;
                 }
@@ -458,13 +458,13 @@ namespace OpsidanosInk.Editor
                     return false;
                 }
 
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ConditionOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.ConditionOutputCountOptionName, exportNode.outputs.Count, out errorMessage))
                 {
                     return false;
                 }
 
                 string conditionTexts = BuildJoinedConditions(exportNode.outputs);
-                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeSchema.ConditionTextsOptionName, conditionTexts, out errorMessage))
+                if (!TrySetNodeOptionValue((Node)node, InkFlowNodeOptionSchema.ConditionTextsOptionName, conditionTexts, out errorMessage))
                 {
                     return false;
                 }

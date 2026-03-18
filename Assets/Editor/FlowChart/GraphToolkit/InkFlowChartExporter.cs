@@ -188,12 +188,12 @@ namespace OpsidanosInk.Editor
             // 預期結果：BuildNodeOutputs 不再硬編碼字串，避免 key 或 type 拼字漂移
             if (typedNode != null && string.Equals(nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
             {
-                choiceLabels = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ChoiceTextsOptionName));
+                choiceLabels = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeOptionSchema.ChoiceTextsOptionName));
             }
 
             if (typedNode != null && string.Equals(nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
             {
-                conditionExpressions = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeSchema.ConditionTextsOptionName));
+                conditionExpressions = SplitAndNormalizeLines(GetNodeOptionValue(typedNode, InkFlowNodeOptionSchema.ConditionTextsOptionName));
             }
 
             var connectedPorts = new List<IPort>();
@@ -262,7 +262,7 @@ namespace OpsidanosInk.Editor
             // 預期結果：choiceMode 匯出讀值與節點定義共用同一個 key
             if (node is InkFlowChoiceNode choiceNode)
             {
-                INodeOption option = choiceNode.GetNodeOptionByName(InkFlowNodeSchema.ChoiceModeOptionName);
+                INodeOption option = choiceNode.GetNodeOptionByName(InkFlowNodeOptionSchema.ChoiceModeOptionName);
                 if (option != null && option.TryGetValue(out InkFlowChoiceMode mode) && mode == InkFlowChoiceMode.Repeatable)
                 {
                     return "+";
@@ -794,17 +794,17 @@ namespace OpsidanosInk.Editor
             // 預期結果：Action/Comment 內容欄位匯出時使用同一組 key 定義
             if (node is InkFlowDialogueNode dialogueNode)
             {
-                return GetNodeOptionValue(dialogueNode, InkFlowNodeSchema.DialogueContentOptionName);
+                return GetNodeOptionValue(dialogueNode, InkFlowNodeOptionSchema.DialogueContentOptionName);
             }
 
             if (node is InkFlowStageActionNode stageActionNode)
             {
-                return GetNodeOptionValue(stageActionNode, InkFlowNodeSchema.StageActionContentOptionName);
+                return GetNodeOptionValue(stageActionNode, InkFlowNodeOptionSchema.StageActionContentOptionName);
             }
 
             if (node is InkFlowCommentNode commentNode)
             {
-                return GetNodeOptionValue(commentNode, InkFlowNodeSchema.CommentNoteOptionName);
+                return GetNodeOptionValue(commentNode, InkFlowNodeOptionSchema.CommentNoteOptionName);
             }
             // ===== 變更結束 =====
 

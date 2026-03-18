@@ -13,40 +13,9 @@ using UnityEngine;
 namespace OpsidanosInk.Editor
 {
     // ===== 變更開始 =====
-    // 2026/02/22 Opsidanos (修改原因：集中管理節點顯示名稱與 option key，避免名稱字串散落各處造成維護困難)
-    // 預期結果：Editor 顯示名稱與匯出匯入 key 可由同一處調整，後續改名不需多檔同步手改
-    public static class InkFlowNodeSchema
-    {
-        // ===== 變更開始 =====
-        // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 1，把 node type 與 port naming 的真相來源改接到 core seam，讓 GraphToolkit schema 退成 adapter)
-        // 預期結果：`InkFlowNodeSchema` 只保留 GraphToolkit option key 與顯示設定；canonical/current projection 命名改由 core 統一提供
-        public const string DialogueContentOptionName = "Content";
-        public const string DialogueContentOptionDisplayName = "對話內容";
-        public const string DialogueActionInputCountOptionName = "ActionInputCount";
-        public const string DialogueActionInputCountOptionDisplayName = "動作輸入數量";
-        public const int DialogueActionInputCountDefaultValue = 1;
-
-        public const string StageActionContentOptionName = "Content";
-        public const string StageActionContentOptionDisplayName = "動作內容";
-
-        public const string CommentNoteOptionName = "Note";
-        public const string CommentNoteOptionDisplayName = "註解";
-
-        public const string ChoiceOutputCountOptionName = "OutputCount";
-        public const string ChoiceTextsOptionName = "ChoiceTexts";
-        public const string ChoiceModeOptionName = "ChoiceMode";
-        public const string ChoiceOutputCountOptionDisplayName = "選項數量";
-        public const string ChoiceModeOptionDisplayName = "選項模式";
-        public const string ChoiceTextsOptionDisplayName = "選項文字（每行一個）";
-        public const string ChoiceTextsDefaultValue = "選項1\n選項2";
-
-        public const string ConditionOutputCountOptionName = "OutputCount";
-        public const string ConditionTextsOptionName = "ConditionTexts";
-        public const string ConditionOutputCountOptionDisplayName = "分支數量（含否則）";
-        public const string ConditionTextsOptionDisplayName = "條件（每行一個；最後一個輸出埠為否則）";
-        public const string ConditionTextsDefaultValue = "favor > 7";
-        // ===== 變更結束 =====
-    }
+    // 2026/03/18 Opsidanos (修改原因：把 GraphToolkit option schema 抽到獨立檔，讓節點檔只保留 node 殼與局部 helper)
+    // 預期結果：`InkFlowChartNodes.cs` 不再同時承擔 option 常數定義，閱讀時更容易聚焦節點本體
+    // `InkFlowNodeOptionSchema` 已移到獨立檔案。
     // ===== 變更結束 =====
 
     // ===== 變更開始 =====
@@ -101,14 +70,14 @@ namespace OpsidanosInk.Editor
             // ===== 變更開始 =====
             // 2026/02/25 Opsidanos (修改原因：對話節點需可接多個動作資料輸入，讓「同一句多角色同時動作」可視覺化)
             // 預期結果：作者可用下拉調整動作輸入埠數量，不再把多角色動作塞進同一段文字
-            context.AddOption<int>(InkFlowNodeSchema.DialogueActionInputCountOptionName)
-                .WithDisplayName(InkFlowNodeSchema.DialogueActionInputCountOptionDisplayName)
-                .WithDefaultValue(InkFlowNodeSchema.DialogueActionInputCountDefaultValue)
+            context.AddOption<int>(InkFlowNodeOptionSchema.DialogueActionInputCountOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.DialogueActionInputCountOptionDisplayName)
+                .WithDefaultValue(InkFlowNodeOptionSchema.DialogueActionInputCountDefaultValue)
                 .Delayed();
             // ===== 變更結束 =====
 
-            context.AddOption<string>(InkFlowNodeSchema.DialogueContentOptionName)
-                .WithDisplayName(InkFlowNodeSchema.DialogueContentOptionDisplayName);
+            context.AddOption<string>(InkFlowNodeOptionSchema.DialogueContentOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.DialogueContentOptionDisplayName);
         }
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
@@ -119,7 +88,7 @@ namespace OpsidanosInk.Editor
             AddInputFlowPort(context);
             AddOutputFlowPort(context);
 
-            int actionInputCount = Mathf.Max(0, GetNodeOptionInt(InkFlowNodeSchema.DialogueActionInputCountOptionName));
+            int actionInputCount = Mathf.Max(0, GetNodeOptionInt(InkFlowNodeOptionSchema.DialogueActionInputCountOptionName));
             for (int i = 0; i < actionInputCount; i++)
             {
                 string portName = CanonicalPortSemantics.BuildActionInputPortName(i);
@@ -166,8 +135,8 @@ namespace OpsidanosInk.Editor
     {
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
-            context.AddOption<string>(InkFlowNodeSchema.StageActionContentOptionName)
-                .WithDisplayName(InkFlowNodeSchema.StageActionContentOptionDisplayName);
+            context.AddOption<string>(InkFlowNodeOptionSchema.StageActionContentOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.StageActionContentOptionDisplayName);
         }
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
@@ -189,8 +158,8 @@ namespace OpsidanosInk.Editor
     {
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
-            context.AddOption<string>(InkFlowNodeSchema.CommentNoteOptionName)
-                .WithDisplayName(InkFlowNodeSchema.CommentNoteOptionDisplayName);
+            context.AddOption<string>(InkFlowNodeOptionSchema.CommentNoteOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.CommentNoteOptionDisplayName);
         }
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
@@ -214,17 +183,17 @@ namespace OpsidanosInk.Editor
     {
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
-            context.AddOption<int>(InkFlowNodeSchema.ChoiceOutputCountOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ChoiceOutputCountOptionDisplayName)
+            context.AddOption<int>(InkFlowNodeOptionSchema.ChoiceOutputCountOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.ChoiceOutputCountOptionDisplayName)
                 .WithDefaultValue(2)
                 .Delayed();
 
-            context.AddOption<InkFlowChoiceMode>(InkFlowNodeSchema.ChoiceModeOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ChoiceModeOptionDisplayName);
+            context.AddOption<InkFlowChoiceMode>(InkFlowNodeOptionSchema.ChoiceModeOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.ChoiceModeOptionDisplayName);
 
-            context.AddOption<string>(InkFlowNodeSchema.ChoiceTextsOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ChoiceTextsOptionDisplayName)
-                .WithDefaultValue(InkFlowNodeSchema.ChoiceTextsDefaultValue)
+            context.AddOption<string>(InkFlowNodeOptionSchema.ChoiceTextsOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.ChoiceTextsOptionDisplayName)
+                .WithDefaultValue(InkFlowNodeOptionSchema.ChoiceTextsDefaultValue)
                 .Delayed();
         }
 
@@ -232,8 +201,8 @@ namespace OpsidanosInk.Editor
         {
             AddInputFlowPort(context);
 
-            int outputCount = GetNodeOptionInt(InkFlowNodeSchema.ChoiceOutputCountOptionName);
-            string choiceTexts = GetNodeOptionString(InkFlowNodeSchema.ChoiceTextsOptionName);
+            int outputCount = GetNodeOptionInt(InkFlowNodeOptionSchema.ChoiceOutputCountOptionName);
+            string choiceTexts = GetNodeOptionString(InkFlowNodeOptionSchema.ChoiceTextsOptionName);
             string[] choiceLines = SplitLines(choiceTexts);
 
             for (int i = 0; i < outputCount; i++)
@@ -317,14 +286,14 @@ namespace OpsidanosInk.Editor
     {
         protected override void OnDefineOptions(IOptionDefinitionContext context)
         {
-            context.AddOption<int>(InkFlowNodeSchema.ConditionOutputCountOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ConditionOutputCountOptionDisplayName)
+            context.AddOption<int>(InkFlowNodeOptionSchema.ConditionOutputCountOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.ConditionOutputCountOptionDisplayName)
                 .WithDefaultValue(2)
                 .Delayed();
 
-            context.AddOption<string>(InkFlowNodeSchema.ConditionTextsOptionName)
-                .WithDisplayName(InkFlowNodeSchema.ConditionTextsOptionDisplayName)
-                .WithDefaultValue(InkFlowNodeSchema.ConditionTextsDefaultValue)
+            context.AddOption<string>(InkFlowNodeOptionSchema.ConditionTextsOptionName)
+                .WithDisplayName(InkFlowNodeOptionSchema.ConditionTextsOptionDisplayName)
+                .WithDefaultValue(InkFlowNodeOptionSchema.ConditionTextsDefaultValue)
                 .Delayed();
         }
 
@@ -332,8 +301,8 @@ namespace OpsidanosInk.Editor
         {
             AddInputFlowPort(context);
 
-            int outputCount = GetNodeOptionInt(InkFlowNodeSchema.ConditionOutputCountOptionName);
-            string conditionTexts = GetNodeOptionString(InkFlowNodeSchema.ConditionTextsOptionName);
+            int outputCount = GetNodeOptionInt(InkFlowNodeOptionSchema.ConditionOutputCountOptionName);
+            string conditionTexts = GetNodeOptionString(InkFlowNodeOptionSchema.ConditionTextsOptionName);
             string[] conditionLines = SplitLines(conditionTexts);
 
             for (int i = 0; i < outputCount; i++)
