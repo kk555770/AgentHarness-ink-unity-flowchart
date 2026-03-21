@@ -151,6 +151,38 @@ namespace OpsidanosInk.CanonicalGraph
             return inkBuilder.ToString();
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/21 Opsidanos (修改原因：開始落地 Batch 6，補上 canonical-first 的 projection service 入口，讓 exporter 可直接以 canonical graph 當主線輸入)
+        // 預期結果：不需要先在 exporter 自己組 DTO 再呼叫投影 service；只要拿到 canonical graph，就能先轉成 normalized DTO，再穩定輸出 `.flowchart.json` 與 `.ink`
+        public static bool TryBuildProjectionDto(CanonicalGraphDocument graph, out ExportGraphDto exportDto, out string errorMessage)
+        {
+            exportDto = null;
+            errorMessage = string.Empty;
+
+            if (!CurrentFlowCanonicalGraphAdapter.TryBuildProjection(graph, out exportDto, out errorMessage))
+            {
+                exportDto = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool TryBuildInkContent(CanonicalGraphDocument graph, out string inkContent, out string errorMessage)
+        {
+            inkContent = string.Empty;
+            errorMessage = string.Empty;
+
+            if (!TryBuildProjectionDto(graph, out ExportGraphDto exportDto, out errorMessage))
+            {
+                return false;
+            }
+
+            inkContent = BuildInkContent(exportDto);
+            return true;
+        }
+        // ===== 變更結束 =====
+
         private static Dictionary<string, List<DialogueBoundAction>> BuildDialogueActionMap(ExportGraphDto exportDto)
         {
             var map = new Dictionary<string, List<DialogueBoundAction>>(StringComparer.Ordinal);

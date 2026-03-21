@@ -104,6 +104,20 @@ namespace OpsidanosInk.Editor
                 // ===== 變更結束 =====
 
                 // ===== 變更開始 =====
+                // 2026/03/21 Opsidanos (修改原因：開始落地 Batch 5，讓 current projection 匯入先經過 canonical bridge，再回到 normalized DTO)
+                // 預期結果：importer 不再只依賴 sidecar DTO 自己往下流，後續 canonical graph 會真正參與 current working line
+                if (!CurrentFlowCanonicalGraphAdapter.TryBuildCanonicalGraph(graphDto, out CanonicalGraphDocument canonicalGraph, out string canonicalError))
+                {
+                    return Fail($"匯入失敗：{canonicalError}");
+                }
+
+                if (!CurrentFlowCanonicalGraphAdapter.TryBuildProjection(canonicalGraph, out graphDto, out canonicalError))
+                {
+                    return Fail($"匯入失敗：{canonicalError}");
+                }
+                // ===== 變更結束 =====
+
+                // ===== 變更開始 =====
                 // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 2 第三刀，先把 current projection DTO -> import plan 的純資料整理抽到 shared service)
                 // 預期結果：匯入器不再自己整理 choice/condition/dialogue 的 option 文本與 wire fallback，後續只接收一份 normalized import plan
                 CurrentFlowImportPlan importPlan = CurrentFlowImportService.BuildPlan(graphDto);

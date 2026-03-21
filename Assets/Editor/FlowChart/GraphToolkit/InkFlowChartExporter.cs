@@ -85,6 +85,22 @@ namespace OpsidanosInk.Editor
                 }
                 // ===== 變更結束 =====
 
+                // ===== 變更開始 =====
+                // 2026/03/21 Opsidanos (修改原因：開始落地 Batch 5，讓 current projection 匯出先經過 canonical bridge，再回到 sidecar DTO)
+                // 預期結果：exporter 不再只在 GraphToolkit 與 sidecar 之間直接往返，而是會先踩過 canonical document，為後續 Web-first bridge 鋪路
+                if (!CurrentFlowCanonicalGraphAdapter.TryBuildCanonicalGraph(exportDto, out CanonicalGraphDocument canonicalGraph, out graphError))
+                {
+                    string error = $"匯出失敗：{graphError}（{graphAssetPath}）。";
+                    return InkFlowChartExportResult.Failure(graphAssetPath, error);
+                }
+
+                if (!CurrentFlowProjectionService.TryBuildProjectionDto(canonicalGraph, out exportDto, out graphError))
+                {
+                    string error = $"匯出失敗：{graphError}（{graphAssetPath}）。";
+                    return InkFlowChartExportResult.Failure(graphAssetPath, error);
+                }
+                // ===== 變更結束 =====
+
                 string directoryPath = Path.GetDirectoryName(graphAssetPath) ?? "Assets";
                 string graphName = Path.GetFileNameWithoutExtension(graphAssetPath);
                 string jsonOutputPath = $"{directoryPath}/{graphName}.flowchart.json";
@@ -94,9 +110,13 @@ namespace OpsidanosInk.Editor
                 File.WriteAllText(jsonOutputPath, jsonContent, new UTF8Encoding(false));
 
                 // ===== 變更開始 =====
-                // 2026/03/18 Opsidanos (修改原因：開始落地 Batch 2 第二刀，把 current projection DTO -> Ink 的組裝規則抽到 shared projection service)
-                // 預期結果：exporter 退回檔案入口與 GraphToolkit adapter；Ink 文字輸出則由 shared service 統一提供
-                string inkContent = CurrentFlowProjectionService.BuildInkContent(exportDto);
+                // 2026/03/21 Opsidanos (修改原因：開始落地 Batch 6，讓 exporter 的 Ink 投影主線正式改成 canonical-first，而不是回到 DTO-first)
+                // 預期結果：exporter 在踩過 canonical bridge 後，`.ink` 輸出會直接走 canonical-first projection service，為後續 Web-first control plane 鋪路
+                if (!CurrentFlowProjectionService.TryBuildInkContent(canonicalGraph, out string inkContent, out graphError))
+                {
+                    string error = $"匯出失敗：{graphError}（{graphAssetPath}）。";
+                    return InkFlowChartExportResult.Failure(graphAssetPath, error);
+                }
                 // ===== 變更結束 =====
                 File.WriteAllText(inkOutputPath, inkContent, new UTF8Encoding(false));
 
