@@ -9,9 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  ci-gate:
+    name: CI 前置檢查
+    runs-on: ubuntu-latest
+    outputs:
+      has-unity-license: ${{ steps.unity-license.outputs.has-unity-license }}
+    steps:
+      - name: 檢查 UNITY_LICENSE
+        id: unity-license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "has-unity-license=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-unity-license=false" >> "$GITHUB_OUTPUT"
+          fi
+
   unity-tests:
     name: Unity 測試（Edit → Play，只跑我們的）
-    if: ${{ secrets.UNITY_LICENSE != '' }}
+    needs: ci-gate
+    if: ${{ needs.ci-gate.outputs.has-unity-license == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,7 +41,7 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           projectPath: .
-          unityVersion: 6000.3.2f1
+          unityVersion: 6000.3.9f1
           testMode: editmode
           githubToken: ${{ github.token }}
           customParameters: -assemblyNames OpsidanosInk.EditModeTests
@@ -34,14 +52,15 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           projectPath: .
-          unityVersion: 6000.3.2f1
+          unityVersion: 6000.3.9f1
           testMode: playmode
           githubToken: ${{ github.token }}
           customParameters: -assemblyNames OpsidanosInk.PlayModeTests
 
   unity-tests-disabled:
     name: Unity 測試（尚未啟用）
-    if: ${{ secrets.UNITY_LICENSE == '' }}
+    needs: ci-gate
+    if: ${{ needs.ci-gate.outputs.has-unity-license != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: 說明
