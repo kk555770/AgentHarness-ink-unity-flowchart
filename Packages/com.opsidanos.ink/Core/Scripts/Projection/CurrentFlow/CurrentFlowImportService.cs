@@ -8,6 +8,24 @@ namespace OpsidanosInk.CanonicalGraph
 {
     public static class CurrentFlowImportService
     {
+        // ===== 變更開始 =====
+        // 2026/03/21 Opsidanos (修改原因：開始落地 Batch 7，讓 importer 可直接以 canonical graph 當主入口建立 import plan)
+        // 預期結果：Importer 不再自己顯式編排 `canonical -> normalized DTO -> import plan`，而是交由 import service 統一吸收這段轉換
+        public static bool TryBuildPlan(CanonicalGraphDocument graph, out CurrentFlowImportPlan plan, out string errorMessage)
+        {
+            plan = null;
+            errorMessage = string.Empty;
+
+            if (!CurrentFlowCanonicalGraphAdapter.TryBuildProjection(graph, out ExportGraphDto exportDto, out errorMessage))
+            {
+                return false;
+            }
+
+            plan = BuildPlan(exportDto);
+            return true;
+        }
+        // ===== 變更結束 =====
+
         public static CurrentFlowImportPlan BuildPlan(ExportGraphDto graphDto)
         {
             var plan = new CurrentFlowImportPlan
