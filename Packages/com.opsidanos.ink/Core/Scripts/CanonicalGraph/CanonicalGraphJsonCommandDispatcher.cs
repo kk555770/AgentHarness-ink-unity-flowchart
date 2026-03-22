@@ -1,0 +1,327 @@
+// ===== 變更開始 =====
+// 2026/03/22 Opsidanos (修改原因：擴充 Batch 8/9 的 JSON command dispatcher，補上 GetGraph 與最小讀寫回圈)
+// 預期結果：repo 的 JSON control plane 不只可下指令，也可穩定讀回 canonical snapshot，成為最小可讀可寫 bridge
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace OpsidanosInk.CanonicalGraph
+{
+    public sealed class CanonicalGraphJsonCommandDispatcher
+    {
+        private const string ErrorInvalidRequest = "INVALID_REQUEST";
+        private const string ErrorUnsupportedContractVersion = "UNSUPPORTED_CONTRACT_VERSION";
+        private const string ErrorUnsupportedOperation = "UNSUPPORTED_OPERATION";
+        private const string ErrorDuplicateGraphId = "DUPLICATE_GRAPH_ID";
+
+        [Serializable]
+        private sealed class MetadataPayload
+        {
+            public string graphName = string.Empty;
+            public string projectionVersion = string.Empty;
+        }
+
+        [Serializable]
+        private sealed class TextPayload
+        {
+            public string content = string.Empty;
+        }
+
+        [Serializable]
+        private sealed class ChoicePayload
+        {
+            public List<string> labels = new List<string>();
+        }
+
+        [Serializable]
+        private sealed class ConditionPayload
+        {
+            public List<string> conditions = new List<string>();
+        }
+
+        private readonly Dictionary<string, CanonicalGraphDocument> graphById = new Dictionary<string, CanonicalGraphDocument>(StringComparer.Ordinal);
+
+        public bool TryDispatch(string requestJson, out string responseJson)
+        {
+            CanonicalGraphJsonResponse response = Dispatch(requestJson);
+            responseJson = JsonUtility.ToJson(response, true);
+            return response.success;
+        }
+
+        public CanonicalGraphJsonResponse Dispatch(string requestJson)
+        {
+            if (string.IsNullOrWhiteSpace(requestJson))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(string.Empty, ErrorInvalidRequest, "requestJson 不可為空。");
+            }
+
+            CanonicalGraphJsonRequest request;
+            try
+            {
+                request = JsonUtility.FromJson<CanonicalGraphJsonRequest>(requestJson);
+            }
+            catch (Exception exception)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(string.Empty, ErrorInvalidRequest, $"requestJson 無法解析：{exception.Message}");
+            }
+
+            return Dispatch(request);
+        }
+
+        public CanonicalGraphJsonResponse Dispatch(CanonicalGraphJsonRequest request)
+        {
+            if (request == null)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(string.Empty, ErrorInvalidRequest, "request 不可為空。");
+            }
+
+            if (!string.Equals(request.contractVersion, CanonicalGraphJsonRequest.PlainJsonContractVersion, StringComparison.Ordinal))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                    request.input != null ? request.input.graphId : string.Empty,
+                    ErrorUnsupportedContractVersion,
+                    $"目前只支援 `{CanonicalGraphJsonRequest.PlainJsonContractVersion}`。");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.operation))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                    request.input != null ? request.input.graphId : string.Empty,
+                    ErrorInvalidRequest,
+                    "operation 不可為空。");
+            }
+
+            CanonicalGraphJsonRequestInput input = request.input ?? new CanonicalGraphJsonRequestInput();
+
+            switch (request.operation)
+            {
+                case "CreateGraph":
+                    return DispatchCreateGraph(input);
+                case "CreateNode":
+                    return DispatchCreateNode(input);
+                case "ConnectPorts":
+                    return DispatchConnectPorts(input);
+                case "GetGraph":
+                    return DispatchGetGraph(input);
+                case "ValidateGraph":
+                    return DispatchValidateGraph(input);
+                default:
+                    return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                        input.graphId,
+                        ErrorUnsupportedOperation,
+                        $"不支援的 operation：{request.operation}");
+            }
+        }
+
+        private CanonicalGraphJsonResponse DispatchCreateGraph(CanonicalGraphJsonRequestInput input)
+        {
+            string normalizedGraphId = NormalizeGraphId(input != null ? input.graphId : string.Empty);
+            if (string.IsNullOrEmpty(normalizedGraphId))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(string.Empty, "INVALID_GRAPH_ID", "graphId 不可為空。");
+            }
+
+            if (graphById.ContainsKey(normalizedGraphId))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                    normalizedGraphId,
+                    ErrorDuplicateGraphId,
+                    $"重複的 graphId：{normalizedGraphId}");
+            }
+
+            string metadataJson = BuildMetadataJson(input != null ? input.metadata : null);
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.CreateGraph(
+                normalizedGraphId,
+                input != null ? input.version : string.Empty,
+                metadataJson);
+
+            if (result.success && result.graph != null && result.applied)
+            {
+                graphById[result.graph.graphId] = result.graph;
+            }
+
+            CanonicalGraphJsonResponse response = CanonicalGraphJsonErrorMapper.BuildOperationResponse(
+                result,
+                result.graph != null ? result.graph.graphId : normalizedGraphId);
+            response.result.version = result.graph != null ? result.graph.version ?? string.Empty : string.Empty;
+            return response;
+        }
+
+        private CanonicalGraphJsonResponse DispatchCreateNode(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            if (input == null || input.node == null)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, ErrorInvalidRequest, "CreateNode 需要 input.node。");
+            }
+
+            CanonicalGraphNodeRecord node = BuildNodeRecord(input.node);
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.CreateNode(graph, node);
+            return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
+        }
+
+        private CanonicalGraphJsonResponse DispatchConnectPorts(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.ConnectPorts(
+                graph,
+                input != null ? input.fromNodeId : string.Empty,
+                input != null ? input.fromPort : string.Empty,
+                input != null ? input.toNodeId : string.Empty,
+                input != null ? input.toPort : string.Empty);
+
+            return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
+        }
+
+        private CanonicalGraphJsonResponse DispatchGetGraph(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            return CanonicalGraphJsonErrorMapper.BuildSnapshotResponse(graph);
+        }
+
+        private CanonicalGraphJsonResponse DispatchValidateGraph(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            CanonicalGraphValidationResult result = CanonicalGraphCommandService.ValidateGraph(graph);
+            return CanonicalGraphJsonErrorMapper.BuildValidationResponse(result, graph.graphId);
+        }
+
+        private bool TryGetGraph(string graphId, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse failureResponse)
+        {
+            graph = null;
+            failureResponse = null;
+            string normalizedGraphId = NormalizeGraphId(graphId);
+
+            if (string.IsNullOrEmpty(normalizedGraphId) || !graphById.TryGetValue(normalizedGraphId, out graph) || graph == null)
+            {
+                failureResponse = CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                    normalizedGraphId,
+                    "GRAPH_NOT_FOUND",
+                    $"找不到 graph：{normalizedGraphId}");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string NormalizeGraphId(string graphId)
+        {
+            return string.IsNullOrWhiteSpace(graphId) ? string.Empty : graphId.Trim();
+        }
+
+        private static CanonicalGraphNodeRecord BuildNodeRecord(CanonicalGraphJsonNodeInput input)
+        {
+            CanonicalGraphJsonNodePayload payload = input.payload ?? new CanonicalGraphJsonNodePayload();
+            string nodeType = input.nodeType ?? string.Empty;
+
+            var node = new CanonicalGraphNodeRecord
+            {
+                nodeId = input.nodeId ?? string.Empty,
+                nodeType = nodeType,
+                payloadJson = BuildPayloadJson(nodeType, payload),
+                dialogueActionInputCount = input.dialogueActionInputCount,
+                branchCount = BuildBranchCount(input, payload),
+                branchModeToken = input.branchModeToken ?? string.Empty
+            };
+
+            return node;
+        }
+
+        private static int BuildBranchCount(CanonicalGraphJsonNodeInput input, CanonicalGraphJsonNodePayload payload)
+        {
+            if (input.branchCount > 0)
+            {
+                return input.branchCount;
+            }
+
+            if (string.Equals(input.nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
+            {
+                return payload.labels != null ? payload.labels.Count : 0;
+            }
+
+            if (string.Equals(input.nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
+            {
+                int conditionCount = payload.conditions != null ? payload.conditions.Count : 0;
+                return conditionCount > 0 ? conditionCount + 1 : 0;
+            }
+
+            return 0;
+        }
+
+        private static string BuildMetadataJson(CanonicalGraphJsonMetadataInput metadata)
+        {
+            if (metadata == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrEmpty(metadata.rawJson))
+            {
+                return metadata.rawJson;
+            }
+
+            if (string.IsNullOrEmpty(metadata.graphName) && string.IsNullOrEmpty(metadata.projectionVersion))
+            {
+                return string.Empty;
+            }
+
+            return JsonUtility.ToJson(new MetadataPayload
+            {
+                graphName = metadata.graphName ?? string.Empty,
+                projectionVersion = metadata.projectionVersion ?? string.Empty
+            });
+        }
+
+        private static string BuildPayloadJson(string nodeType, CanonicalGraphJsonNodePayload payload)
+        {
+            if (string.Equals(nodeType, CanonicalNodeKinds.Dialogue, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, CanonicalNodeKinds.StageAction, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(nodeType, CanonicalNodeKinds.Comment, StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonUtility.ToJson(new TextPayload
+                {
+                    content = payload != null ? payload.content ?? string.Empty : string.Empty
+                });
+            }
+
+            if (string.Equals(nodeType, CanonicalNodeKinds.Choice, StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonUtility.ToJson(new ChoicePayload
+                {
+                    labels = payload != null && payload.labels != null
+                        ? new List<string>(payload.labels)
+                        : new List<string>()
+                });
+            }
+
+            if (string.Equals(nodeType, CanonicalNodeKinds.Condition, StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonUtility.ToJson(new ConditionPayload
+                {
+                    conditions = payload != null && payload.conditions != null
+                        ? new List<string>(payload.conditions)
+                        : new List<string>()
+                });
+            }
+
+            return string.Empty;
+        }
+    }
+}
+// ===== 變更結束 =====

@@ -1,0 +1,22 @@
+# Findings
+
+- `GetGraph` 的最小輸入只有 `graphId`；`version`、`target`、`projectionVersion` 都不應混進第一版。
+- `GetGraph` 必須是 read-only，且相同 graph state + 相同輸入要回語意等價的 snapshot。
+- Batch 9 最穩切法是：
+  - dispatcher 新增 `GetGraph` 純讀分支
+  - response 新增可選 `snapshot`
+  - snapshot 直接鏡射 `CanonicalGraphDocument`
+  - 不動 `CanonicalGraphCommandService`
+  - 不借用 projection DTO
+- 第一版 snapshot 先保留：
+  - `graphId`
+  - `version`
+  - `metadataJson`
+  - `nodes`
+  - `edges`
+- `nodes` / `edges` 應直接沿用 canonical record 的欄位，避免把 `GetGraph` 變成 projection API。
+- 最值得先守的測試案例：
+  - `CreateGraph -> GetGraph` 可讀回完整 snapshot
+  - `GetGraph` 的 response JSON round-trip 不丟 `metadataJson / payloadJson / edges`
+  - 不存在或帶空白的 `graphId` 查詢，錯誤碼與 trim 規則要穩定
+- `JsonUtility` 對 `CanonicalGraphJsonResponse.snapshot` 的 null 欄位會輸出空物件殼，因此失敗情境的測試應守「空 snapshot 不帶真資料」，不要硬測 `snapshot == null`。

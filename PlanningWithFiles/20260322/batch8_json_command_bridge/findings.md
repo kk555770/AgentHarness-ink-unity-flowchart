@@ -1,0 +1,40 @@
+# Findings
+
+- 文件與程式碼都指出下一步應先補 `command / transport / bridge`，而不是直接做 WebView。
+- `CanonicalGraphCommandService` 已能提供：
+  - `CreateGraph`
+  - `CreateNode`
+  - `ConnectPorts`
+  - `ValidateGraph`
+- `CanonicalGraphOperationResult` 與 `CanonicalGraphValidationResult` 已經有：
+  - `success`
+  - `applied`
+  - `warnings`
+  - `errors`
+  這些欄位可直接映射到 JSON contract。
+- `OpsidanosInk.CanonicalGraph.asmdef` 目前沒有額外 references。若強拉 `Newtonsoft.Json` 進 core，會多一層 asmdef / precompiled reference 成本。
+- 因此 Batch 8 第一版採：
+  - `JsonUtility`
+  - 固定 request / response shape
+  - `payload` 採已知欄位 superset（`content` / `labels` / `conditions`）
+  - 不做一般化動態 JSON payload 解析器
+- 為了讓多次 request 真正能串起來，dispatcher 需要最小 graph store；最小做法是讓 dispatcher 實例內持有 `graphId -> CanonicalGraphDocument` dictionary。
+- Batch 8 第一版的 wire contract 目前只支援：
+  - `CreateGraph`
+  - `CreateNode`
+  - `ConnectPorts`
+  - `ValidateGraph`
+- 避免第一版過度設計：
+  - 不做 JSON-RPC
+  - 不加 `requestId` / `traceId`
+  - 不在每次 mutation response 回整張 graph
+- `CreateNode` 的 payload 目前用固定 superset shape 承接：
+  - `content`
+  - `labels`
+  - `conditions`
+- dispatcher 內部會根據 node type 做最小推導：
+  - `choice` 若未指定 `branchCount`，會由 `labels.Length` 推導
+  - `condition` 若未指定 `branchCount`，會由 `conditions.Length + 1` 推導
+- reviewer 在驗證階段補抓到兩個需要修正的語意洞：
+  - `CreateGraph` 若重複 `graphId`，bridge 不可靜默覆蓋既有 graph
+  - `graphId` 在 create 與後續 lookup 必須共用同一套 trim / normalize 規則
