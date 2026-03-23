@@ -113,6 +113,145 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(secondResponse.errors[0].code, Is.EqualTo("EDGE_CARDINALITY_VIOLATION"));
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：為 Batch 10 的 JSON mutation bridge 補上 dispatcher 測試)
+        // 預期結果：ReplaceNodePayload / DisconnectEdge / RemoveNode 透過 JSON request 呼叫時，會維持 strict replace、idempotent disconnect 與同步清 edge 的語意
+        [Test]
+        public void Dispatch_ReplaceNodePayload_更新Choice內容後GetGraph會反映新分支數()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+            Dispatch(dispatcher, BuildCreateGraphRequest("chapter-01"));
+            Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "CreateNode",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    node = new CanonicalGraphJsonNodeInput
+                    {
+                        nodeId = "N001",
+                        nodeType = CanonicalNodeKinds.Choice,
+                        branchModeToken = "+",
+                        payload = new CanonicalGraphJsonNodePayload
+                        {
+                            labels = { "去A", "去B" }
+                        }
+                    }
+                }
+            });
+
+            CanonicalGraphJsonResponse replaceResponse = Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "ReplaceNodePayload",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    nodeId = "N001",
+                    node = new CanonicalGraphJsonNodeInput
+                    {
+                        payload = new CanonicalGraphJsonNodePayload
+                        {
+                            labels = { "去A", "去B", "去C" }
+                        }
+                    }
+                }
+            });
+            CanonicalGraphJsonResponse snapshotResponse = Dispatch(dispatcher, BuildGetGraphRequest("chapter-01"));
+
+            Assert.IsTrue(replaceResponse.success);
+            Assert.IsTrue(replaceResponse.applied);
+            Assert.That(snapshotResponse.snapshot.nodes.Count, Is.EqualTo(1));
+            Assert.That(snapshotResponse.snapshot.nodes[0].branchCount, Is.EqualTo(3));
+            Assert.That(snapshotResponse.snapshot.nodes[0].payloadJson, Is.EqualTo("{\"labels\":[\"去A\",\"去B\",\"去C\"]}"));
+        }
+
+        [Test]
+        public void Dispatch_DisconnectEdge_已存在Edge可用EdgeId移除()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse disconnectResponse = Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "DisconnectEdge",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    edgeId = "N001:Flow->N002:Flow"
+                }
+            });
+            CanonicalGraphJsonResponse snapshotResponse = Dispatch(dispatcher, BuildGetGraphRequest("chapter-01"));
+
+            Assert.IsTrue(disconnectResponse.success);
+            Assert.IsTrue(disconnectResponse.applied);
+            Assert.That(snapshotResponse.snapshot.edges.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Dispatch_DisconnectEdge_目標不存在時SuccessTrueAppliedFalse()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+            Dispatch(dispatcher, BuildCreateGraphRequest("chapter-01"));
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "DisconnectEdge",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    fromNodeId = "N001",
+                    fromPort = CanonicalPortSemantics.Flow,
+                    toNodeId = "N002",
+                    toPort = CanonicalPortSemantics.Flow
+                }
+            });
+
+            Assert.IsTrue(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.That(response.result.edgeId, Is.EqualTo("N001:Flow->N002:Flow"));
+        }
+
+        [Test]
+        public void Dispatch_DisconnectEdge_缺少Selector會回傳固定錯誤碼()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+            Dispatch(dispatcher, BuildCreateGraphRequest("chapter-01"));
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "DisconnectEdge",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01"
+                }
+            });
+
+            Assert.IsFalse(response.success);
+            Assert.That(response.errors[0].code, Is.EqualTo("INVALID_EDGE_SELECTOR"));
+        }
+
+        [Test]
+        public void Dispatch_RemoveNode_會同步清掉相關Edges()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse removeResponse = Dispatch(dispatcher, new CanonicalGraphJsonRequest
+            {
+                operation = "RemoveNode",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    nodeId = "N002"
+                }
+            });
+            CanonicalGraphJsonResponse snapshotResponse = Dispatch(dispatcher, BuildGetGraphRequest("chapter-01"));
+
+            Assert.IsTrue(removeResponse.success);
+            Assert.IsTrue(removeResponse.applied);
+            Assert.That(snapshotResponse.snapshot.nodes.Count, Is.EqualTo(1));
+            Assert.That(snapshotResponse.snapshot.edges.Count, Is.EqualTo(0));
+        }
+        // ===== 變更結束 =====
+
         [Test]
         public void Dispatch_ValidateGraph_缺少Start_成功但Invalid()
         {
@@ -205,6 +344,32 @@ namespace OpsidanosInk.Tests.EditMode
                 }
             };
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：為 Batch 10 的 dispatcher 測試補上共用 helper)
+        // 預期結果：GetGraph 與 connected graph 的測試組裝邏輯集中，避免每個測試各自手拼 request 造成噪音
+        private static CanonicalGraphJsonRequest BuildGetGraphRequest(string graphId)
+        {
+            return new CanonicalGraphJsonRequest
+            {
+                operation = "GetGraph",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = graphId
+                }
+            };
+        }
+
+        private static CanonicalGraphJsonCommandDispatcher BuildConnectedLinearDispatcher()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+            Dispatch(dispatcher, BuildCreateGraphRequest("chapter-01"));
+            Dispatch(dispatcher, BuildCreateNodeRequest("chapter-01", "N001", CanonicalNodeKinds.Start));
+            Dispatch(dispatcher, BuildCreateNodeRequest("chapter-01", "N002", CanonicalNodeKinds.Dialogue, "主句"));
+            Dispatch(dispatcher, BuildConnectPortsRequest("chapter-01", "N001", CanonicalPortSemantics.Flow, "N002", CanonicalPortSemantics.Flow));
+            return dispatcher;
+        }
+        // ===== 變更結束 =====
     }
 }
 // ===== 變更結束 =====

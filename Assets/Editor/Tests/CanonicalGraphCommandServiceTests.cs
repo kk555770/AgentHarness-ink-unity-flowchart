@@ -76,6 +76,74 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.AreEqual(1, graph.edges.Count);
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：為 Batch 10 補上 editable mutation set 的 core 測試)
+        // 預期結果：ReplaceNodePayload / DisconnectEdge / RemoveNode 的 strict 與 idempotent 邊界有固定護欄，不會在後續 authoring bridge 接入時漂移
+        [Test]
+        public void ReplaceNodePayload_ChoicePayload變更_會同步更新BranchCount()
+        {
+            CanonicalGraphDocument graph = CanonicalGraphCommandService.CreateGraph("chapter-01").graph;
+            CanonicalGraphCommandService.CreateNode(graph, new CanonicalGraphNodeRecord
+            {
+                nodeId = "N001",
+                nodeType = CanonicalNodeKinds.Choice,
+                payloadJson = "{\"labels\":[\"去A\",\"去B\"]}",
+                branchCount = 2,
+                branchModeToken = "+"
+            });
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.ReplaceNodePayload(
+                graph,
+                "N001",
+                "{\"labels\":[\"去A\",\"去B\",\"去C\"]}");
+
+            Assert.IsTrue(result.success);
+            Assert.IsTrue(result.applied);
+            Assert.AreEqual("N001", result.nodeId);
+            Assert.AreEqual(3, graph.nodes[0].branchCount);
+            Assert.AreEqual("{\"labels\":[\"去A\",\"去B\",\"去C\"]}", graph.nodes[0].payloadJson);
+        }
+
+        [Test]
+        public void DisconnectEdge_目標不存在_成功但不套用()
+        {
+            CanonicalGraphDocument graph = BuildLinearGraph();
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.DisconnectEdge(
+                graph,
+                string.Empty,
+                "N001",
+                CanonicalPortSemantics.Flow,
+                "N002",
+                CanonicalPortSemantics.Flow);
+
+            Assert.IsTrue(result.success);
+            Assert.IsFalse(result.applied);
+            Assert.AreEqual("N001:Flow->N002:Flow", result.edgeId);
+            Assert.AreEqual(0, graph.edges.Count);
+        }
+
+        [Test]
+        public void RemoveNode_會同步移除相關Edges()
+        {
+            CanonicalGraphDocument graph = BuildLinearGraph();
+            CanonicalGraphCommandService.ConnectPorts(
+                graph,
+                "N001",
+                CanonicalPortSemantics.Flow,
+                "N002",
+                CanonicalPortSemantics.Flow);
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.RemoveNode(graph, "N002");
+
+            Assert.IsTrue(result.success);
+            Assert.IsTrue(result.applied);
+            Assert.AreEqual("N002", result.nodeId);
+            Assert.AreEqual(1, graph.nodes.Count);
+            Assert.AreEqual(0, graph.edges.Count);
+        }
+        // ===== 變更結束 =====
+
         [Test]
         public void ConnectPorts_不相容PortKind_會失敗()
         {

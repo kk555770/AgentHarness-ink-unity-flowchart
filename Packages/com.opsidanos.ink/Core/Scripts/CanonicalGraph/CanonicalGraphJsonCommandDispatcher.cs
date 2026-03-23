@@ -101,6 +101,12 @@ namespace OpsidanosInk.CanonicalGraph
                     return DispatchCreateNode(input);
                 case "ConnectPorts":
                     return DispatchConnectPorts(input);
+                case "ReplaceNodePayload":
+                    return DispatchReplaceNodePayload(input);
+                case "DisconnectEdge":
+                    return DispatchDisconnectEdge(input);
+                case "RemoveNode":
+                    return DispatchRemoveNode(input);
                 case "GetGraph":
                     return DispatchGetGraph(input);
                 case "ValidateGraph":
@@ -181,6 +187,67 @@ namespace OpsidanosInk.CanonicalGraph
             return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，補上 JSON mutation dispatcher)
+        // 預期結果：plain JSON control plane 可直接支援 ReplaceNodePayload / DisconnectEdge / RemoveNode，形成真正可編輯的作者工具 bridge
+        private CanonicalGraphJsonResponse DispatchReplaceNodePayload(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            if (input == null || string.IsNullOrWhiteSpace(input.nodeId))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, ErrorInvalidRequest, "ReplaceNodePayload 需要 input.nodeId。");
+            }
+
+            if (input.node == null || input.node.payload == null)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, ErrorInvalidRequest, "ReplaceNodePayload 需要 input.node.payload。");
+            }
+
+            CanonicalGraphNodeRecord existingNode = FindNode(graph, input.nodeId);
+            if (existingNode == null)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, "NODE_NOT_FOUND", $"找不到節點：{input.nodeId}", nodeId: input.nodeId);
+            }
+
+            string payloadJson = BuildPayloadJson(existingNode.nodeType, input.node.payload);
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.ReplaceNodePayload(graph, input.nodeId, payloadJson);
+            return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
+        }
+
+        private CanonicalGraphJsonResponse DispatchDisconnectEdge(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.DisconnectEdge(
+                graph,
+                input != null ? input.edgeId : string.Empty,
+                input != null ? input.fromNodeId : string.Empty,
+                input != null ? input.fromPort : string.Empty,
+                input != null ? input.toNodeId : string.Empty,
+                input != null ? input.toPort : string.Empty);
+
+            return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
+        }
+
+        private CanonicalGraphJsonResponse DispatchRemoveNode(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            CanonicalGraphOperationResult result = CanonicalGraphCommandService.RemoveNode(graph, input != null ? input.nodeId : string.Empty);
+            return CanonicalGraphJsonErrorMapper.BuildOperationResponse(result, graph.graphId);
+        }
+        // ===== 變更結束 =====
+
         private CanonicalGraphJsonResponse DispatchGetGraph(CanonicalGraphJsonRequestInput input)
         {
             if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
@@ -224,6 +291,30 @@ namespace OpsidanosInk.CanonicalGraph
         {
             return string.IsNullOrWhiteSpace(graphId) ? string.Empty : graphId.Trim();
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，讓 dispatcher 可在 replace payload 前先查到既有 nodeType)
+        // 預期結果：ReplaceNodePayload 只替換 payload，不會被 request 端偷偷改 nodeType
+        private static CanonicalGraphNodeRecord FindNode(CanonicalGraphDocument graph, string nodeId)
+        {
+            if (graph == null || string.IsNullOrWhiteSpace(nodeId))
+            {
+                return null;
+            }
+
+            string normalizedNodeId = nodeId.Trim();
+            for (int i = 0; i < graph.nodes.Count; i++)
+            {
+                CanonicalGraphNodeRecord node = graph.nodes[i];
+                if (node != null && node.nodeId == normalizedNodeId)
+                {
+                    return node;
+                }
+            }
+
+            return null;
+        }
+        // ===== 變更結束 =====
 
         private static CanonicalGraphNodeRecord BuildNodeRecord(CanonicalGraphJsonNodeInput input)
         {

@@ -22,6 +22,12 @@ namespace OpsidanosInk.CanonicalGraph
         public string graphId = string.Empty;
         public string version = string.Empty;
         public CanonicalGraphJsonMetadataInput metadata = new CanonicalGraphJsonMetadataInput();
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，補上 mutation bridge 需要的 node / edge selector 欄位)
+        // 預期結果：`ReplaceNodePayload / RemoveNode / DisconnectEdge` 可用固定且簡單的 JSON shape 指向目標 node 或 edge
+        public string nodeId = string.Empty;
+        public string edgeId = string.Empty;
+        // ===== 變更結束 =====
         public CanonicalGraphJsonNodeInput node = new CanonicalGraphJsonNodeInput();
         public string fromNodeId = string.Empty;
         public string fromPort = string.Empty;

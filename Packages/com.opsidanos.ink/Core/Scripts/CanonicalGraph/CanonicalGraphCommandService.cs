@@ -3,6 +3,7 @@
 // 預期結果：repo 第一次具備 CreateGraph / CreateNode / ConnectPorts / ValidateGraph 的可呼叫最小控制面
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace OpsidanosInk.CanonicalGraph
 {
@@ -18,6 +19,11 @@ namespace OpsidanosInk.CanonicalGraph
         private const string ErrorInvalidPort = "INVALID_PORT";
         private const string ErrorInvalidEdgeKind = "INVALID_EDGE_KIND";
         private const string ErrorEdgeCardinalityViolation = "EDGE_CARDINALITY_VIOLATION";
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，補上 edge 移除 selector 的固定錯誤碼)
+        // 預期結果：DisconnectEdge 在缺少 edgeId 與完整座標時，會回傳穩定且可測的錯誤代碼
+        private const string ErrorInvalidEdgeSelector = "INVALID_EDGE_SELECTOR";
+        // ===== 變更結束 =====
         private const string ErrorMissingStartNode = "MISSING_START_NODE";
         private const string ErrorMultipleStartNodes = "MULTIPLE_START_NODES";
         private const string ErrorChoiceBranchInvalid = "CHOICE_BRANCH_INVALID";
@@ -170,6 +176,108 @@ namespace OpsidanosInk.CanonicalGraph
             return CanonicalGraphOperationResult.Success(graph, applied: true, edgeId: edge.edgeId);
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，補上最小 editable mutation set 的 core 操作)
+        // 預期結果：canonical core 可直接支援 ReplaceNodePayload / DisconnectEdge / RemoveNode，讓後續 JSON control plane 具備真正可編輯的作者工具能力
+        public static CanonicalGraphOperationResult ReplaceNodePayload(CanonicalGraphDocument graph, string nodeId, string payloadJson)
+        {
+            if (!TryGetGraphOrFailure(graph, out CanonicalGraphOperationResult graphFailure))
+            {
+                return graphFailure;
+            }
+
+            int nodeIndex = FindNodeIndex(graph, nodeId);
+            if (nodeIndex < 0)
+            {
+                return CanonicalGraphOperationResult.Failure(graph, ErrorNodeNotFound, $"找不到節點：{nodeId}", nodeId: nodeId);
+            }
+
+            CanonicalGraphNodeRecord existingNode = graph.nodes[nodeIndex];
+            CanonicalGraphNodeRecord replacedNode = CloneNode(existingNode);
+            replacedNode.payloadJson = payloadJson ?? string.Empty;
+
+            if (!TryValidateReplacementPayload(replacedNode, out CanonicalGraphValidationIssue issue))
+            {
+                return CanonicalGraphOperationResult.Failure(
+                    graph,
+                    issue.code,
+                    issue.message,
+                    nodeId: issue.nodeId,
+                    portName: issue.portName);
+            }
+
+            graph.nodes[nodeIndex] = replacedNode;
+            return CanonicalGraphOperationResult.Success(graph, applied: true, nodeId: replacedNode.nodeId);
+        }
+
+        public static CanonicalGraphOperationResult DisconnectEdge(
+            CanonicalGraphDocument graph,
+            string edgeId,
+            string fromNodeId,
+            string fromPort,
+            string toNodeId,
+            string toPort)
+        {
+            if (!TryGetGraphOrFailure(graph, out CanonicalGraphOperationResult graphFailure))
+            {
+                return graphFailure;
+            }
+
+            int edgeIndex = FindEdgeIndex(graph, edgeId, fromNodeId, fromPort, toNodeId, toPort);
+            if (edgeIndex == -2)
+            {
+                return CanonicalGraphOperationResult.Failure(
+                    graph,
+                    ErrorInvalidEdgeSelector,
+                    "DisconnectEdge 至少需要 edgeId 或完整 edge 座標。");
+            }
+
+            if (edgeIndex < 0)
+            {
+                return CanonicalGraphOperationResult.Success(
+                    graph,
+                    applied: false,
+                    edgeId: !string.IsNullOrWhiteSpace(edgeId) ? edgeId.Trim() : BuildEdgeId(fromNodeId, fromPort, toNodeId, toPort));
+            }
+
+            string removedEdgeId = graph.edges[edgeIndex] != null ? graph.edges[edgeIndex].edgeId ?? string.Empty : string.Empty;
+            graph.edges.RemoveAt(edgeIndex);
+            return CanonicalGraphOperationResult.Success(graph, applied: true, edgeId: removedEdgeId);
+        }
+
+        public static CanonicalGraphOperationResult RemoveNode(CanonicalGraphDocument graph, string nodeId)
+        {
+            if (!TryGetGraphOrFailure(graph, out CanonicalGraphOperationResult graphFailure))
+            {
+                return graphFailure;
+            }
+
+            int nodeIndex = FindNodeIndex(graph, nodeId);
+            if (nodeIndex < 0)
+            {
+                return CanonicalGraphOperationResult.Failure(graph, ErrorNodeNotFound, $"找不到節點：{nodeId}", nodeId: nodeId);
+            }
+
+            graph.nodes.RemoveAt(nodeIndex);
+
+            for (int i = graph.edges.Count - 1; i >= 0; i--)
+            {
+                CanonicalGraphEdgeRecord edge = graph.edges[i];
+                if (edge == null)
+                {
+                    continue;
+                }
+
+                if (edge.fromNodeId == nodeId || edge.toNodeId == nodeId)
+                {
+                    graph.edges.RemoveAt(i);
+                }
+            }
+
+            return CanonicalGraphOperationResult.Success(graph, applied: true, nodeId: nodeId);
+        }
+        // ===== 變更結束 =====
+
         public static CanonicalGraphValidationResult ValidateGraph(CanonicalGraphDocument graph)
         {
             if (graph == null)
@@ -289,6 +397,214 @@ namespace OpsidanosInk.CanonicalGraph
 
             return null;
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，補上 mutation 需要的 node / edge 查找與 payload 驗證 helper)
+        // 預期結果：ReplaceNodePayload / DisconnectEdge / RemoveNode 會共用一致的查找與 payload 驗證邏輯，不會各自長出不同規則
+        [Serializable]
+        private sealed class TextPayload
+        {
+            public string content = string.Empty;
+        }
+
+        [Serializable]
+        private sealed class ChoicePayload
+        {
+            public List<string> labels = new List<string>();
+        }
+
+        [Serializable]
+        private sealed class ConditionPayload
+        {
+            public List<string> conditions = new List<string>();
+        }
+
+        private static int FindNodeIndex(CanonicalGraphDocument graph, string nodeId)
+        {
+            if (graph == null || string.IsNullOrWhiteSpace(nodeId))
+            {
+                return -1;
+            }
+
+            string normalizedNodeId = nodeId.Trim();
+            for (int i = 0; i < graph.nodes.Count; i++)
+            {
+                CanonicalGraphNodeRecord node = graph.nodes[i];
+                if (node != null && node.nodeId == normalizedNodeId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static int FindEdgeIndex(
+            CanonicalGraphDocument graph,
+            string edgeId,
+            string fromNodeId,
+            string fromPort,
+            string toNodeId,
+            string toPort)
+        {
+            if (graph == null)
+            {
+                return -1;
+            }
+
+            string normalizedEdgeId = string.IsNullOrWhiteSpace(edgeId) ? string.Empty : edgeId.Trim();
+            if (!string.IsNullOrEmpty(normalizedEdgeId))
+            {
+                for (int i = 0; i < graph.edges.Count; i++)
+                {
+                    CanonicalGraphEdgeRecord edge = graph.edges[i];
+                    if (edge != null && edge.edgeId == normalizedEdgeId)
+                    {
+                        return i;
+                    }
+                }
+
+                return -1;
+            }
+
+            if (string.IsNullOrWhiteSpace(fromNodeId)
+                || string.IsNullOrWhiteSpace(fromPort)
+                || string.IsNullOrWhiteSpace(toNodeId)
+                || string.IsNullOrWhiteSpace(toPort))
+            {
+                return -2;
+            }
+
+            for (int i = 0; i < graph.edges.Count; i++)
+            {
+                CanonicalGraphEdgeRecord edge = graph.edges[i];
+                if (edge != null
+                    && edge.fromNodeId == fromNodeId
+                    && edge.fromPort == fromPort
+                    && edge.toNodeId == toNodeId
+                    && edge.toPort == toPort)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static bool TryValidateReplacementPayload(CanonicalGraphNodeRecord node, out CanonicalGraphValidationIssue issue)
+        {
+            issue = null;
+            string payloadJson = node.payloadJson ?? string.Empty;
+
+            if (node.nodeType == CanonicalNodeKinds.Start)
+            {
+                if (!string.IsNullOrWhiteSpace(payloadJson))
+                {
+                    issue = CreateIssue(ErrorInvalidPayload, "start 節點不可帶 payload。", nodeId: node.nodeId);
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (node.nodeType == CanonicalNodeKinds.Dialogue
+                || node.nodeType == CanonicalNodeKinds.StageAction
+                || node.nodeType == CanonicalNodeKinds.Comment)
+            {
+                if (!TryParseTextPayload(payloadJson))
+                {
+                    issue = CreateIssue(ErrorInvalidPayload, $"{node.nodeType} 節點的 payload 必須是合法文字 JSON。", nodeId: node.nodeId);
+                    return false;
+                }
+
+                return TryValidateNodePayload(node, out issue);
+            }
+
+            if (node.nodeType == CanonicalNodeKinds.Choice)
+            {
+                if (!TryParseChoicePayload(payloadJson, out int labelCount))
+                {
+                    issue = CreateIssue(ErrorInvalidPayload, "choice 節點的 payload 必須帶合法 labels。", nodeId: node.nodeId);
+                    return false;
+                }
+
+                node.branchCount = labelCount;
+                return TryValidateNodePayload(node, out issue);
+            }
+
+            if (node.nodeType == CanonicalNodeKinds.Condition)
+            {
+                if (!TryParseConditionPayload(payloadJson, out int conditionCount))
+                {
+                    issue = CreateIssue(ErrorInvalidPayload, "condition 節點的 payload 必須帶合法 conditions。", nodeId: node.nodeId);
+                    return false;
+                }
+
+                node.branchCount = conditionCount + 1;
+                return TryValidateNodePayload(node, out issue);
+            }
+
+            return true;
+        }
+
+        private static bool TryParseTextPayload(string payloadJson)
+        {
+            if (string.IsNullOrWhiteSpace(payloadJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                JsonUtility.FromJson<TextPayload>(payloadJson);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryParseChoicePayload(string payloadJson, out int labelCount)
+        {
+            labelCount = 0;
+            if (string.IsNullOrWhiteSpace(payloadJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                ChoicePayload payload = JsonUtility.FromJson<ChoicePayload>(payloadJson);
+                labelCount = payload != null && payload.labels != null ? payload.labels.Count : 0;
+                return labelCount > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryParseConditionPayload(string payloadJson, out int conditionCount)
+        {
+            conditionCount = 0;
+            if (string.IsNullOrWhiteSpace(payloadJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                ConditionPayload payload = JsonUtility.FromJson<ConditionPayload>(payloadJson);
+                conditionCount = payload != null && payload.conditions != null ? payload.conditions.Count : 0;
+                return conditionCount > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+        // ===== 變更結束 =====
 
         private static CanonicalGraphEdgeRecord FindEdge(
             CanonicalGraphDocument graph,

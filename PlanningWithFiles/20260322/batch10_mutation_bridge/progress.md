@@ -1,0 +1,30 @@
+# Progress
+
+- 2026-03-22：開始 Batch 10 前盤點。
+- 2026-03-22：已建立 Batch 10 planning，並確認 Batch 8/9 已先收成 commit `0c24eef`。
+- 2026-03-22：已完成兩條唯讀 sidecar：
+  - 文件向：確認此時不該先做 WebView，而是先補 editable mutation API
+  - 結構向：確認最值得先補的是 `ReplaceNodePayload -> DisconnectEdge -> RemoveNode`
+- 2026-03-22：已重新核對 `CanonicalGraphApiSpec.md / CanonicalGraphJsonContract.md`，確認：
+  - `ReplaceNodePayload` 採 strict replace
+  - `DisconnectEdge` 採 idempotent
+  - `RemoveNode` 先採 strict delete，並同步清掉相關 edges
+- 2026-03-22：已完成 core mutation：
+  - `CanonicalGraphCommandService.ReplaceNodePayload`
+  - `CanonicalGraphCommandService.DisconnectEdge`
+  - `CanonicalGraphCommandService.RemoveNode`
+- 2026-03-22：已完成 JSON mutation bridge：
+  - `CanonicalGraphJsonRequestInput` 新增 `nodeId / edgeId`
+  - `CanonicalGraphJsonCommandDispatcher` 新增 `ReplaceNodePayload / DisconnectEdge / RemoveNode`
+- 2026-03-22：已補測試：
+  - `CanonicalGraphCommandServiceTests`
+  - `CanonicalGraphJsonCommandDispatcherTests`
+  - `CanonicalGraphJsonContractRoundTripTests`
+- 2026-03-22：測試結果：
+  - targeted EditMode：`29 total / 29 passed / 0 failed / 0 skipped`
+  - EditMode：`312 total / 308 passed / 0 failed / 4 skipped`
+  - PlayMode：`221 total / 130 passed / 0 failed / 91 skipped`
+- 2026-03-22：review sidecar 未在本輪內回傳可用 finding，已關閉，不納入主線結論。
+- 2026-03-22：已補齊 `.cs` 變更包框註解範圍，並重新跑 targeted EditMode：
+  - `29 total / 29 passed / 0 failed / 0 skipped`
+- 2026-03-22：`Assets/OffMeshLinkScene.unity` 測試噪音已 restore。

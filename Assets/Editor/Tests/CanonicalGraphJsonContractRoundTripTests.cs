@@ -43,6 +43,36 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(restored.input.node.payload.labels[1], Is.EqualTo("去 B"));
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/22 Opsidanos (修改原因：為 Batch 10 補上 mutation request 欄位的 contract round-trip 護欄)
+        // 預期結果：`nodeId / edgeId` 等 mutation selector 序列化後不會遺失，後續 host bridge 可依賴固定 JSON shape
+        [Test]
+        public void RequestEnvelope_DisconnectEdge_RoundTrip會保留EdgeSelector()
+        {
+            CanonicalGraphJsonRequest request = new CanonicalGraphJsonRequest
+            {
+                operation = "DisconnectEdge",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    edgeId = "N001:Flow->N002:Flow",
+                    fromNodeId = "N001",
+                    fromPort = CanonicalPortSemantics.Flow,
+                    toNodeId = "N002",
+                    toPort = CanonicalPortSemantics.Flow
+                }
+            };
+
+            string json = JsonUtility.ToJson(request, true);
+            CanonicalGraphJsonRequest restored = JsonUtility.FromJson<CanonicalGraphJsonRequest>(json);
+
+            Assert.That(restored.input.graphId, Is.EqualTo("chapter-01"));
+            Assert.That(restored.input.edgeId, Is.EqualTo("N001:Flow->N002:Flow"));
+            Assert.That(restored.input.fromNodeId, Is.EqualTo("N001"));
+            Assert.That(restored.input.toNodeId, Is.EqualTo("N002"));
+        }
+        // ===== 變更結束 =====
+
         [Test]
         public void Dispatch_錯誤ContractVersion_會回傳穩定錯誤碼()
         {
