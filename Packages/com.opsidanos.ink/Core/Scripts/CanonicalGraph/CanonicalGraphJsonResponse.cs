@@ -26,6 +26,14 @@ namespace OpsidanosInk.CanonicalGraph
         public string nodeId = string.Empty;
         public string edgeId = string.Empty;
         public bool isValid;
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection-specific response 欄位)
+        // 預期結果：ValidateProjection / ProjectGraph 除了 graph 狀態外，也能穩定回傳 target、projection version 與 target-native 產物
+        public string target = string.Empty;
+        public string projectionVersion = string.Empty;
+        public string projectionText = string.Empty;
+        public string projectionJson = string.Empty;
+        // ===== 變更結束 =====
     }
 
     [Serializable]

@@ -9,6 +9,17 @@ namespace OpsidanosInk.CanonicalGraph
 {
     public static class CurrentFlowProjectionService
     {
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，建立 projection-specific control plane 的 target 常數與錯誤碼)
+        // 預期結果：dispatcher 與 projection service 對 `flowchart-json / ink` 與 projection 失敗原因有共同語意，不再各自硬寫字串
+        public const string FlowchartJsonTarget = "flowchart-json";
+        public const string InkTarget = "ink";
+
+        private const string ProjectionMappingLossError = "PROJECTION_MAPPING_LOSS";
+        private const string ProjectionUnsupportedError = "PROJECTION_UNSUPPORTED";
+        private const string DefaultProjectionVersion = "2.0";
+        // ===== 變更結束 =====
+
         private readonly struct DialogueBoundAction
         {
             public string dialogueNodeId { get; }
@@ -180,6 +191,112 @@ namespace OpsidanosInk.CanonicalGraph
 
             inkContent = BuildInkContent(exportDto);
             return true;
+        }
+
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，讓 current-flow projection service 正式提供 target-based validate/project 入口)
+        // 預期結果：JSON control plane 不必再直接知道 DTO 或 ink 組裝細節，只要指定 target 就能驗證或產出 projection
+        public static bool TryValidateProjection(
+            CanonicalGraphDocument graph,
+            string target,
+            string projectionVersion,
+            out string resolvedProjectionVersion,
+            out string errorCode,
+            out string errorMessage)
+        {
+            resolvedProjectionVersion = ResolveProjectionVersion(projectionVersion);
+            errorCode = string.Empty;
+            errorMessage = string.Empty;
+
+            string normalizedTarget = NormalizeTarget(target);
+            switch (normalizedTarget)
+            {
+                case FlowchartJsonTarget:
+                    if (!TryBuildProjectionDto(graph, out ExportGraphDto exportDto, out errorMessage))
+                    {
+                        errorCode = ProjectionMappingLossError;
+                        return false;
+                    }
+
+                    resolvedProjectionVersion = ResolveProjectionVersion(exportDto != null ? exportDto.version : string.Empty);
+                    return true;
+
+                case InkTarget:
+                    if (!TryBuildProjectionDto(graph, out ExportGraphDto inkProjectionDto, out errorMessage))
+                    {
+                        errorCode = ProjectionMappingLossError;
+                        return false;
+                    }
+
+                    resolvedProjectionVersion = ResolveProjectionVersion(inkProjectionDto != null ? inkProjectionDto.version : string.Empty);
+                    BuildInkContent(inkProjectionDto);
+                    return true;
+
+                default:
+                    errorCode = ProjectionUnsupportedError;
+                    errorMessage = $"不支援的 projection target：{target}";
+                    return false;
+            }
+        }
+
+        public static bool TryProjectGraph(
+            CanonicalGraphDocument graph,
+            string target,
+            string projectionVersion,
+            out string resolvedProjectionVersion,
+            out string projectionText,
+            out string projectionJson,
+            out string errorCode,
+            out string errorMessage)
+        {
+            resolvedProjectionVersion = ResolveProjectionVersion(projectionVersion);
+            projectionText = string.Empty;
+            projectionJson = string.Empty;
+            errorCode = string.Empty;
+            errorMessage = string.Empty;
+
+            string normalizedTarget = NormalizeTarget(target);
+            switch (normalizedTarget)
+            {
+                case FlowchartJsonTarget:
+                    if (!TryBuildProjectionDto(graph, out ExportGraphDto exportDto, out errorMessage))
+                    {
+                        errorCode = ProjectionMappingLossError;
+                        return false;
+                    }
+
+                    resolvedProjectionVersion = ResolveProjectionVersion(exportDto != null ? exportDto.version : string.Empty);
+                    projectionJson = UnityEngine.JsonUtility.ToJson(exportDto, true);
+                    return true;
+
+                case InkTarget:
+                    if (!TryBuildProjectionDto(graph, out ExportGraphDto inkProjectionDto, out errorMessage))
+                    {
+                        errorCode = ProjectionMappingLossError;
+                        return false;
+                    }
+
+                    resolvedProjectionVersion = ResolveProjectionVersion(inkProjectionDto != null ? inkProjectionDto.version : string.Empty);
+                    projectionText = BuildInkContent(inkProjectionDto);
+                    return true;
+
+                default:
+                    errorCode = ProjectionUnsupportedError;
+                    errorMessage = $"不支援的 projection target：{target}";
+                    return false;
+            }
+        }
+
+        private static string NormalizeTarget(string target)
+        {
+            return string.IsNullOrWhiteSpace(target) ? string.Empty : target.Trim();
+        }
+
+        private static string ResolveProjectionVersion(string projectionVersion)
+        {
+            return string.IsNullOrWhiteSpace(projectionVersion)
+                ? DefaultProjectionVersion
+                : projectionVersion.Trim();
         }
         // ===== 變更結束 =====
 

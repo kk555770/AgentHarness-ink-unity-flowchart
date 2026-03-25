@@ -9,6 +9,78 @@ namespace OpsidanosInk.Tests.EditMode
 {
     public sealed class CurrentFlowCanonicalProjectionServiceTests
     {
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：為 Batch 11A 補 target-based projection service 測試)
+        // 預期結果：service 除了既有 canonical-first DTO/ink 入口外，也能穩定支援 ValidateProjection / ProjectGraph 的 target-based 語意
+        [Test]
+        public void TryValidateProjection_FlowchartJson_合法ChoiceGraph會成功()
+        {
+            CanonicalGraphDocument graph = BuildChoiceGraph();
+
+            bool success = CurrentFlowProjectionService.TryValidateProjection(
+                graph,
+                CurrentFlowProjectionService.FlowchartJsonTarget,
+                string.Empty,
+                out string resolvedProjectionVersion,
+                out string errorCode,
+                out string errorMessage);
+
+            Assert.IsTrue(success, errorMessage);
+            Assert.That(errorCode, Is.Empty);
+            Assert.That(resolvedProjectionVersion, Is.EqualTo("2.0"));
+        }
+
+        [Test]
+        public void TryProjectGraph_FlowchartJson_會回傳CurrentProjectionJson()
+        {
+            CanonicalGraphDocument graph = BuildChoiceGraph();
+
+            bool success = CurrentFlowProjectionService.TryProjectGraph(
+                graph,
+                CurrentFlowProjectionService.FlowchartJsonTarget,
+                string.Empty,
+                out string resolvedProjectionVersion,
+                out string projectionText,
+                out string projectionJson,
+                out string errorCode,
+                out string errorMessage);
+
+            Assert.IsTrue(success, errorMessage);
+            Assert.That(errorCode, Is.Empty);
+            Assert.That(resolvedProjectionVersion, Is.EqualTo("2.0"));
+            Assert.That(projectionText, Is.EqualTo(string.Empty));
+
+            ExportGraphDto restored = UnityEngine.JsonUtility.FromJson<ExportGraphDto>(projectionJson);
+            Assert.That(restored, Is.Not.Null);
+            Assert.That(restored.startNodeId, Is.EqualTo("N000"));
+            Assert.That(restored.nodes.Count, Is.EqualTo(4));
+            Assert.That(restored.nodes.Find(node => node.id == "N001")?.choiceMode, Is.EqualTo("+"));
+        }
+
+        [Test]
+        public void TryProjectGraph_Ink_會回傳InkText()
+        {
+            CanonicalGraphDocument graph = BuildChoiceGraph();
+
+            bool success = CurrentFlowProjectionService.TryProjectGraph(
+                graph,
+                CurrentFlowProjectionService.InkTarget,
+                string.Empty,
+                out string resolvedProjectionVersion,
+                out string projectionText,
+                out string projectionJson,
+                out string errorCode,
+                out string errorMessage);
+
+            Assert.IsTrue(success, errorMessage);
+            Assert.That(errorCode, Is.EqualTo(string.Empty));
+            Assert.That(resolvedProjectionVersion, Is.EqualTo("2.0"));
+            Assert.That(projectionJson, Is.EqualTo(string.Empty));
+            StringAssert.Contains("+ [去 A] -> knot_N002", projectionText);
+            StringAssert.Contains("+ [去 B] -> knot_N003", projectionText);
+        }
+        // ===== 變更結束 =====
+
         [Test]
         public void TryBuildProjectionDto_ChoiceGraph_保留Label與Mode()
         {

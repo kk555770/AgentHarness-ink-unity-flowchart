@@ -287,6 +287,69 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(response.result.graphId, Is.EqualTo("chapter-01"));
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：為 Batch 11A 補上 projection-specific dispatcher 測試)
+        // 預期結果：ValidateProjection / ProjectGraph 可透過 JSON command 穩定處理 `flowchart-json / ink`，並維持 unsupported target 的固定錯誤碼
+        [Test]
+        public void Dispatch_ValidateProjection_FlowchartJson_成功且AppliedFalse()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, BuildValidateProjectionRequest("chapter-01", CurrentFlowProjectionService.FlowchartJsonTarget));
+
+            Assert.IsTrue(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.IsTrue(response.result.isValid);
+            Assert.That(response.result.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(response.result.projectionVersion, Is.EqualTo("2.0"));
+        }
+
+        [Test]
+        public void Dispatch_ProjectGraph_FlowchartJson_會回傳ProjectionJson()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, BuildProjectGraphRequest("chapter-01", CurrentFlowProjectionService.FlowchartJsonTarget));
+
+            Assert.IsTrue(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.That(response.result.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(response.result.projectionText, Is.EqualTo(string.Empty));
+
+            ExportGraphDto restored = JsonUtility.FromJson<ExportGraphDto>(response.result.projectionJson);
+            Assert.That(restored, Is.Not.Null);
+            Assert.That(restored.startNodeId, Is.EqualTo("N001"));
+            Assert.That(restored.nodes.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Dispatch_ProjectGraph_Ink_會回傳ProjectionText()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, BuildProjectGraphRequest("chapter-01", CurrentFlowProjectionService.InkTarget));
+
+            Assert.IsTrue(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.That(response.result.target, Is.EqualTo(CurrentFlowProjectionService.InkTarget));
+            Assert.That(response.result.projectionJson, Is.EqualTo(string.Empty));
+            StringAssert.Contains("=== knot_N001 ===", response.result.projectionText);
+            StringAssert.Contains("=== knot_N002 ===", response.result.projectionText);
+        }
+
+        [Test]
+        public void Dispatch_ProjectGraph_不支援Target_會回固定錯誤碼()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = BuildConnectedLinearDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(dispatcher, BuildProjectGraphRequest("chapter-01", "story-json"));
+
+            Assert.IsFalse(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.That(response.errors[0].code, Is.EqualTo("PROJECTION_UNSUPPORTED"));
+        }
+        // ===== 變更結束 =====
+
         private static CanonicalGraphJsonResponse Dispatch(CanonicalGraphJsonCommandDispatcher dispatcher, CanonicalGraphJsonRequest request)
         {
             bool success = dispatcher.TryDispatch(JsonUtility.ToJson(request, true), out string responseJson);
@@ -359,6 +422,36 @@ namespace OpsidanosInk.Tests.EditMode
                 }
             };
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：為 Batch 11A 的 dispatcher 測試補上 projection request helper)
+        // 預期結果：ValidateProjection / ProjectGraph 測試可共用固定 request 組裝邏輯，避免每支測試各自手拼 target 欄位
+        private static CanonicalGraphJsonRequest BuildValidateProjectionRequest(string graphId, string target)
+        {
+            return new CanonicalGraphJsonRequest
+            {
+                operation = "ValidateProjection",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = graphId,
+                    target = target
+                }
+            };
+        }
+
+        private static CanonicalGraphJsonRequest BuildProjectGraphRequest(string graphId, string target)
+        {
+            return new CanonicalGraphJsonRequest
+            {
+                operation = "ProjectGraph",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = graphId,
+                    target = target
+                }
+            };
+        }
+        // ===== 變更結束 =====
 
         private static CanonicalGraphJsonCommandDispatcher BuildConnectedLinearDispatcher()
         {

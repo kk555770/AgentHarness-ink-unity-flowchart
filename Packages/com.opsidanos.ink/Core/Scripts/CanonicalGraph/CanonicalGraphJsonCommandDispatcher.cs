@@ -13,6 +13,12 @@ namespace OpsidanosInk.CanonicalGraph
         private const string ErrorUnsupportedContractVersion = "UNSUPPORTED_CONTRACT_VERSION";
         private const string ErrorUnsupportedOperation = "UNSUPPORTED_OPERATION";
         private const string ErrorDuplicateGraphId = "DUPLICATE_GRAPH_ID";
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，讓 dispatcher 對 projection-specific failure 有穩定錯誤碼)
+        // 預期結果：ValidateProjection / ProjectGraph 可清楚區分 unsupported target 與 projection mapping loss
+        private const string ErrorProjectionUnsupported = "PROJECTION_UNSUPPORTED";
+        private const string ErrorProjectionMappingLoss = "PROJECTION_MAPPING_LOSS";
+        // ===== 變更結束 =====
 
         [Serializable]
         private sealed class MetadataPayload
@@ -111,6 +117,14 @@ namespace OpsidanosInk.CanonicalGraph
                     return DispatchGetGraph(input);
                 case "ValidateGraph":
                     return DispatchValidateGraph(input);
+                // ===== 變更開始 =====
+                // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection-specific control plane operation routing)
+                // 預期結果：JSON command dispatcher 可直接處理 ValidateProjection / ProjectGraph，而不是把它們當 unknown op
+                case "ValidateProjection":
+                    return DispatchValidateProjection(input);
+                case "ProjectGraph":
+                    return DispatchProjectGraph(input);
+                // ===== 變更結束 =====
                 default:
                     return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
                         input.graphId,
@@ -269,6 +283,100 @@ namespace OpsidanosInk.CanonicalGraph
             return CanonicalGraphJsonErrorMapper.BuildValidationResponse(result, graph.graphId);
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection-specific validate / project dispatcher)
+        // 預期結果：canonical JSON control plane 可直接驗證並產出 `flowchart-json / ink`，不必再透過 exporter 當唯一入口
+        private CanonicalGraphJsonResponse DispatchValidateProjection(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            string target = NormalizeProjectionTarget(input != null ? input.target : string.Empty);
+            if (string.IsNullOrEmpty(target))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, ErrorInvalidRequest, "ValidateProjection 需要 input.target。");
+            }
+
+            bool success = CurrentFlowProjectionService.TryValidateProjection(
+                graph,
+                target,
+                input != null ? input.projectionVersion : string.Empty,
+                out string resolvedProjectionVersion,
+                out string errorCode,
+                out string errorMessage);
+
+            if (success)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildProjectionValidationResponse(
+                    CanonicalGraphValidationResult.Completed(true, Array.Empty<CanonicalGraphValidationIssue>(), Array.Empty<CanonicalGraphValidationIssue>()),
+                    graph.graphId,
+                    graph.version,
+                    target,
+                    resolvedProjectionVersion);
+            }
+
+            if (errorCode == ErrorProjectionUnsupported)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, errorCode, errorMessage);
+            }
+
+            var validationIssue = new CanonicalGraphValidationIssue
+            {
+                code = string.IsNullOrEmpty(errorCode) ? ErrorProjectionMappingLoss : errorCode,
+                message = string.IsNullOrEmpty(errorMessage) ? "projection 驗證失敗。" : errorMessage
+            };
+
+            return CanonicalGraphJsonErrorMapper.BuildProjectionValidationResponse(
+                CanonicalGraphValidationResult.Completed(false, Array.Empty<CanonicalGraphValidationIssue>(), new[] { validationIssue }),
+                graph.graphId,
+                graph.version,
+                target,
+                resolvedProjectionVersion);
+        }
+
+        private CanonicalGraphJsonResponse DispatchProjectGraph(CanonicalGraphJsonRequestInput input)
+        {
+            if (!TryGetGraph(input != null ? input.graphId : string.Empty, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse graphFailure))
+            {
+                return graphFailure;
+            }
+
+            string target = NormalizeProjectionTarget(input != null ? input.target : string.Empty);
+            if (string.IsNullOrEmpty(target))
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(graph.graphId, ErrorInvalidRequest, "ProjectGraph 需要 input.target。");
+            }
+
+            bool success = CurrentFlowProjectionService.TryProjectGraph(
+                graph,
+                target,
+                input != null ? input.projectionVersion : string.Empty,
+                out string resolvedProjectionVersion,
+                out string projectionText,
+                out string projectionJson,
+                out string errorCode,
+                out string errorMessage);
+
+            if (!success)
+            {
+                return CanonicalGraphJsonErrorMapper.BuildFailureResponse(
+                    graph.graphId,
+                    string.IsNullOrEmpty(errorCode) ? ErrorProjectionMappingLoss : errorCode,
+                    string.IsNullOrEmpty(errorMessage) ? "projection 失敗。" : errorMessage);
+            }
+
+            return CanonicalGraphJsonErrorMapper.BuildProjectionResponse(
+                graph.graphId,
+                graph.version,
+                target,
+                resolvedProjectionVersion,
+                projectionText,
+                projectionJson);
+        }
+        // ===== 變更結束 =====
+
         private bool TryGetGraph(string graphId, out CanonicalGraphDocument graph, out CanonicalGraphJsonResponse failureResponse)
         {
             graph = null;
@@ -291,6 +399,15 @@ namespace OpsidanosInk.CanonicalGraph
         {
             return string.IsNullOrWhiteSpace(graphId) ? string.Empty : graphId.Trim();
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，讓 projection target 與 graphId 一樣先做最小正規化)
+        // 預期結果：dispatcher 在 ValidateProjection / ProjectGraph 時，不會因 target 前後空白而把 request 誤判成不同操作
+        private static string NormalizeProjectionTarget(string target)
+        {
+            return string.IsNullOrWhiteSpace(target) ? string.Empty : target.Trim();
+        }
+        // ===== 變更結束 =====
 
         // ===== 變更開始 =====
         // 2026/03/22 Opsidanos (修改原因：開始落地 Batch 10，讓 dispatcher 可在 replace payload 前先查到既有 nodeType)

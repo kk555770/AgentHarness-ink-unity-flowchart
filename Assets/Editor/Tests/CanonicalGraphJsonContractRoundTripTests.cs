@@ -73,6 +73,32 @@ namespace OpsidanosInk.Tests.EditMode
         }
         // ===== 變更結束 =====
 
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：為 Batch 11A 補上 projection request 的 contract round-trip 護欄)
+        // 預期結果：`target / projectionVersion` 序列化後不會遺失，後續 host bridge 可依賴固定 JSON shape
+        [Test]
+        public void RequestEnvelope_ProjectGraph_RoundTrip會保留Target與ProjectionVersion()
+        {
+            CanonicalGraphJsonRequest request = new CanonicalGraphJsonRequest
+            {
+                operation = "ProjectGraph",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-01",
+                    target = CurrentFlowProjectionService.FlowchartJsonTarget,
+                    projectionVersion = "2.0"
+                }
+            };
+
+            string json = JsonUtility.ToJson(request, true);
+            CanonicalGraphJsonRequest restored = JsonUtility.FromJson<CanonicalGraphJsonRequest>(json);
+
+            Assert.That(restored.input.graphId, Is.EqualTo("chapter-01"));
+            Assert.That(restored.input.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(restored.input.projectionVersion, Is.EqualTo("2.0"));
+        }
+        // ===== 變更結束 =====
+
         [Test]
         public void Dispatch_錯誤ContractVersion_會回傳穩定錯誤碼()
         {
@@ -100,7 +126,7 @@ namespace OpsidanosInk.Tests.EditMode
             CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
             CanonicalGraphJsonRequest request = new CanonicalGraphJsonRequest
             {
-                operation = "ProjectGraph",
+                operation = "ProjectGraphX",
                 input = new CanonicalGraphJsonRequestInput
                 {
                     graphId = "chapter-01"
@@ -197,6 +223,35 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(restored.snapshot.edges.Count, Is.EqualTo(1));
             Assert.That(restored.snapshot.edges[0].edgeId, Is.EqualTo("N001:flow-out->N002:flow-in"));
         }
+
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：為 Batch 11A 補上 projection response 的 round-trip 護欄)
+        // 預期結果：`target / projectionVersion / projectionText / projectionJson` 會在 JSON contract 序列化後完整保留
+        [Test]
+        public void ResponseEnvelope_ProjectGraph_RoundTrip會保留ProjectionResult()
+        {
+            CanonicalGraphJsonResponse response = new CanonicalGraphJsonResponse
+            {
+                success = true,
+                applied = false
+            };
+            response.result.graphId = "chapter-01";
+            response.result.version = "canonical-1";
+            response.result.target = CurrentFlowProjectionService.FlowchartJsonTarget;
+            response.result.projectionVersion = "2.0";
+            response.result.projectionJson = "{\"graphName\":\"chapter-01\"}";
+            response.result.projectionText = string.Empty;
+
+            string json = JsonUtility.ToJson(response, true);
+            CanonicalGraphJsonResponse restored = JsonUtility.FromJson<CanonicalGraphJsonResponse>(json);
+
+            Assert.That(restored.result.graphId, Is.EqualTo("chapter-01"));
+            Assert.That(restored.result.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(restored.result.projectionVersion, Is.EqualTo("2.0"));
+            Assert.That(restored.result.projectionJson, Is.EqualTo("{\"graphName\":\"chapter-01\"}"));
+            Assert.That(restored.result.projectionText, Is.EqualTo(string.Empty));
+        }
+        // ===== 變更結束 =====
 
         private static CanonicalGraphJsonResponse Dispatch(CanonicalGraphJsonCommandDispatcher dispatcher, CanonicalGraphJsonRequest request)
         {

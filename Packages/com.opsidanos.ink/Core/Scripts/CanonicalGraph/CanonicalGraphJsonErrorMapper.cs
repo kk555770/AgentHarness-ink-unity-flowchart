@@ -41,6 +41,57 @@ namespace OpsidanosInk.CanonicalGraph
             return response;
         }
 
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection 驗證與輸出專用的 response mapper)
+        // 預期結果：dispatcher 在處理 ValidateProjection / ProjectGraph 時，仍可共用單一 mapper 產生穩定的 JSON envelope
+        public static CanonicalGraphJsonResponse BuildProjectionValidationResponse(
+            CanonicalGraphValidationResult result,
+            string graphId,
+            string version,
+            string target,
+            string projectionVersion)
+        {
+            var response = new CanonicalGraphJsonResponse
+            {
+                success = result.success,
+                applied = false
+            };
+
+            response.result.graphId = graphId ?? string.Empty;
+            response.result.version = version ?? string.Empty;
+            response.result.target = target ?? string.Empty;
+            response.result.projectionVersion = projectionVersion ?? string.Empty;
+            response.result.isValid = result.isValid;
+            response.warnings = MapIssues(result.warnings, response.result.graphId);
+            response.errors = MapIssues(result.errors, response.result.graphId);
+            return response;
+        }
+
+        public static CanonicalGraphJsonResponse BuildProjectionResponse(
+            string graphId,
+            string version,
+            string target,
+            string projectionVersion,
+            string projectionText,
+            string projectionJson)
+        {
+            var response = new CanonicalGraphJsonResponse
+            {
+                success = true,
+                applied = false
+            };
+
+            response.result.graphId = graphId ?? string.Empty;
+            response.result.version = version ?? string.Empty;
+            response.result.target = target ?? string.Empty;
+            response.result.projectionVersion = projectionVersion ?? string.Empty;
+            response.result.projectionText = projectionText ?? string.Empty;
+            response.result.projectionJson = projectionJson ?? string.Empty;
+            response.result.isValid = true;
+            return response;
+        }
+        // ===== 變更結束 =====
+
         public static CanonicalGraphJsonResponse BuildSnapshotResponse(CanonicalGraphDocument graph)
         {
             var response = new CanonicalGraphJsonResponse

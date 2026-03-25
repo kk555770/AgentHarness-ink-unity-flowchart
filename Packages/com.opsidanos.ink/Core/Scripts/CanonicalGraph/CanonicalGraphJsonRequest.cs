@@ -28,6 +28,12 @@ namespace OpsidanosInk.CanonicalGraph
         public string nodeId = string.Empty;
         public string edgeId = string.Empty;
         // ===== 變更結束 =====
+        // ===== 變更開始 =====
+        // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection-specific control plane 需要的 target 與 version 欄位)
+        // 預期結果：`ValidateProjection / ProjectGraph` 可用固定 JSON shape 指定投影目標與 projection version
+        public string target = string.Empty;
+        public string projectionVersion = string.Empty;
+        // ===== 變更結束 =====
         public CanonicalGraphJsonNodeInput node = new CanonicalGraphJsonNodeInput();
         public string fromNodeId = string.Empty;
         public string fromPort = string.Empty;
