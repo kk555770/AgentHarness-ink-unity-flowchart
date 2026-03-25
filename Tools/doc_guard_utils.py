@@ -14,6 +14,7 @@ RULES_PATH = ROOT / "Tools" / "repo_guard_rules.json"
 BACKTICK_MARKDOWN_PATH_RE = re.compile(r"`([^`]+\.md)`")
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
 LAST_UPDATED_RE = re.compile(r"最後更新：\s*(\d{4}/\d{2}/\d{2})")
+DOC_OWNER_RE = re.compile(r"文件負責人：\s*([a-z-]+)")
 
 
 def read_text(path: Path) -> str:
@@ -38,6 +39,13 @@ def parse_last_updated_date(path: Path) -> date | None:
     if not match:
         return None
     return datetime.strptime(match.group(1), "%Y/%m/%d").date()
+
+
+def parse_doc_owner(path: Path) -> str | None:
+    match = DOC_OWNER_RE.search(read_text(path))
+    if not match:
+        return None
+    return match.group(1)
 
 
 def resolve_repo_path(raw_path: str, source_path: Path) -> Path | None:
@@ -82,6 +90,10 @@ def indexed_markdown_targets(index_path: Path) -> list[Path]:
 
 def count_indexed_markdown_targets(index_path: Path) -> int:
     return len(indexed_markdown_targets(index_path))
+
+
+def all_documentation_markdown_files() -> list[Path]:
+    return sorted(DOC_ROOT.rglob("*.md"))
 
 
 def git_last_change_date(paths: list[Path]) -> date | None:

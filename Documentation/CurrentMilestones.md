@@ -1,5 +1,6 @@
 # 目前里程碑
 
+> 文件負責人：harness
 > 最後更新：2026/03/25  
 > 角色：**現況進度入口 / Current Status**  
 > 目的：讓新讀者先知道 repo 現在做到哪裡，不必先翻整包 `PlanningWithFiles/`

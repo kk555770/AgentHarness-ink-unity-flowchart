@@ -1,5 +1,6 @@
 # Canonical Graph JSON Contract
 
+> 文件負責人：projection
 > 最後更新：2026/03/17  
 > 文件角色：**控制面封裝層 / Wire Contract 層**  
 > 目的：定義 canonical graph 的第一個正式 JSON wire contract，讓 AI、Web 作者工具與程式可以用機械可讀的方式呼叫語意 API，同時不把 transport 外殼誤當成真相本體。

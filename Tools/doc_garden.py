@@ -8,11 +8,12 @@ from pathlib import Path
 from doc_guard_utils import (
     DOC_ROOT,
     ROOT,
+    all_documentation_markdown_files,
     freshness_status,
     indexed_markdown_targets,
     load_rules,
+    parse_doc_owner,
     parse_last_updated_date,
-    read_text,
     relative,
 )
 
@@ -26,12 +27,6 @@ TRACKED_GROUPS = [
     ("references", DOC_ROOT / "references" / "index.md"),
     ("generated", DOC_ROOT / "generated" / "index.md"),
 ]
-
-GENERATED_OUTPUTS = [
-    DOC_ROOT / "generated" / "doc_garden_report.md",
-    DOC_ROOT / "generated" / "test_results_index.md",
-]
-
 
 def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
@@ -69,21 +64,36 @@ def stale_docs(rules: dict) -> list[tuple[Path, str, str]]:
     return results
 
 
+def owner_stats(files: list[Path]) -> tuple[list[Path], dict[str, int]]:
+    missing: list[Path] = []
+    counts: dict[str, int] = {}
+    for path in files:
+        owner = parse_doc_owner(path)
+        if owner is None:
+            missing.append(path)
+            continue
+        counts[owner] = counts.get(owner, 0) + 1
+    return missing, counts
+
+
 def build_lines() -> list[str]:
-    files = all_markdown_files()
-    missing_headers = missing_last_updated(files)
+    files = all_documentation_markdown_files()
+    missing_updated_headers = missing_last_updated(files)
+    missing_owner_headers, owner_counts = owner_stats(files)
     rules = load_rules()
     outdated_docs = stale_docs(rules)
     lines = [
         "# doc garden report",
         "",
+        "> 文件負責人：harness",
         f"> 最後更新：{today()}",
         "> 來源：`python3 Tools/doc_garden.py`",
         "",
         "## 摘要",
         "",
         f"- Documentation Markdown 總數：{len(files)}",
-        f"- 缺少 `最後更新` 標頭：{len(missing_headers)}",
+        f"- 缺少 `最後更新` 標頭：{len(missing_updated_headers)}",
+        f"- 缺少 `文件負責人` 標頭：{len(missing_owner_headers)}",
         "",
         "## 分類內容盤點",
         "",
@@ -97,8 +107,24 @@ def build_lines() -> list[str]:
 
     lines.extend(["", "## 缺少 `最後更新` 的文件", ""])
 
-    if missing_headers:
-        for path in missing_headers:
+    if missing_updated_headers:
+        for path in missing_updated_headers:
+            lines.append(f"- `{rel(path)}`")
+    else:
+        lines.append("- 無")
+
+    lines.extend(["", "## 文件負責人覆蓋", ""])
+
+    if owner_counts:
+        for owner, count in sorted(owner_counts.items()):
+            lines.append(f"- `{owner}`：{count}")
+    else:
+        lines.append("- 無")
+
+    lines.extend(["", "## 缺少 `文件負責人` 的文件", ""])
+
+    if missing_owner_headers:
+        for path in missing_owner_headers:
             lines.append(f"- `{rel(path)}`")
     else:
         lines.append("- 無")

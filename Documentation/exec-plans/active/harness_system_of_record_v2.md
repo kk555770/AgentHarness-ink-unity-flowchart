@@ -1,5 +1,6 @@
 # Harness System Of Record V2
 
+> 文件負責人：harness
 > 最後更新：2026/03/25
 > 角色：**正式進行中計畫 / Active Exec Plan**
 
@@ -17,10 +18,13 @@
 
 - `AGENTS.md` 已收斂成目錄表
 - `Documentation/` 已有高階入口與分類索引
+- `DocsOwnership.md` 已把 owner 分類與更新責任寫成正式入口
+- `core-beliefs.md` 已把 golden principles 寫成正式入口
 - `CurrentMilestones.md` 已把 Batch 8~11A 拉回正式文件
 - `CI.yml` / `codex-auto-fix.yml` 已改成 Unity-first
 - `repo_guard v1` 已守 docs 入口 / asmdef / `.cs` 檔案大小
 - `repo_guard v2` 已守 `最後更新` 標頭 / cross-links / active exec plan 入口
+- `Documentation/**/*.md` 已補 `> 文件負責人：...`
 
 ## 這一輪新完成
 
@@ -38,6 +42,11 @@
    - 重建 generated docs
    - 若有變更就自動開 PR
 
+4. docs ownership / golden principles
+   - `DocsOwnership.md` 已把 owner 分類與更新責任寫成正式入口
+   - `design-docs/core-beliefs.md` 已把 golden principles 寫成正式入口
+   - `repo_guard v4` 與 `doc_garden_report.md` 已開始檢查 owner header / owner coverage
+
 ## 決策紀錄
 
 - 不再把本地 `Logs/TestResults` 直接描述成最新 CI 真相
@@ -46,7 +55,6 @@
 
 ## 留給後續的缺口
 
-- docs ownership
 - 更深層 code graph / naming / structured logging guard
 - 不依賴 `UNITY_LICENSE` 的更穩定雲端回饋閉環
 - UI / log / metrics / trace 層級的 agent 可觀測性
@@ -54,6 +62,6 @@
 ## 驗收標準
 
 - `Documentation/exec-plans/active/` 至少有一份非 `index.md` 的正式計畫
-- `python3 Tools/repo_guard.py` 能檢查真正的 freshness / index counts / cross-links / active plan
+- `python3 Tools/repo_guard.py` 能檢查真正的 freshness / index counts / cross-links / active plan / ownership
 - `PLANS.md`、`QUALITY_SCORE.md`、`RELIABILITY.md` 已把目前活躍計畫寫回正式文件
 - `docs-garden.yml` 已能回寫 generated docs 並建立 PR

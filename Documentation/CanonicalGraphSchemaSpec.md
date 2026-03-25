@@ -1,5 +1,6 @@
 # Canonical Graph Schema Spec
 
+> 文件負責人：architecture
 > 最後更新：2026/03/17  
 > 文件角色：**真相結構層 / Concrete Shape 層**  
 > 目的：把 canonical graph 的最小結構、節點型別、port/edge 語意、圖規則，以及目前 sidecar / GraphToolkit 的映射正式寫清楚。

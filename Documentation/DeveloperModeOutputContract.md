@@ -1,5 +1,6 @@
 # 開發者模式輸出契約（Current Flow Projection → Ink → 玩家模式）
 
+> 文件負責人：projection
 > 最後更新：2026/03/17  
 > 文件角色：**現況投影契約層 / Current Projection Contract**  
 > 適用範圍：開發者模式（Editor）輸出 `.ink`（含 `.flowchart.json` sidecar）給玩家模式（Runtime）播放與存讀檔

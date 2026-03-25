@@ -1,5 +1,6 @@
 # design-docs index
 
+> 文件負責人：architecture
 > 最後更新：2026/03/25
 
 ## 架構北極星
@@ -16,6 +17,14 @@
 
 - `Documentation/CurrentAuthoringWorkflow.md`
 - `Documentation/CurrentMilestones.md`
+
+## 核心信念 / Golden Principles
+
+- `Documentation/design-docs/core-beliefs.md`
+
+## 文件治理 / Ownership
+
+- `Documentation/DocsOwnership.md`
 
 ## Canonical core
 

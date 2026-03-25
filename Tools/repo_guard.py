@@ -5,9 +5,11 @@ from pathlib import Path
 
 from doc_guard_utils import (
     ROOT,
+    all_documentation_markdown_files,
     count_indexed_markdown_targets,
     freshness_status,
     load_json,
+    parse_doc_owner,
     read_text,
     relative,
 )
@@ -115,6 +117,21 @@ def check_freshness(rules: dict, errors: list[str]) -> None:
             )
 
 
+def check_doc_owners(rules: dict, errors: list[str]) -> None:
+    allowed_owners = set(rules.get("allowed_doc_owners", []))
+    for path in all_documentation_markdown_files():
+        rel_path = relative(path)
+        owner = parse_doc_owner(path)
+        if owner is None:
+            errors.append(f"{rel_path} 缺少文件負責人標頭")
+            continue
+
+        if allowed_owners and owner not in allowed_owners:
+            errors.append(
+                f"{rel_path} 的文件負責人不在允許清單內：owner={owner}"
+            )
+
+
 def check_exact_asmdef_references(rules: dict, errors: list[str]) -> None:
     exact_references = rules.get("exact_references", {})
     for rel_path, expected_references in exact_references.items():
@@ -176,6 +193,7 @@ def main() -> int:
     check_min_non_index_docs(rules.get("docs", {}), errors)
     check_indexed_doc_counts(rules.get("docs", {}), errors)
     check_freshness(rules.get("docs", {}), errors)
+    check_doc_owners(rules.get("docs", {}), errors)
     check_exact_asmdef_references(rules.get("asmdef", {}), errors)
     check_file_sizes(rules.get("filesize", {}), errors)
 

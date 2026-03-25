@@ -1,5 +1,6 @@
 # active exec-plans
 
+> 文件負責人：harness
 > 最後更新：2026/03/25
 
 ## 正式現況 / 進行中入口

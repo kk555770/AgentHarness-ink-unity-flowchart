@@ -1,5 +1,6 @@
 # Ink Player Window
 
+> 文件負責人：runtime
 > 最後更新：2026/03/25
 
 The Ink Player editor window is a powerful debugging tool for `.ink` stories.

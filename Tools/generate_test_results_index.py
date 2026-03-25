@@ -100,6 +100,7 @@ def build_lines(
     lines = [
         "# test results index",
         "",
+        "> 文件負責人：harness",
         f"> 最後更新：{today()}",
         f"> 來源：`python3 Tools/generate_test_results_index.py --results-root {rel(results_root)}`",
     ]

@@ -1,5 +1,6 @@
 # 目前作者工具工作流
 
+> 文件負責人：authoring
 > 最後更新：2026/03/17  
 > 文件角色：**現況作者工具工作流 / Current Authoring Workflow**  
 > 目的：把目前 repo 裡實際可用的 GraphToolkit 作者工具工作流講清楚，避免讀者把它誤認成 canonical truth 或未來唯一長期平台。

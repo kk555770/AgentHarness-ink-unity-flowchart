@@ -1,5 +1,6 @@
 # Canonical Graph Schema
 
+> 文件負責人：architecture
 > 最後更新：2026/03/17  
 > 文件角色：**真相層 / What 層**  
 > 目的：定義本專案的唯一語意真相應該長什麼樣，並把它和 sidecar、GraphToolkit、Web 作者工具、Unity runtime 的責任邊界切開。

@@ -1,5 +1,6 @@
 # generated index
 
+> 文件負責人：harness
 > 最後更新：2026/03/25
 
 ## 角色
@@ -25,4 +26,5 @@
 - `docs-garden.yml` 會先抓最新成功 CI run 的測試 artifact
 - 接著重建 `test_results_index.md` 與 `doc_garden_report.md`
 - 若 generated docs 有變更，workflow 會自動開 PR
+- `doc_garden_report.md` 也會列出 owner coverage
 - 若目前 repo 還沒有新的 Unity 測試 artifact，`test_results_index.md` 會誠實顯示 `Missing`，不再假裝是最新 CI 真相

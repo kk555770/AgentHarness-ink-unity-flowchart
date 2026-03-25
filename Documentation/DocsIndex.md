@@ -1,5 +1,6 @@
 # 文件索引
 
+> 文件負責人：reference
 > 最後更新：2026/03/25
 
 ## Start Here
@@ -16,6 +17,11 @@
 10. `Documentation/product-specs/index.md`
 11. `Documentation/references/index.md`
 12. `Documentation/AgentWorkflowRules.md`
+
+## Ownership / Golden Principles
+
+- `Documentation/DocsOwnership.md`
+- `Documentation/design-docs/core-beliefs.md`
 
 ## Groups
 

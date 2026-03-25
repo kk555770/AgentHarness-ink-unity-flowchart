@@ -1,5 +1,6 @@
 # Canonical Graph API Spec
 
+> 文件負責人：architecture
 > 最後更新：2026/03/17  
 > 文件角色：**控制面語意層 / How to Operate 層**  
 > 目的：定義 AI 與程式要如何操作 canonical graph，讓控制面建立在 schema 語意上，而不是建立在 GraphToolkit、Web 前端細節或 Unity Editor 手勢上。

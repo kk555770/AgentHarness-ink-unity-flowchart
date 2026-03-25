@@ -1,5 +1,6 @@
 # Unity Graph Toolkit Spec — com.unity.graphtoolkit 0.4.0-exp.2 (Unity 6000.2+)
 
+> 文件負責人：reference
 > 最後更新：2026/03/25
 
 > 這份文件是「給 AI 參考用」的規範（spec），用於產生/審查 Unity Graph Toolkit（GTK）相關程式碼與工具設計。

@@ -1,5 +1,6 @@
 # product-specs index
 
+> 文件負責人：projection
 > 最後更新：2026/03/25
 
 ## 現況產品入口

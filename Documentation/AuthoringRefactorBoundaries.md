@@ -1,5 +1,6 @@
 # 作者工具重製邊界
 
+> 文件負責人：authoring
 > 最後更新：2026/03/17  
 > 文件角色：**重製邊界層 / Refactor Boundary**  
 > 目的：把目前 GraphToolkit 腳本中混在一起的責任切開，整理出哪些應留在 current tooling、哪些應抽成 canonical core、哪些應落到未來 authoring bridge。

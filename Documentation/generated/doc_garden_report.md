@@ -1,18 +1,20 @@
 # doc garden report
 
+> 文件負責人：harness
 > 最後更新：2026/03/25
 > 來源：`python3 Tools/doc_garden.py`
 
 ## 摘要
 
-- Documentation Markdown 總數：35
+- Documentation Markdown 總數：37
 - 缺少 `最後更新` 標頭：0
+- 缺少 `文件負責人` 標頭：1
 
 ## 分類內容盤點
 
 | 類別 | index 指到的正式文件數 |
 |------|------------------------|
-| `design-docs` | 11 |
+| `design-docs` | 13 |
 | `exec-plans/active` | 3 |
 | `exec-plans/completed` | 3 |
 | `product-specs` | 6 |
@@ -22,6 +24,20 @@
 ## 缺少 `最後更新` 的文件
 
 - 無
+
+## 文件負責人覆蓋
+
+- `architecture`：6
+- `authoring`：6
+- `harness`：15
+- `projection`：3
+- `reference`：4
+- `runtime`：1
+- `security`：1
+
+## 缺少 `文件負責人` 的文件
+
+- `Documentation/generated/doc_garden_report.md`
 
 ## 可能已過時的文件
 
