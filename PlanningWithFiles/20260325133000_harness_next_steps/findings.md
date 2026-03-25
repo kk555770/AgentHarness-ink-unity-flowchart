@@ -1,0 +1,40 @@
+# 調查發現
+
+- repo 已有明確知識入口：
+  - `AGENTS.md`
+  - `Documentation/DocsIndex.md`
+  - `Documentation/CurrentMilestones.md`
+- 正式文件共 32 份；`PlanningWithFiles` 二級任務資料夾共 29 個。
+- 目前測試量：
+  - EditMode 測試檔 25 支
+  - PlayMode 測試檔 2 支
+- canonical JSON control plane 已落地到 code 與 tests：
+  - `CreateGraph`
+  - `GetGraph`
+  - `ReplaceNodePayload`
+  - `DisconnectEdge`
+  - `RemoveNode`
+  - `ValidateProjection`
+  - `ProjectGraph`
+- 仍未完成：
+  - `ImportProjection`
+  - `story-json` target
+  - `graphtoolkit-model` target
+  - WebView / Electron host
+- `CurrentFlowImportService.TryBuildPlan` 已可直接從 canonical graph 建立 import plan：
+  - `Packages/com.opsidanos.ink/Core/Scripts/Projection/CurrentFlow/CurrentFlowImportService.cs`
+- `CurrentFlowProjectionService` 已有 target-based validate / project 入口：
+  - `Packages/com.opsidanos.ink/Core/Scripts/Projection/CurrentFlow/CurrentFlowProjectionService.cs`
+- `CanonicalGraphJsonCommandDispatcher` 已接上 `ValidateProjection / ProjectGraph`，但還沒有 `ImportProjection`：
+  - `Packages/com.opsidanos.ink/Core/Scripts/CanonicalGraph/CanonicalGraphJsonCommandDispatcher.cs`
+- `codex-auto-fix.yml` 仍把 repo 當成 Node.js monorepo with Jest：
+  - `npm ci`
+  - `npm test`
+  - prompt 直接寫 Node/Jest
+- `Tools/run_tests.sh` 預設 Unity 路徑仍是 `6000.3.2f1`，與專案實際 `6000.3.9f1` 不一致。
+- CI 只有 Unity 測試；若沒有 `UNITY_LICENSE`，會退化成說明訊息，不會給固定回饋。
+- repo 目前沒有 docs freshness / asmdef direction / file-size 的機械式 guard。
+- asmdef 邊界目前算清楚：
+  - `OpsidanosInk.CanonicalGraph.asmdef` 沒有 references
+  - `OpsidanosInk.FlowChartEditor.asmdef` 依賴 canonical graph + GraphToolkit editor assemblies
+  - `OpsidanosInk.Runtime.asmdef` 只依賴 runtime 相關套件

@@ -1,0 +1,95 @@
+{
+  "docs": {
+    "required_files": [
+      "AGENTS.md",
+      "Documentation/DocsIndex.md",
+      "Documentation/CurrentMilestones.md",
+      "Documentation/ARCHITECTURE.md",
+      "Documentation/PLANS.md",
+      "Documentation/PRODUCT_SENSE.md",
+      "Documentation/QUALITY_SCORE.md",
+      "Documentation/RELIABILITY.md",
+      "Documentation/SECURITY.md",
+      "Documentation/design-docs/index.md",
+      "Documentation/exec-plans/index.md",
+      "Documentation/generated/index.md",
+      "Documentation/product-specs/index.md",
+      "Documentation/references/index.md"
+    ],
+    "required_contains": {
+      "AGENTS.md": [
+        "Documentation/CurrentMilestones.md",
+        "Documentation/ARCHITECTURE.md",
+        "Documentation/PLANS.md",
+        "Documentation/PRODUCT_SENSE.md",
+        "Documentation/QUALITY_SCORE.md",
+        "Documentation/RELIABILITY.md",
+        "Documentation/SECURITY.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/exec-plans/index.md",
+        "Documentation/product-specs/index.md",
+        "Documentation/references/index.md"
+      ],
+      "Documentation/DocsIndex.md": [
+        "Documentation/CurrentMilestones.md",
+        "Documentation/ARCHITECTURE.md",
+        "Documentation/PLANS.md",
+        "Documentation/PRODUCT_SENSE.md",
+        "Documentation/QUALITY_SCORE.md",
+        "Documentation/RELIABILITY.md",
+        "Documentation/SECURITY.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/exec-plans/index.md",
+        "Documentation/product-specs/index.md",
+        "Documentation/references/index.md"
+      ],
+      "Documentation/CurrentMilestones.md": [
+        "Batch 8",
+        "Batch 9",
+        "Batch 10",
+        "Batch 11 / 11A",
+        "ImportProjection",
+        "story-json",
+        "graphtoolkit-model"
+      ]
+    }
+  },
+  "asmdef": {
+    "exact_references": {
+      "Packages/com.opsidanos.ink/Core/OpsidanosInk.CanonicalGraph.asmdef": [],
+      "Assets/Editor/FlowChart/OpsidanosInk.FlowChartEditor.asmdef": [
+        "OpsidanosInk.CanonicalGraph",
+        "Unity.GraphToolkit.Common.Editor",
+        "Unity.GraphToolkit.Utility.Editor",
+        "Unity.GraphToolkit.Editor"
+      ],
+      "Packages/com.opsidanos.ink/Runtime/OpsidanosInk.Runtime.asmdef": [
+        "Ink-Libraries",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
+      ],
+      "Assets/Tests/PlayMode/OpsidanosInk.PlayModeTests.asmdef": [
+        "OpsidanosInk.Runtime"
+      ]
+    }
+  },
+  "filesize": {
+    "roots": [
+      "Assets",
+      "Packages/com.opsidanos.ink"
+    ],
+    "default_cs_max_lines": 600,
+    "allowlist": {
+      "Assets/Editor/SelectionExporter.cs": 2020,
+      "Packages/com.opsidanos.ink/Runtime/Scripts/Presentation/InkTagCharacterStatePlayer.cs": 1848,
+      "Packages/com.opsidanos.ink/Runtime/Scripts/UI/VNPlayerPresenter.cs": 1297,
+      "Assets/Tests/PlayMode/OpsidanosInkPlayModeUiClickTests.cs": 990,
+      "Packages/com.opsidanos.ink/Core/Scripts/CanonicalGraph/CanonicalGraphCommandService.cs": 819,
+      "Assets/Editor/Tests/InkFlowChartImportTests.cs": 755,
+      "Packages/com.opsidanos.ink/Runtime/Scripts/Save/InkSaveSystem.cs": 667,
+      "Packages/com.opsidanos.ink/Core/Scripts/Projection/CurrentFlow/CurrentFlowCanonicalGraphAdapter.cs": 660,
+      "Packages/com.opsidanos.ink/Runtime/Scripts/Presentation/InkResourceMap.cs": 609,
+      "Assets/Editor/FlowChart/GraphToolkit/InkFlowChartExporter.cs": 604
+    }
+  }
+}

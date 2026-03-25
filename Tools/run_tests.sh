@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-UNITY_BIN_DEFAULT="/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/MacOS/Unity"
+UNITY_BIN_DEFAULT="/Applications/Unity/Hub/Editor/6000.3.9f1/Unity.app/Contents/MacOS/Unity"
 UNITY_BIN="${UNITY_PATH:-${UNITY_BIN_DEFAULT}}"
 
 RESULTS_DIR="${PROJECT_ROOT}/Logs/TestResults"

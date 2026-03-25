@@ -1,0 +1,22 @@
+# 調查發現
+
+- 目前 root `AGENTS.md` 已有地圖方向，但仍偏解釋型文件。
+- 目前 `Documentation/` 缺少明確對應文章結構的 `plans / references / quality` 入口。
+- `Documentation/DocsIndex.md` 仍偏長篇導讀，缺少較扁平的知識分類入口。
+- 已新增：
+  - `Documentation/ARCHITECTURE.md`
+  - `Documentation/PLANS.md`
+  - `Documentation/PRODUCT_SENSE.md`
+  - `Documentation/QUALITY_SCORE.md`
+  - `Documentation/RELIABILITY.md`
+  - `Documentation/SECURITY.md`
+  - `Documentation/design-docs/index.md`
+  - `Documentation/exec-plans/index.md`
+  - `Documentation/exec-plans/active/index.md`
+  - `Documentation/exec-plans/completed/index.md`
+  - `Documentation/exec-plans/tech-debt.md`
+  - `Documentation/generated/index.md`
+  - `Documentation/product-specs/index.md`
+  - `Documentation/references/index.md`
+- 先前新增的 `Documentation/Plans.md`、`Documentation/References.md`、`Documentation/QualityAndValidation.md` 已刪除，改成更接近文章示例的分類結構。
+- root `AGENTS.md` 已再收斂一輪，主體改成目錄樹 + Start Here + 極少量說明。

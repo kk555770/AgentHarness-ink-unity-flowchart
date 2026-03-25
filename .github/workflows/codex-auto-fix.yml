@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
       FAILED_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
       FAILED_RUN_URL: ${{ github.event.workflow_run.html_url }}
       FAILED_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
@@ -40,11 +41,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm i; fi
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
       - name: Prepare Codex prerequisites
         shell: bash
@@ -68,10 +69,49 @@ jobs:
 
       - name: Run Codex to fix CI failure
         run: |
-          codex exec --full-auto --sandbox workspace-write "You are working in a Node.js monorepo with Jest tests and GitHub Actions. Read the repository, run the test suite, identify the minimal change needed to make all tests pass, implement only that change, and stop. Do not refactor unrelated code or files. Keep changes small and surgical."
+          codex exec --full-auto --sandbox workspace-write "You are working in a Unity 6000.3.9f1 repository with GitHub Actions. This is not a Node.js monorepo and it does not use Jest as the primary test harness. Read AGENTS.md, Documentation/DocsIndex.md, Documentation/CurrentMilestones.md, Documentation/AgentWorkflowRules.md, and .github/workflows/CI.yml first. The standard verification flow is python3 Tools/repo_guard.py, then Unity EditMode and PlayMode test assemblies OpsidanosInk.EditModeTests and OpsidanosInk.PlayModeTests. Identify the minimal change needed to fix the failing CI, implement only that change, and stop. Do not refactor unrelated code or files. Keep changes small and surgical."
 
-      - name: Verify tests
-        run: npm test --silent
+      - name: Verify repo guards
+        run: python3 Tools/repo_guard.py
+
+      - name: Check UNITY_LICENSE
+        id: unity-license
+        shell: bash
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "has-unity-license=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-unity-license=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify EditMode（只跑我們的）
+        if: ${{ steps.unity-license.outputs.has-unity-license == 'true' }}
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: .
+          unityVersion: 6000.3.9f1
+          testMode: editmode
+          githubToken: ${{ github.token }}
+          customParameters: -assemblyNames OpsidanosInk.EditModeTests
+
+      - name: Verify PlayMode（只跑我們的）
+        if: ${{ steps.unity-license.outputs.has-unity-license == 'true' }}
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: .
+          unityVersion: 6000.3.9f1
+          testMode: playmode
+          githubToken: ${{ github.token }}
+          customParameters: -assemblyNames OpsidanosInk.PlayModeTests
+
+      - name: Explain skipped Unity verify
+        if: ${{ steps.unity-license.outputs.has-unity-license != 'true' }}
+        run: |
+          echo "[OpsidanosInk] 未設定 UNITY_LICENSE，這次 auto-fix 只驗證 repo guards。"
 
       - name: Create pull request with fixes
         if: success()
