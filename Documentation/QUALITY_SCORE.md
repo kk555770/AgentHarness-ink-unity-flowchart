@@ -13,6 +13,9 @@
 - 機械式護欄：黃
   - `repo_guard v2` 已開始補 docs freshness / cross-links / active exec plan 檢查
   - 仍缺更深層的 ownership 與 code graph guard
+- doc-gardening：黃
+  - 已補 `Tools/doc_garden.py` 與 `.github/workflows/docs-garden.yml`
+  - 目前先產生報告與 artifact，還沒有自動開 PR
 - auto-fix harness：黃
   - workflow 已改成 Unity-first
   - 完整 verify 仍依賴 `UNITY_LICENSE`

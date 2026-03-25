@@ -7,7 +7,13 @@
 - 放生成文件入口
 - 這裡只放可重建、可再生的產物
 
-## 目前狀態
+## 固定 generated docs
 
-- 尚未建立固定 generated docs 清單
-- 後續若有 schema dump、API export、測試報告索引，可放在這裡
+- `Documentation/generated/doc_garden_report.md`
+- `Documentation/generated/test_results_index.md`
+
+## 更新方式
+
+- `python3 Tools/generate_test_results_index.py`
+- `python3 Tools/doc_garden.py`
+- GitHub Actions：`.github/workflows/docs-garden.yml`

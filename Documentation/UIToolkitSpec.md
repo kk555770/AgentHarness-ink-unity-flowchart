@@ -1,5 +1,7 @@
 # Unity UI Toolkit Spec — Unity 6000.3.x (6000.3.2f1)
 
+> 最後更新：2026/03/25
+
 ## UXML
 
 ### Rules

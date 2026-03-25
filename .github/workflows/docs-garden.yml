@@ -1,0 +1,39 @@
+name: Docs Garden
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  docs-garden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Generate test results index
+        run: python3 Tools/generate_test_results_index.py
+
+      - name: Generate doc garden report
+        run: python3 Tools/doc_garden.py
+
+      - name: Run repo guard
+        run: python3 Tools/repo_guard.py
+
+      - name: Upload generated docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-garden-generated
+          path: |
+            Documentation/generated/doc_garden_report.md
+            Documentation/generated/test_results_index.md
+          if-no-files-found: error

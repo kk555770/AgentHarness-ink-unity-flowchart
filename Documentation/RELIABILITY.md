@@ -5,7 +5,10 @@
 ## 現有可靠性入口
 
 - `.github/workflows/CI.yml`
+- `.github/workflows/docs-garden.yml`
 - `Tools/repo_guard.py`
+- `Tools/doc_garden.py`
+- `Tools/generate_test_results_index.py`
 - `Tools/run_tests.sh`
 - `Assets/Editor/Tests/`
 - `Assets/Tests/PlayMode/`
@@ -15,6 +18,7 @@
 
 - `repo_guard v1` 已先守 docs 入口、asmdef 依賴方向、`.cs` 檔案大小
 - `repo_guard v2` 已開始守 docs freshness / cross-links / active exec plan
+- `docs-garden.yml` 已能週期性產生 doc garden report 與 test results index
 - EditMode / PlayMode / contract 測試已是主要回饋迴路
 - current projection contract 已被文件化
 - `codex-auto-fix.yml` 已改成 Unity-first verify flow
@@ -25,3 +29,4 @@
 - 仍缺更深層的 docs ownership 檢查
 - 缺少更完整的 code graph / asmdef 以外架構 gate
 - 缺少不依賴 `UNITY_LICENSE` 的完整 Unity 驗證回饋
+- doc-gardening 目前仍是報告 / artifact 型，還沒有自動修正或開 PR

@@ -14,6 +14,8 @@
       "Documentation/design-docs/index.md",
       "Documentation/exec-plans/index.md",
       "Documentation/generated/index.md",
+      "Documentation/generated/doc_garden_report.md",
+      "Documentation/generated/test_results_index.md",
       "Documentation/product-specs/index.md",
       "Documentation/references/index.md"
     ],
@@ -65,6 +67,11 @@
         "Documentation/GraphToolkitSpec.md",
         "Documentation/UIToolkitSpec.md"
       ],
+      "Documentation/generated/index.md": [
+        "Documentation/generated/doc_garden_report.md",
+        "Documentation/generated/test_results_index.md",
+        ".github/workflows/docs-garden.yml"
+      ],
       "Documentation/QUALITY_SCORE.md": [
         "repo_guard v2",
         "Documentation/exec-plans/active/harness_system_of_record_v2.md"
@@ -89,8 +96,13 @@
       "Documentation/exec-plans/completed/index.md",
       "Documentation/exec-plans/tech-debt.md",
       "Documentation/generated/index.md",
+      "Documentation/generated/doc_garden_report.md",
+      "Documentation/generated/test_results_index.md",
       "Documentation/product-specs/index.md",
-      "Documentation/references/index.md"
+      "Documentation/references/index.md",
+      "Documentation/AgentWorkflowRules.md",
+      "Documentation/GraphToolkitSpec.md",
+      "Documentation/UIToolkitSpec.md"
     ],
     "min_non_index_docs": {
       "Documentation/exec-plans/active": 1
