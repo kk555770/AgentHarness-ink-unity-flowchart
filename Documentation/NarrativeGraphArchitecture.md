@@ -375,9 +375,9 @@ Canonical Schema
   - 負責定義第一個正式 Plain JSON wire contract
 - `Documentation/DeveloperModeOutputContract.md`
   - 負責規定 projection 輸出到玩家模式時的正式契約
-- `GraphToolkitSpec.md`
+- `Documentation/GraphToolkitSpec.md`
   - 負責 GraphToolkit API 與工具開發規範
-- `UIToolkitSpec.md`
+- `Documentation/UIToolkitSpec.md`
   - 負責 UI Toolkit API 與 UI 輸出規範
 
 也就是說：

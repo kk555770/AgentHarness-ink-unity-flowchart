@@ -1,9 +1,12 @@
 # active exec-plans
 
+> 最後更新：2026/03/25
+
 ## 正式現況 / 進行中入口
 
 - `Documentation/CurrentMilestones.md`
 - `Documentation/exec-plans/tech-debt.md`
+- `Documentation/exec-plans/active/harness_system_of_record_v2.md`
 
 ## 使用原則
 

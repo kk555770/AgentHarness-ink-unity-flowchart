@@ -43,6 +43,42 @@ def check_required_contains(rules: dict, errors: list[str]) -> None:
                 errors.append(f"{rel_path} 缺少必要內容：{pattern}")
 
 
+def check_last_updated_headers(rules: dict, errors: list[str]) -> None:
+    required_headers = rules.get("last_updated_headers", [])
+    for rel_path in required_headers:
+        path = ROOT / rel_path
+        if not path.is_file():
+            errors.append(f"缺少必要文件：{rel_path}")
+            continue
+
+        text = read_text(path)
+        if "最後更新：" not in text:
+            errors.append(f"{rel_path} 缺少最後更新標頭")
+
+
+def count_non_index_markdown_files(path: Path) -> int:
+    count = 0
+    for candidate in path.glob("*.md"):
+        if candidate.name != "index.md" and candidate.is_file():
+            count += 1
+    return count
+
+
+def check_min_non_index_docs(rules: dict, errors: list[str]) -> None:
+    min_docs = rules.get("min_non_index_docs", {})
+    for rel_path, minimum in min_docs.items():
+        path = ROOT / rel_path
+        if not path.is_dir():
+            errors.append(f"缺少必要資料夾：{rel_path}")
+            continue
+
+        actual = count_non_index_markdown_files(path)
+        if actual < int(minimum):
+            errors.append(
+                f"{rel_path} 正式文件數不足：current={actual} minimum={minimum}"
+            )
+
+
 def check_exact_asmdef_references(rules: dict, errors: list[str]) -> None:
     exact_references = rules.get("exact_references", {})
     for rel_path, expected_references in exact_references.items():
@@ -100,6 +136,8 @@ def main() -> int:
 
     check_required_files(rules.get("docs", {}), errors)
     check_required_contains(rules.get("docs", {}), errors)
+    check_last_updated_headers(rules.get("docs", {}), errors)
+    check_min_non_index_docs(rules.get("docs", {}), errors)
     check_exact_asmdef_references(rules.get("asmdef", {}), errors)
     check_file_sizes(rules.get("filesize", {}), errors)
 

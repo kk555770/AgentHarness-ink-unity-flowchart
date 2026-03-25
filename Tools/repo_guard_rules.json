@@ -10,6 +10,7 @@
       "Documentation/QUALITY_SCORE.md",
       "Documentation/RELIABILITY.md",
       "Documentation/SECURITY.md",
+      "Documentation/exec-plans/active/harness_system_of_record_v2.md",
       "Documentation/design-docs/index.md",
       "Documentation/exec-plans/index.md",
       "Documentation/generated/index.md",
@@ -51,7 +52,48 @@
         "ImportProjection",
         "story-json",
         "graphtoolkit-model"
+      ],
+      "Documentation/PLANS.md": [
+        "Documentation/exec-plans/active/index.md",
+        "Documentation/exec-plans/completed/index.md",
+        "Documentation/exec-plans/tech-debt.md"
+      ],
+      "Documentation/exec-plans/active/index.md": [
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md"
+      ],
+      "Documentation/references/index.md": [
+        "Documentation/GraphToolkitSpec.md",
+        "Documentation/UIToolkitSpec.md"
+      ],
+      "Documentation/QUALITY_SCORE.md": [
+        "repo_guard v2",
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md"
+      ],
+      "Documentation/RELIABILITY.md": [
+        "repo_guard v2",
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md"
       ]
+    },
+    "last_updated_headers": [
+      "Documentation/DocsIndex.md",
+      "Documentation/CurrentMilestones.md",
+      "Documentation/ARCHITECTURE.md",
+      "Documentation/PLANS.md",
+      "Documentation/PRODUCT_SENSE.md",
+      "Documentation/QUALITY_SCORE.md",
+      "Documentation/RELIABILITY.md",
+      "Documentation/SECURITY.md",
+      "Documentation/design-docs/index.md",
+      "Documentation/exec-plans/index.md",
+      "Documentation/exec-plans/active/index.md",
+      "Documentation/exec-plans/completed/index.md",
+      "Documentation/exec-plans/tech-debt.md",
+      "Documentation/generated/index.md",
+      "Documentation/product-specs/index.md",
+      "Documentation/references/index.md"
+    ],
+    "min_non_index_docs": {
+      "Documentation/exec-plans/active": 1
     }
   },
   "asmdef": {

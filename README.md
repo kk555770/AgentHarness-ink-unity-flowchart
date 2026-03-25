@@ -50,6 +50,10 @@
   - 第一版 JSON wire contract
 - `Documentation/DeveloperModeOutputContract.md`
   - current projection / runtime contract
+- `Documentation/GraphToolkitSpec.md`
+  - Graph Toolkit Editor 工具規格
+- `Documentation/UIToolkitSpec.md`
+  - UI Toolkit UXML / USS 規格
 
 ## Runtime Entry
 

@@ -1,5 +1,7 @@
 # exec-plans index
 
+> 最後更新：2026/03/25
+
 ## 正式入口
 
 - `Documentation/PLANS.md`
@@ -8,6 +10,7 @@
 ## active
 
 - `Documentation/exec-plans/active/index.md`
+- `Documentation/exec-plans/active/harness_system_of_record_v2.md`
 
 ## completed
 

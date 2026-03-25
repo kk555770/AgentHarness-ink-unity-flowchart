@@ -1,5 +1,7 @@
 # product-specs index
 
+> 最後更新：2026/03/25
+
 ## 現況產品入口
 
 - `Documentation/CurrentMilestones.md`

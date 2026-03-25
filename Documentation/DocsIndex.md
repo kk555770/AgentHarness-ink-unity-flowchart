@@ -28,4 +28,4 @@
 - `Documentation/product-specs/index.md`
   - 現況功能與輸出規格入口
 - `Documentation/references/index.md`
-  - Toolkit / Runtime / PDF 參考入口
+  - Toolkit spec、Runtime、PDF 參考入口

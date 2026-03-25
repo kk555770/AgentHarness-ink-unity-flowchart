@@ -48,9 +48,9 @@
   - 負責回答整體北極星、四層架構與責任邊界
 - `Documentation/DeveloperModeOutputContract.md`
   - 負責回答 projection 到 Ink / runtime 時哪些輸出才算合法
-- `GraphToolkitSpec.md`
+- `Documentation/GraphToolkitSpec.md`
   - 負責回答 GraphToolkit API 與 Editor 工具開發規範
-- `UIToolkitSpec.md`
+- `Documentation/UIToolkitSpec.md`
   - 負責回答 UI Toolkit API 與 UI 結構規範
 
 如果用小朋友也懂的方式講：

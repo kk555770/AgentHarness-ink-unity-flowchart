@@ -1,5 +1,7 @@
 # design-docs index
 
+> 最後更新：2026/03/25
+
 ## 架構北極星
 
 - `Documentation/NarrativeGraphArchitecture.md`

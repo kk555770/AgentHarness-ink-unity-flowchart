@@ -1,9 +1,11 @@
 # references index
 
+> 最後更新：2026/03/25
+
 ## Toolkit / API
 
-- `GraphToolkitSpec.md`
-- `UIToolkitSpec.md`
+- `Documentation/GraphToolkitSpec.md`
+- `Documentation/UIToolkitSpec.md`
 - `Documentation/DeveloperModeOutputContract.md`
 
 ## Runtime / 套件

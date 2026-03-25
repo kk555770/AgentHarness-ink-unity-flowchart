@@ -1,5 +1,7 @@
 # PRODUCT_SENSE
 
+> 最後更新：2026/03/25
+
 ## 目前產品方向
 
 - canonical graph 是長期真相層

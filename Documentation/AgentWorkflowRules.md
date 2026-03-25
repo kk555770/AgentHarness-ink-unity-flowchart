@@ -17,8 +17,8 @@
 ## 2. Spec 入口
 
 - 此專案目前以 Unity `6000.3.9f1` 為準。
-- 動到 UI Toolkit 組件時，必讀 `UIToolkitSpec.md`。
-- 動到 Graph Toolkit 組件時，必讀 `GraphToolkitSpec.md`。
+- 動到 UI Toolkit 組件時，必讀 `Documentation/UIToolkitSpec.md`。
+- 動到 Graph Toolkit 組件時，必讀 `Documentation/GraphToolkitSpec.md`。
 - current projection / runtime 輸出契約在 `Documentation/DeveloperModeOutputContract.md`。
 
 ## 3. 語言規範

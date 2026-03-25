@@ -1,5 +1,7 @@
 # completed exec-plans
 
+> 最後更新：2026/03/25
+
 ## 歷史正式計畫
 
 - `Documentation/AuthoringPhase1ImplementationPlan.md`
