@@ -22,3 +22,4 @@
 ## 目前活躍計畫
 
 - `Documentation/exec-plans/active/harness_system_of_record_v2.md`
+- `Documentation/exec-plans/active/harness_alignment_closure_loop.md`

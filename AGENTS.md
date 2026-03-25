@@ -57,8 +57,9 @@ Assets/Tests/PlayMode/
 6. `Documentation/QUALITY_SCORE.md`
 7. `Documentation/RELIABILITY.md`
 8. `Documentation/SECURITY.md`
-9. `Documentation/design-docs/index.md`
-10. `Documentation/exec-plans/index.md`
-11. `Documentation/product-specs/index.md`
-12. `Documentation/references/index.md`
-13. `Documentation/AgentWorkflowRules.md`
+9. `Documentation/generated/index.md`
+10. `Documentation/design-docs/index.md`
+11. `Documentation/exec-plans/index.md`
+12. `Documentation/product-specs/index.md`
+13. `Documentation/references/index.md`
+14. `Documentation/AgentWorkflowRules.md`

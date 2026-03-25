@@ -1,6 +1,8 @@
 {
     "name": "OpsidanosInk.CanonicalGraph",
-    "references": [],
+    "references": [
+        "Ink-Libraries"
+    ],
     "includePlatforms": [],
     "excludePlatforms": []
 }

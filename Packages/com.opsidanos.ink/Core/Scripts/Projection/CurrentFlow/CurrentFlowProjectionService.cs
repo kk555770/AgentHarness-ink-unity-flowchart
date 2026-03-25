@@ -17,6 +17,8 @@ namespace OpsidanosInk.CanonicalGraph
 
         private const string ProjectionMappingLossError = "PROJECTION_MAPPING_LOSS";
         private const string ProjectionUnsupportedError = "PROJECTION_UNSUPPORTED";
+        private const string ProjectionCompileFailedError = "PROJECTION_COMPILE_FAILED";
+        private const string ProjectionValidationUnavailableError = "PROJECTION_VALIDATION_UNAVAILABLE";
         private const string DefaultProjectionVersion = "2.0";
         // ===== 變更結束 =====
 
@@ -193,6 +195,62 @@ namespace OpsidanosInk.CanonicalGraph
             return true;
         }
 
+        private static bool TryBuildAndValidateInkProjection(
+            CanonicalGraphDocument graph,
+            out string resolvedProjectionVersion,
+            out string projectionText,
+            out string errorCode,
+            out string errorMessage)
+        {
+            resolvedProjectionVersion = DefaultProjectionVersion;
+            projectionText = string.Empty;
+            errorCode = string.Empty;
+            errorMessage = string.Empty;
+
+            if (!TryBuildProjectionDto(graph, out ExportGraphDto inkProjectionDto, out errorMessage))
+            {
+                errorCode = ProjectionMappingLossError;
+                return false;
+            }
+
+            resolvedProjectionVersion = ResolveProjectionVersion(inkProjectionDto != null ? inkProjectionDto.version : string.Empty);
+            projectionText = BuildInkContent(inkProjectionDto);
+
+            if (!TryValidateInkContent(projectionText, out errorCode, out errorMessage))
+            {
+                projectionText = string.Empty;
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool TryValidateInkContent(string inkContent, out string errorCode, out string errorMessage)
+        {
+            errorCode = string.Empty;
+            errorMessage = string.Empty;
+
+            if (!CurrentFlowInkCompileProbeRegistry.HasProbe)
+            {
+                errorCode = ProjectionValidationUnavailableError;
+                errorMessage = "Ink compile probe 尚未安裝，無法進行 Ink 驗證。";
+                return false;
+            }
+
+            if (!CurrentFlowInkCompileProbeRegistry.TryCompile(inkContent, out errorMessage))
+            {
+                errorCode = ProjectionCompileFailedError;
+                if (string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    errorMessage = "Ink 編譯失敗。";
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
         // ===== 變更開始 =====
         // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，讓 current-flow projection service 正式提供 target-based validate/project 入口)
         // 預期結果：JSON control plane 不必再直接知道 DTO 或 ink 組裝細節，只要指定 target 就能驗證或產出 projection
@@ -222,15 +280,12 @@ namespace OpsidanosInk.CanonicalGraph
                     return true;
 
                 case InkTarget:
-                    if (!TryBuildProjectionDto(graph, out ExportGraphDto inkProjectionDto, out errorMessage))
-                    {
-                        errorCode = ProjectionMappingLossError;
-                        return false;
-                    }
-
-                    resolvedProjectionVersion = ResolveProjectionVersion(inkProjectionDto != null ? inkProjectionDto.version : string.Empty);
-                    BuildInkContent(inkProjectionDto);
-                    return true;
+                    return TryBuildAndValidateInkProjection(
+                        graph,
+                        out resolvedProjectionVersion,
+                        out _,
+                        out errorCode,
+                        out errorMessage);
 
                 default:
                     errorCode = ProjectionUnsupportedError;
@@ -270,14 +325,16 @@ namespace OpsidanosInk.CanonicalGraph
                     return true;
 
                 case InkTarget:
-                    if (!TryBuildProjectionDto(graph, out ExportGraphDto inkProjectionDto, out errorMessage))
+                    if (!TryBuildAndValidateInkProjection(
+                        graph,
+                        out resolvedProjectionVersion,
+                        out projectionText,
+                        out errorCode,
+                        out errorMessage))
                     {
-                        errorCode = ProjectionMappingLossError;
                         return false;
                     }
 
-                    resolvedProjectionVersion = ResolveProjectionVersion(inkProjectionDto != null ? inkProjectionDto.version : string.Empty);
-                    projectionText = BuildInkContent(inkProjectionDto);
                     return true;
 
                 default:

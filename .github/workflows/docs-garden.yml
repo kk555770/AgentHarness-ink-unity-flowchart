@@ -1,6 +1,9 @@
 name: Docs Garden
 
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   workflow_dispatch:
   schedule:
     - cron: "0 1 * * 1"
@@ -24,10 +27,10 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: 抓最新成功 CI 的 test / evidence artifact
+      - name: 抓 CI workflow_run 的 test / evidence artifact
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          DOCS_GARDEN_SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          DOCS_GARDEN_SOURCE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
         run: python3 Tools/fetch_ci_test_results.py --workflow-file CI.yml --output-dir Artifacts/CI/TestResults
 
       - name: Generate test results index
@@ -48,7 +51,8 @@ jobs:
           body: |
             ## 這次自動更新
 
-            - 重新抓取最新成功 CI 的 test / evidence artifact
+            - 重新抓取 CI workflow_run provenance 的 test / evidence artifact
+            - 若是排程或手動啟動，會回退到最新成功 CI
             - 重建 `Documentation/generated/test_results_index.md`
             - 重建 `Documentation/generated/doc_garden_report.md`
             - 重新跑 `python3 Tools/repo_guard.py`

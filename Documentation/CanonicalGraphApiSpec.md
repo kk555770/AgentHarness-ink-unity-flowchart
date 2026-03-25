@@ -402,16 +402,56 @@ Current implementation note：
 
 把某個 projection format 還原成 canonical graph。
 
+### 最小輸入
+
+- `graphId`
+- `target`
+- `projectionVersion`（可選，但建議明確）
+- `projection payload`
+  - 若 target 是 `flowchart-json`，目前以 `CanonicalGraphJsonRequestInput.projectionJson` 承載對應 sidecar 的原文內容
+  - 若 target 是文字型 projection，未來可用 `CanonicalGraphJsonRequestInput.projectionText`
+
+### 目前支援 target
+
+- `flowchart-json`
+  - 已有最小 control-plane import loop
+  - 底層仍透過 current projection DTO -> canonical graph bridge
+- `ink`
+  - 尚未在 control-plane import 入口正式支援
+
 ### 規範
 
-- `ImportProjection` 的結果應是 canonical graph，不是直接回某個 editor internal object
+- `ImportProjection` 的結果應是 canonical graph snapshot，不是直接回某個 editor internal object
+- 成功時應回傳 stable JSON envelope
+- 若 canonical graph 實際有被變更，`applied` 應為 `true`
 - 若 projection 含 legacy mapping，應回傳 warnings
+- 若轉換失敗，應回 stable error code，不可只回自然語言字串
+
+### 建議穩定錯誤碼
+
+- `INVALID_REQUEST`
+- `PROJECTION_UNSUPPORTED`
+- `PROJECTION_IMPORT_FAILED`
+- `LEGACY_MAPPING_APPLIED`
+- `COMPILER_ADAPTER_FAILURE`
+
+### 回應語意
+
+- `result.graphId` 應回傳目標 graph ID
+- `result.target` 應回傳實際匯入 target
+- `result.projectionVersion` 應回傳實際採用版本
+- `snapshot` 應包含匯入後的 canonical graph
+- `warnings` 可帶 legacy mapping 與忽略欄位資訊
+- `errors` 只放阻斷匯入的結構化錯誤
+- `applied` 只在狀態真的改變時為 `true`
 
 ### 現況映射註記
 
 Current implementation note：
 
-- 現況 importer 主要是 `.flowchart.json + .ink -> .inkfc`
+- 現況 importer 主要還是 `.flowchart.json + .ink -> .inkfc`
+- `ImportProjection(flowchart-json)` 已在 control-plane dispatcher 落地
+- `ink` import、legacy mapping warnings 與更多 target 的 round-trip 語意仍待補強
 - 長期理想方向應是 `.projection -> canonical graph -> 視覺投影`
 
 ## 9. Error Model
@@ -438,6 +478,7 @@ Current implementation note：
 - `FLOW_HIDDEN_IN_TEXT`
 - `PROJECTION_UNSUPPORTED`
 - `PROJECTION_MAPPING_LOSS`
+- `PROJECTION_IMPORT_FAILED`
 - `LEGACY_MAPPING_APPLIED`
 - `COMPILER_ADAPTER_FAILURE`
 

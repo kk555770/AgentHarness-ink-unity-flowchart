@@ -1,6 +1,7 @@
 // ===== 變更開始 =====
 // 2026/03/22 Opsidanos (修改原因：為 Batch 8 的 JSON command bridge 補上 dispatcher 行為測試)
 // 預期結果：`CreateGraph / CreateNode / ConnectPorts / ValidateGraph` 可透過 JSON request 正確驅動 canonical core，且重試 / 衝突語意不漂移
+using System.Collections.Generic;
 using NUnit.Framework;
 using OpsidanosInk.CanonicalGraph;
 using UnityEngine;
@@ -348,6 +349,69 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.IsFalse(response.applied);
             Assert.That(response.errors[0].code, Is.EqualTo("PROJECTION_UNSUPPORTED"));
         }
+
+        [Test]
+        public void Dispatch_ImportProjection_FlowchartJson_會建立CanonicalSnapshot並寫入Store()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(
+                dispatcher,
+                BuildImportProjectionRequest(
+                    "imported-01",
+                    CurrentFlowProjectionService.FlowchartJsonTarget,
+                    BuildImportableFlowchartJson()));
+
+            Assert.IsTrue(response.success);
+            Assert.IsTrue(response.applied);
+            Assert.That(response.result.graphId, Is.EqualTo("imported-01"));
+            Assert.That(response.result.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(response.result.projectionVersion, Is.EqualTo("2.0"));
+            Assert.That(response.snapshot, Is.Not.Null);
+            Assert.That(response.snapshot.nodes.Count, Is.EqualTo(2));
+            Assert.That(response.snapshot.edges.Count, Is.EqualTo(1));
+
+            CanonicalGraphJsonResponse storedGraph = Dispatch(dispatcher, BuildGetGraphRequest("imported-01"));
+            Assert.IsTrue(storedGraph.success);
+            Assert.That(storedGraph.snapshot.nodes.Count, Is.EqualTo(2));
+            Assert.That(storedGraph.snapshot.edges.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Dispatch_ImportProjection_重複GraphId_會回DuplicateGraphId()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+            CanonicalGraphJsonRequest request = BuildImportProjectionRequest(
+                "imported-01",
+                CurrentFlowProjectionService.FlowchartJsonTarget,
+                BuildImportableFlowchartJson());
+
+            CanonicalGraphJsonResponse firstResponse = Dispatch(dispatcher, request);
+            CanonicalGraphJsonResponse secondResponse = Dispatch(dispatcher, request);
+
+            Assert.IsTrue(firstResponse.success);
+            Assert.IsFalse(secondResponse.success);
+            Assert.IsFalse(secondResponse.applied);
+            Assert.That(secondResponse.errors[0].code, Is.EqualTo("DUPLICATE_GRAPH_ID"));
+        }
+
+        [Test]
+        public void Dispatch_ImportProjection_不支援Target_會回固定錯誤碼()
+        {
+            CanonicalGraphJsonCommandDispatcher dispatcher = new CanonicalGraphJsonCommandDispatcher();
+
+            CanonicalGraphJsonResponse response = Dispatch(
+                dispatcher,
+                BuildImportProjectionRequest(
+                    "imported-ink",
+                    CurrentFlowProjectionService.InkTarget,
+                    string.Empty,
+                    "=== knot_start ===\n-> END\n"));
+
+            Assert.IsFalse(response.success);
+            Assert.IsFalse(response.applied);
+            Assert.That(response.errors[0].code, Is.EqualTo("PROJECTION_UNSUPPORTED"));
+        }
         // ===== 變更結束 =====
 
         private static CanonicalGraphJsonResponse Dispatch(CanonicalGraphJsonCommandDispatcher dispatcher, CanonicalGraphJsonRequest request)
@@ -451,6 +515,25 @@ namespace OpsidanosInk.Tests.EditMode
                 }
             };
         }
+
+        private static CanonicalGraphJsonRequest BuildImportProjectionRequest(
+            string graphId,
+            string target,
+            string projectionJson,
+            string projectionText = "")
+        {
+            return new CanonicalGraphJsonRequest
+            {
+                operation = "ImportProjection",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = graphId,
+                    target = target,
+                    projectionJson = projectionJson,
+                    projectionText = projectionText
+                }
+            };
+        }
         // ===== 變更結束 =====
 
         private static CanonicalGraphJsonCommandDispatcher BuildConnectedLinearDispatcher()
@@ -461,6 +544,41 @@ namespace OpsidanosInk.Tests.EditMode
             Dispatch(dispatcher, BuildCreateNodeRequest("chapter-01", "N002", CanonicalNodeKinds.Dialogue, "主句"));
             Dispatch(dispatcher, BuildConnectPortsRequest("chapter-01", "N001", CanonicalPortSemantics.Flow, "N002", CanonicalPortSemantics.Flow));
             return dispatcher;
+        }
+
+        private static string BuildImportableFlowchartJson()
+        {
+            ExportGraphDto graphDto = new ExportGraphDto
+            {
+                version = "2.0",
+                graphName = "ImportedChapter",
+                startNodeId = "N001",
+                nodes = new List<ExportNodeDto>
+                {
+                    new ExportNodeDto
+                    {
+                        id = "N001",
+                        type = CanonicalNodeKinds.Start,
+                        outputs = new List<ExportNodeOutputDto>
+                        {
+                            new ExportNodeOutputDto
+                            {
+                                portName = CanonicalPortSemantics.Flow,
+                                toNodeId = "N002",
+                                toPortName = CanonicalPortSemantics.Flow
+                            }
+                        }
+                    },
+                    new ExportNodeDto
+                    {
+                        id = "N002",
+                        type = CurrentFlowProjectionNaming.DialogueNodeType,
+                        content = "主句"
+                    }
+                }
+            };
+
+            return JsonUtility.ToJson(graphDto, true);
         }
         // ===== 變更結束 =====
     }

@@ -10,6 +10,7 @@ from doc_guard_utils import (
     freshness_status,
     load_json,
     parse_doc_owner,
+    parse_workflow_permissions,
     read_text,
     relative,
 )
@@ -117,6 +118,35 @@ def check_freshness(rules: dict, errors: list[str]) -> None:
             )
 
 
+def check_workflow_permissions(rules: dict, errors: list[str]) -> None:
+    workflow_permissions = rules.get("permissions", {})
+    for rel_path, expected_permissions in workflow_permissions.items():
+        path = ROOT / rel_path
+        if not path.is_file():
+            errors.append(f"缺少必要 workflow：{rel_path}")
+            continue
+
+        actual_permissions, actual_scalar = parse_workflow_permissions(path)
+        if actual_scalar is not None:
+            if actual_scalar in {"read-all", "write-all"}:
+                errors.append(f"{rel_path} 使用過寬的 permissions：{actual_scalar}")
+            else:
+                errors.append(
+                    f"{rel_path} permissions 必須是明確映射，不能是單一值：{actual_scalar}"
+                )
+            continue
+
+        if actual_permissions is None:
+            errors.append(f"{rel_path} 缺少 permissions 區塊")
+            continue
+
+        if actual_permissions != expected_permissions:
+            errors.append(
+                f"{rel_path} permissions 不符合預期："
+                f" expected={expected_permissions} actual={actual_permissions}"
+            )
+
+
 def check_doc_owners(rules: dict, errors: list[str]) -> None:
     allowed_owners = set(rules.get("allowed_doc_owners", []))
     for path in all_documentation_markdown_files():
@@ -188,11 +218,13 @@ def main() -> int:
     errors: list[str] = []
 
     check_required_files(rules.get("docs", {}), errors)
+    check_required_files(rules.get("workflow", {}), errors)
     check_required_contains(rules.get("docs", {}), errors)
     check_last_updated_headers(rules.get("docs", {}), errors)
     check_min_non_index_docs(rules.get("docs", {}), errors)
     check_indexed_doc_counts(rules.get("docs", {}), errors)
     check_freshness(rules.get("docs", {}), errors)
+    check_workflow_permissions(rules.get("workflow", {}), errors)
     check_doc_owners(rules.get("docs", {}), errors)
     check_exact_asmdef_references(rules.get("asmdef", {}), errors)
     check_file_sizes(rules.get("filesize", {}), errors)

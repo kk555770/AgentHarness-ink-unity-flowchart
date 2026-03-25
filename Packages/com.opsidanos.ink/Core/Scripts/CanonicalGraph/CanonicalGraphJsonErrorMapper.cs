@@ -92,6 +92,30 @@ namespace OpsidanosInk.CanonicalGraph
         }
         // ===== 變更結束 =====
 
+        // ===== 變更開始 =====
+        // 2026/03/25 Opsidanos (修改原因：補上 ImportProjection response mapper，讓 dispatcher 能穩定回傳 canonical snapshot 與 projection 來源資訊)
+        // 預期結果：ImportProjection 成功時會有 `applied=true`、canonical snapshot 與 target/projectionVersion，不必在 dispatcher 內手拼 response
+        public static CanonicalGraphJsonResponse BuildImportProjectionResponse(
+            CanonicalGraphDocument graph,
+            string target,
+            string projectionVersion)
+        {
+            var response = new CanonicalGraphJsonResponse
+            {
+                success = graph != null,
+                applied = graph != null,
+                snapshot = CanonicalGraphJsonSnapshotMapper.ToSnapshot(graph)
+            };
+
+            response.result.graphId = graph != null ? graph.graphId ?? string.Empty : string.Empty;
+            response.result.version = graph != null ? graph.version ?? string.Empty : string.Empty;
+            response.result.target = target ?? string.Empty;
+            response.result.projectionVersion = projectionVersion ?? string.Empty;
+            response.result.isValid = graph != null;
+            return response;
+        }
+        // ===== 變更結束 =====
+
         public static CanonicalGraphJsonResponse BuildSnapshotResponse(CanonicalGraphDocument graph)
         {
             var response = new CanonicalGraphJsonResponse

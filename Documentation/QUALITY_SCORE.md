@@ -18,8 +18,14 @@
   - `PlanningWithFiles/` 已存在，且已開始升格到 `Documentation/exec-plans/active/harness_system_of_record_v2.md`
 - 契約與測試：綠
   - canonical JSON contract 與 current projection contract 已有文件與測試
+- `ImportProjection`：黃
+  - `flowchart-json` 已納入 `CurrentMilestones.md`、`exec-plans`、`CanonicalGraphApiSpec.md`、`CanonicalGraphJsonContract.md` 與 control-plane 實作
+  - 目前仍缺 `ink` import、legacy mapping warnings 與更多 target 的 round-trip
+- Ink compile validation：黃
+  - compile probe 已進 canonical core，`ValidateProjection(Ink)` 不再只靠 Editor bootstrap
+  - 目前仍缺跨 worktree observability 與更多非本地 harness 的統一驗證入口
 - 機械式護欄：黃
-  - `repo_guard v4` 已開始補 docs freshness、index 內容量、cross-links、active exec plan、ownership 檢查
+  - `repo_guard v4` 已開始補 docs freshness、index 內容量、cross-links、active exec plan、ownership、workflow permissions 檢查
   - freshness 現在是用 watched paths 的 git 最新日期比對，不再只是看有沒有 `最後更新：`
   - 仍缺更深層的 code graph guard
 - doc-gardening：黃
@@ -30,8 +36,8 @@
   - 現在會把 XML、console 摘要、log source、CI job 狀態收斂到同一頁
   - generated docs 不再只知道「有沒有測試」，也知道「發生了什麼」
 - auto-fix harness：黃
-  - workflow 已改成 Unity-first
-  - 完整 verify 仍依賴 `UNITY_LICENSE`
+  - workflow 已改成 Unity-first，而且缺少 `UNITY_LICENSE` 時會 fail closed
+  - 完整 verify 仍需要有效 `UNITY_LICENSE`
 
 ## 補充
 

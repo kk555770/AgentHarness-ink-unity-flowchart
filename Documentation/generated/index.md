@@ -24,10 +24,11 @@
 
 ## 目前流程
 
-- `docs-garden.yml` 會先抓最新成功 CI run 的 test / evidence artifact
+- `docs-garden.yml` 會先抓 CI workflow_run provenance 的 test / evidence artifact；若是手動或排程啟動，才回退到最新成功 CI
 - 接著重建 `test_results_index.md` 與 `doc_garden_report.md`
 - 若 generated docs 有變更，workflow 會自動開 PR
 - `doc_garden_report.md` 也會列出 owner coverage
+- `ImportProjection(flowchart-json)` 已納入正式 system-of-record 與 control-plane；generated docs 仍應只反映實際驗證證據，不負責替未跑過的 target 背書
 - `test_results_index.md` 已升級成最小 Unity evidence index：
   - 測試摘要
   - console error / warning 計數

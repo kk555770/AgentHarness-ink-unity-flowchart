@@ -10,8 +10,9 @@
 - canonical JSON control plane 已不是只停在文件層。
 - Batch 8~10 已把最小可讀可寫回圈落到程式與測試。
 - Batch 11 / 11A 已把 `ValidateProjection / ProjectGraph` 先接到 `flowchart-json / ink`，並補上 request / response / dispatcher 護欄。
+- `ImportProjection(flowchart-json)` 也已進 control-plane 與正式 system-of-record。
 - 目前**還沒有**：
-  - `ImportProjection`
+  - `ImportProjection(ink)` 與其他 target 的 import loop
   - `story-json` target
   - `graphtoolkit-model` target
   - WebView / Electron host 成品
@@ -89,4 +90,4 @@ repo 內目前已可見：
 1. `Web-first` 是長期方向，不等於 repo 已有 Web host 成品。
 2. `PlanningWithFiles/` 很重要，但它是工作記錄，不是長期正式入口。
 3. Batch 11 / 11A 的重點是 projection contract 與 host bridge 護欄，不是 UI 外殼。
-4. `ImportProjection`、`story-json`、`graphtoolkit-model` 目前仍屬未完成項。
+4. `ImportProjection` 已先完成 `flowchart-json` control-plane 最小閉環；`ink` import、`story-json`、`graphtoolkit-model` 目前仍屬未完成項。

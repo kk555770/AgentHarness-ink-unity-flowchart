@@ -34,7 +34,8 @@
         "Documentation/design-docs/index.md",
         "Documentation/exec-plans/index.md",
         "Documentation/product-specs/index.md",
-        "Documentation/references/index.md"
+        "Documentation/references/index.md",
+        "Documentation/AgentWorkflowRules.md"
       ],
       "Documentation/DocsIndex.md": [
         "Documentation/CurrentMilestones.md",
@@ -48,7 +49,8 @@
         "Documentation/design-docs/index.md",
         "Documentation/exec-plans/index.md",
         "Documentation/product-specs/index.md",
-        "Documentation/references/index.md"
+        "Documentation/references/index.md",
+        "Documentation/AgentWorkflowRules.md"
       ],
       "Documentation/CurrentMilestones.md": [
         "Batch 8",
@@ -131,40 +133,80 @@
       "Documentation/InkPlayerWindow.md"
     ],
     "indexed_doc_counts": {
-      "Documentation/design-docs/index.md": 5,
+      "Documentation/DocsIndex.md": 15,
+      "Documentation/design-docs/index.md": 13,
+      "Documentation/exec-plans/index.md": 6,
       "Documentation/exec-plans/active/index.md": 3,
       "Documentation/exec-plans/completed/index.md": 3,
-      "Documentation/product-specs/index.md": 3,
-      "Documentation/references/index.md": 5,
+      "Documentation/product-specs/index.md": 6,
+      "Documentation/references/index.md": 6,
       "Documentation/generated/index.md": 2
     },
     "min_non_index_docs": {
-      "Documentation/exec-plans/active": 1
+      "Documentation/design-docs": 1,
+      "Documentation/exec-plans": 1,
+      "Documentation/exec-plans/active": 1,
+      "Documentation/generated": 2
     },
     "freshness_checks": {
-      "Documentation/generated/doc_garden_report.md": [
-        "Documentation",
-        "Tools/doc_garden.py",
-        "Tools/doc_guard_utils.py",
-        "Tools/repo_guard.py",
-        "Tools/repo_guard_rules.json",
-        ".github/workflows/docs-garden.yml"
+      "Documentation/DocsIndex.md": [
+        "Documentation/DocsIndex.md",
+        "Documentation/CurrentMilestones.md",
+        "Documentation/ARCHITECTURE.md",
+        "Documentation/PLANS.md",
+        "Documentation/PRODUCT_SENSE.md",
+        "Documentation/DocsOwnership.md",
+        "Documentation/QUALITY_SCORE.md",
+        "Documentation/RELIABILITY.md",
+        "Documentation/SECURITY.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/exec-plans/index.md",
+        "Documentation/product-specs/index.md",
+        "Documentation/references/index.md",
+        "Documentation/generated/index.md",
+        "Documentation/AgentWorkflowRules.md"
       ],
-      "Documentation/generated/test_results_index.md": [
-        ".github/workflows/CI.yml",
-        ".github/workflows/docs-garden.yml",
-        "Tools/fetch_ci_test_results.py",
-        "Tools/generate_test_results_index.py"
+      "Documentation/CurrentMilestones.md": [
+        "Documentation/CurrentMilestones.md",
+        "Documentation/DocsIndex.md",
+        "Documentation/PLANS.md",
+        "Documentation/QUALITY_SCORE.md",
+        "Documentation/RELIABILITY.md",
+        "Documentation/SECURITY.md",
+        "Documentation/DocsOwnership.md"
       ],
-      "Documentation/generated/index.md": [
-        "Documentation/generated/doc_garden_report.md",
-        "Documentation/generated/test_results_index.md",
-        "Tools/doc_garden.py",
-        "Tools/fetch_ci_test_results.py",
-        "Tools/generate_test_results_index.py",
-        ".github/workflows/docs-garden.yml"
+      "Documentation/ARCHITECTURE.md": [
+        "Documentation/ARCHITECTURE.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/design-docs/core-beliefs.md",
+        "Documentation/GraphToolkitSpec.md",
+        "Documentation/UIToolkitSpec.md",
+        "Documentation/InkPlayerWindow.md"
+      ],
+      "Documentation/PLANS.md": [
+        "Documentation/PLANS.md",
+        "Documentation/exec-plans/index.md",
+        "Documentation/exec-plans/active/index.md",
+        "Documentation/exec-plans/completed/index.md",
+        "Documentation/exec-plans/tech-debt.md"
+      ],
+      "Documentation/PRODUCT_SENSE.md": [
+        "Documentation/PRODUCT_SENSE.md",
+        "Documentation/product-specs/index.md"
+      ],
+      "Documentation/DocsOwnership.md": [
+        "Documentation/DocsOwnership.md",
+        "Documentation/DocsIndex.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/exec-plans/index.md",
+        "Documentation/product-specs/index.md",
+        "Documentation/references/index.md",
+        "Documentation/generated/index.md"
       ],
       "Documentation/QUALITY_SCORE.md": [
+        "Documentation/QUALITY_SCORE.md",
+        "Documentation/DocsIndex.md",
+        "Documentation/PLANS.md",
         "Documentation/exec-plans/active/harness_system_of_record_v2.md",
         "Tools/repo_guard.py",
         "Tools/repo_guard_rules.json",
@@ -174,6 +216,9 @@
         ".github/workflows/docs-garden.yml"
       ],
       "Documentation/RELIABILITY.md": [
+        "Documentation/RELIABILITY.md",
+        "Documentation/DocsIndex.md",
+        "Documentation/PLANS.md",
         "Documentation/exec-plans/active/harness_system_of_record_v2.md",
         "Tools/repo_guard.py",
         "Tools/repo_guard_rules.json",
@@ -182,16 +227,34 @@
         ".github/workflows/CI.yml",
         ".github/workflows/docs-garden.yml"
       ],
-      "Documentation/exec-plans/tech-debt.md": [
-        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
-        "Tools/repo_guard.py",
-        "Tools/repo_guard_rules.json",
-        "Tools/doc_garden.py",
-        "Tools/fetch_ci_test_results.py",
+      "Documentation/SECURITY.md": [
+        "Documentation/SECURITY.md",
         ".github/workflows/CI.yml",
-        ".github/workflows/docs-garden.yml"
+        ".github/workflows/docs-garden.yml",
+        ".github/workflows/codex-auto-fix.yml",
+        "Tools/repo_guard.py",
+        "Tools/doc_guard_utils.py",
+        "Tools/doc_garden.py",
+        "AGENTS.md"
       ],
-      "Documentation/exec-plans/active/harness_system_of_record_v2.md": [
+      "Documentation/design-docs/index.md": [
+        "Documentation/design-docs/index.md",
+        "Documentation/design-docs/core-beliefs.md"
+      ],
+      "Documentation/design-docs/core-beliefs.md": [
+        "Documentation/design-docs/core-beliefs.md",
+        "Documentation/design-docs/index.md",
+        "Documentation/ARCHITECTURE.md"
+      ],
+      "Documentation/exec-plans/index.md": [
+        "Documentation/exec-plans/index.md",
+        "Documentation/exec-plans/active/index.md",
+        "Documentation/exec-plans/completed/index.md",
+        "Documentation/exec-plans/tech-debt.md"
+      ],
+      "Documentation/exec-plans/active/index.md": [
+        "Documentation/exec-plans/active/index.md",
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
         "Tools/repo_guard.py",
         "Tools/repo_guard_rules.json",
         "Tools/doc_garden.py",
@@ -199,12 +262,108 @@
         "Tools/generate_test_results_index.py",
         ".github/workflows/CI.yml",
         ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/exec-plans/completed/index.md": [
+        "Documentation/exec-plans/completed/index.md",
+        "Documentation/exec-plans/index.md"
+      ],
+      "Documentation/exec-plans/tech-debt.md": [
+        "Documentation/exec-plans/tech-debt.md",
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/generated/index.md": [
+        "Documentation/generated/index.md",
+        "Documentation/generated/doc_garden_report.md",
+        "Documentation/generated/test_results_index.md",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        "Tools/generate_test_results_index.py",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/generated/doc_garden_report.md": [
+        "Documentation/generated/doc_garden_report.md",
+        "Documentation",
+        "Tools/doc_garden.py",
+        "Tools/doc_guard_utils.py",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/generated/test_results_index.md": [
+        "Documentation/generated/test_results_index.md",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml",
+        "Tools/fetch_ci_test_results.py",
+        "Tools/generate_test_results_index.py"
+      ],
+      "Documentation/product-specs/index.md": [
+        "Documentation/product-specs/index.md",
+        "Documentation/PRODUCT_SENSE.md"
+      ],
+      "Documentation/references/index.md": [
+        "Documentation/references/index.md",
+        "Documentation/GraphToolkitSpec.md",
+        "Documentation/UIToolkitSpec.md",
+        "Documentation/InkPlayerWindow.md"
+      ],
+      "Documentation/GraphToolkitSpec.md": [
+        "Documentation/GraphToolkitSpec.md",
+        "Assets/Editor/FlowChart",
+        "Packages/com.opsidanos.ink/Core/Scripts/CanonicalGraph"
+      ],
+      "Documentation/UIToolkitSpec.md": [
+        "Documentation/UIToolkitSpec.md",
+        "Assets/Editor/FlowChart",
+        "Packages/com.opsidanos.ink/Core/Scripts/CanonicalGraph"
+      ],
+      "Documentation/InkPlayerWindow.md": [
+        "Documentation/InkPlayerWindow.md",
+        "Packages/com.opsidanos.ink/Runtime/Scripts/UI",
+        "Packages/com.opsidanos.ink/Runtime/Scripts/Presentation"
+      ],
+      "Documentation/AgentWorkflowRules.md": [
+        "Documentation/AgentWorkflowRules.md",
+        "Tools/repo_guard.py",
+        "Tools/doc_garden.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml",
+        ".github/workflows/codex-auto-fix.yml",
+        "AGENTS.md"
       ]
+    }
+  },
+  "workflow": {
+    "required_files": [
+      ".github/workflows/CI.yml",
+      ".github/workflows/docs-garden.yml",
+      ".github/workflows/codex-auto-fix.yml"
+    ],
+    "permissions": {
+      ".github/workflows/CI.yml": {
+        "contents": "read"
+      },
+      ".github/workflows/docs-garden.yml": {
+        "contents": "write",
+        "pull-requests": "write",
+        "actions": "read"
+      },
+      ".github/workflows/codex-auto-fix.yml": {
+        "contents": "write",
+        "pull-requests": "write"
+      }
     }
   },
   "asmdef": {
     "exact_references": {
-      "Packages/com.opsidanos.ink/Core/OpsidanosInk.CanonicalGraph.asmdef": [],
+      "Packages/com.opsidanos.ink/Core/OpsidanosInk.CanonicalGraph.asmdef": [
+        "Ink-Libraries"
+      ],
       "Assets/Editor/FlowChart/OpsidanosInk.FlowChartEditor.asmdef": [
         "OpsidanosInk.CanonicalGraph",
         "Unity.GraphToolkit.Common.Editor",

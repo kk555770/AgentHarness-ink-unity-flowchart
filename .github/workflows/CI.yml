@@ -148,13 +148,14 @@ jobs:
           if-no-files-found: error
 
   unity-tests-disabled:
-    name: Unity 測試（尚未啟用）
+    name: Unity 測試（缺少授權，CI 視為失敗）
     needs: [repo-guards, ci-gate]
     if: ${{ needs.ci-gate.outputs.has-unity-license != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: 說明
         run: |
-          echo "[OpsidanosInk] 目前未設定 UNITY_LICENSE，所以先不在 GitHub Actions 跑 Unity 測試。"
+          echo "::error::[OpsidanosInk] 目前未設定 UNITY_LICENSE，所以這次 CI 不能宣稱 Unity 驗證通過。"
           echo "[OpsidanosInk] 你可以到 GitHub Repo → Settings → Secrets and variables → Actions → New repository secret"
           echo "[OpsidanosInk] 新增一個名為 UNITY_LICENSE 的 secret，之後這個 CI 就會自動跑測試。"
+          exit 1

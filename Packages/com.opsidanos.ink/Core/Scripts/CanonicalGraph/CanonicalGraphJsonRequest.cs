@@ -34,6 +34,12 @@ namespace OpsidanosInk.CanonicalGraph
         public string target = string.Empty;
         public string projectionVersion = string.Empty;
         // ===== 變更結束 =====
+        // ===== 變更開始 =====
+        // 2026/03/25 Opsidanos (修改原因：補上 ImportProjection 的輸入載體，讓 control plane 可直接吃 projection 文字或 JSON)
+        // 預期結果：`ImportProjection` 可用與 projection response 對稱的固定 JSON shape 接收 `projectionText / projectionJson`
+        public string projectionText = string.Empty;
+        public string projectionJson = string.Empty;
+        // ===== 變更結束 =====
         public CanonicalGraphJsonNodeInput node = new CanonicalGraphJsonNodeInput();
         public string fromNodeId = string.Empty;
         public string fromPort = string.Empty;

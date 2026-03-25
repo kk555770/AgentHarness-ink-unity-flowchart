@@ -97,6 +97,30 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(restored.input.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
             Assert.That(restored.input.projectionVersion, Is.EqualTo("2.0"));
         }
+
+        [Test]
+        public void RequestEnvelope_ImportProjection_RoundTrip會保留ProjectionPayload()
+        {
+            CanonicalGraphJsonRequest request = new CanonicalGraphJsonRequest
+            {
+                operation = "ImportProjection",
+                input = new CanonicalGraphJsonRequestInput
+                {
+                    graphId = "chapter-02",
+                    target = CurrentFlowProjectionService.FlowchartJsonTarget,
+                    projectionVersion = "2.0",
+                    projectionJson = "{\"graphName\":\"chapter-02\"}"
+                }
+            };
+
+            string json = JsonUtility.ToJson(request, true);
+            CanonicalGraphJsonRequest restored = JsonUtility.FromJson<CanonicalGraphJsonRequest>(json);
+
+            Assert.That(restored.input.graphId, Is.EqualTo("chapter-02"));
+            Assert.That(restored.input.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(restored.input.projectionVersion, Is.EqualTo("2.0"));
+            Assert.That(restored.input.projectionJson, Is.EqualTo("{\"graphName\":\"chapter-02\"}"));
+        }
         // ===== 變更結束 =====
 
         [Test]
@@ -250,6 +274,45 @@ namespace OpsidanosInk.Tests.EditMode
             Assert.That(restored.result.projectionVersion, Is.EqualTo("2.0"));
             Assert.That(restored.result.projectionJson, Is.EqualTo("{\"graphName\":\"chapter-01\"}"));
             Assert.That(restored.result.projectionText, Is.EqualTo(string.Empty));
+        }
+
+        [Test]
+        public void ResponseEnvelope_ImportProjection_RoundTrip會保留Snapshot與Target()
+        {
+            CanonicalGraphJsonResponse response = new CanonicalGraphJsonResponse
+            {
+                success = true,
+                applied = true,
+                snapshot = new CanonicalGraphJsonGraphSnapshot
+                {
+                    graphId = "imported-01",
+                    version = "canonical-1",
+                    nodes =
+                    {
+                        new CanonicalGraphNodeRecord
+                        {
+                            nodeId = "N001",
+                            nodeType = CanonicalNodeKinds.Start
+                        }
+                    }
+                }
+            };
+            response.result.graphId = "imported-01";
+            response.result.version = "canonical-1";
+            response.result.target = CurrentFlowProjectionService.FlowchartJsonTarget;
+            response.result.projectionVersion = "2.0";
+            response.result.isValid = true;
+
+            string json = JsonUtility.ToJson(response, true);
+            CanonicalGraphJsonResponse restored = JsonUtility.FromJson<CanonicalGraphJsonResponse>(json);
+
+            Assert.IsTrue(restored.applied);
+            Assert.That(restored.result.graphId, Is.EqualTo("imported-01"));
+            Assert.That(restored.result.target, Is.EqualTo(CurrentFlowProjectionService.FlowchartJsonTarget));
+            Assert.That(restored.result.projectionVersion, Is.EqualTo("2.0"));
+            Assert.That(restored.snapshot, Is.Not.Null);
+            Assert.That(restored.snapshot.nodes.Count, Is.EqualTo(1));
+            Assert.That(restored.snapshot.nodes[0].nodeId, Is.EqualTo("N001"));
         }
         // ===== 變更結束 =====
 

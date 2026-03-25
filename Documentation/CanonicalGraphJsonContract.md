@@ -405,6 +405,49 @@ JSON 欄位只能包裝 canonical API，不能反過來改寫 canonical schema�
 }
 ```
 
+### 7.7 `ImportProjection`
+
+```json
+{
+  "contractVersion": "plain-json-1",
+  "operation": "ImportProjection",
+  "input": {
+    "graphId": "chapter-01",
+    "target": "flowchart-json",
+    "projectionVersion": "graph-v2",
+    "projectionJson": "{...projection payload...}"
+  }
+}
+```
+
+```json
+{
+  "contractVersion": "plain-json-1",
+  "success": true,
+  "result": {
+    "graphId": "chapter-01",
+    "target": "flowchart-json",
+    "projectionVersion": "graph-v2"
+  },
+  "snapshot": {
+    "graphId": "chapter-01",
+    "version": "canonical-1"
+  },
+  "warnings": [],
+  "errors": [],
+  "applied": true
+}
+```
+
+### 7.8 `ImportProjection` 回應語意
+
+- `success = true` 代表 projection 已成功還原成 canonical graph
+- `applied = true` 只在 canonical graph 實際被更新時成立
+- `snapshot` 會帶回匯入後的 canonical graph
+- `warnings` 可包含 legacy mapping 與被忽略欄位
+- `errors` 只放阻斷匯入的結構化錯誤
+- `INVALID_REQUEST`、`PROJECTION_UNSUPPORTED`、`PROJECTION_IMPORT_FAILED`、`LEGACY_MAPPING_APPLIED`、`COMPILER_ADAPTER_FAILURE` 仍以 `Documentation/CanonicalGraphApiSpec.md` 的錯誤模型為準
+
 ## 8. Idempotent / Deterministic 對 JSON Contract 的影響
 
 ### 8.1 Idempotent 操作

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace OpsidanosInk.CanonicalGraph
 {
-    public sealed class CanonicalGraphJsonCommandDispatcher
+    public sealed partial class CanonicalGraphJsonCommandDispatcher
     {
         private const string ErrorInvalidRequest = "INVALID_REQUEST";
         private const string ErrorUnsupportedContractVersion = "UNSUPPORTED_CONTRACT_VERSION";
@@ -119,11 +119,13 @@ namespace OpsidanosInk.CanonicalGraph
                     return DispatchValidateGraph(input);
                 // ===== 變更開始 =====
                 // 2026/03/23 Opsidanos (修改原因：開始落地 Batch 11A，補上 projection-specific control plane operation routing)
-                // 預期結果：JSON command dispatcher 可直接處理 ValidateProjection / ProjectGraph，而不是把它們當 unknown op
+                // 預期結果：JSON command dispatcher 可直接處理 ValidateProjection / ProjectGraph / ImportProjection，而不是把它們當 unknown op
                 case "ValidateProjection":
                     return DispatchValidateProjection(input);
                 case "ProjectGraph":
                     return DispatchProjectGraph(input);
+                case "ImportProjection":
+                    return DispatchImportProjection(input);
                 // ===== 變更結束 =====
                 default:
                     return CanonicalGraphJsonErrorMapper.BuildFailureResponse(

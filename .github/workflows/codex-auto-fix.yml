@@ -30,6 +30,11 @@ jobs:
             echo "OPENAI_API_KEY secret is not set. Skipping auto-fix." >&2
             exit 1
           fi
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "::error::[OpsidanosInk] UNITY_LICENSE 未設定，這次 CI 失敗不是 auto-fix 可以假裝修好的問題。"
+            echo "[OpsidanosInk] 先補 Unity 授權，否則自動修復流程不會產生可信結果。"
+            exit 1
+          fi
 
       - name: Checkout failing ref
         uses: actions/checkout@v4
@@ -71,21 +76,13 @@ jobs:
         run: |
           codex exec --full-auto --sandbox workspace-write "You are working in a Unity 6000.3.9f1 repository with GitHub Actions. This is not a Node.js monorepo and it does not use Jest as the primary test harness. Read AGENTS.md, Documentation/DocsIndex.md, Documentation/CurrentMilestones.md, Documentation/AgentWorkflowRules.md, and .github/workflows/CI.yml first. The standard verification flow is python3 Tools/repo_guard.py, then Unity EditMode and PlayMode test assemblies OpsidanosInk.EditModeTests and OpsidanosInk.PlayModeTests. Identify the minimal change needed to fix the failing CI, implement only that change, and stop. Do not refactor unrelated code or files. Keep changes small and surgical."
 
+      - name: 準備 evidence 目錄
+        run: mkdir -p artifacts/evidence/editmode artifacts/evidence/playmode
+
       - name: Verify repo guards
         run: python3 Tools/repo_guard.py
 
-      - name: Check UNITY_LICENSE
-        id: unity-license
-        shell: bash
-        run: |
-          if [ -n "$UNITY_LICENSE" ]; then
-            echo "has-unity-license=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has-unity-license=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Verify EditMode（只跑我們的）
-        if: ${{ steps.unity-license.outputs.has-unity-license == 'true' }}
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -94,10 +91,10 @@ jobs:
           unityVersion: 6000.3.9f1
           testMode: editmode
           githubToken: ${{ github.token }}
-          customParameters: -assemblyNames OpsidanosInk.EditModeTests
+          artifactsPath: artifacts/editmode
+          customParameters: -assemblyNames OpsidanosInk.EditModeTests -logFile artifacts/evidence/editmode/Editor.log
 
       - name: Verify PlayMode（只跑我們的）
-        if: ${{ steps.unity-license.outputs.has-unity-license == 'true' }}
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -106,12 +103,8 @@ jobs:
           unityVersion: 6000.3.9f1
           testMode: playmode
           githubToken: ${{ github.token }}
-          customParameters: -assemblyNames OpsidanosInk.PlayModeTests
-
-      - name: Explain skipped Unity verify
-        if: ${{ steps.unity-license.outputs.has-unity-license != 'true' }}
-        run: |
-          echo "[OpsidanosInk] 未設定 UNITY_LICENSE，這次 auto-fix 只驗證 repo guards。"
+          artifactsPath: artifacts/playmode
+          customParameters: -assemblyNames OpsidanosInk.PlayModeTests -logFile artifacts/evidence/playmode/Editor.log
 
       - name: Create pull request with fixes
         if: success()

@@ -12,11 +12,12 @@
 5. `Documentation/QUALITY_SCORE.md`
 6. `Documentation/RELIABILITY.md`
 7. `Documentation/SECURITY.md`
-8. `Documentation/design-docs/index.md`
-9. `Documentation/exec-plans/index.md`
-10. `Documentation/product-specs/index.md`
-11. `Documentation/references/index.md`
-12. `Documentation/AgentWorkflowRules.md`
+8. `Documentation/generated/index.md`
+9. `Documentation/design-docs/index.md`
+10. `Documentation/exec-plans/index.md`
+11. `Documentation/product-specs/index.md`
+12. `Documentation/references/index.md`
+13. `Documentation/AgentWorkflowRules.md`
 
 ## Ownership / Golden Principles
 

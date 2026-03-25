@@ -12,6 +12,7 @@
 
 - `Documentation/exec-plans/active/index.md`
 - `Documentation/exec-plans/active/harness_system_of_record_v2.md`
+- `Documentation/exec-plans/active/harness_alignment_closure_loop.md`
 
 ## completed
 
