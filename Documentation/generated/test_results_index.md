@@ -1,11 +1,12 @@
 # test results index
 
 > 最後更新：2026/03/25
-> 來源：`python3 Tools/generate_test_results_index.py`
+> 來源：`python3 Tools/generate_test_results_index.py --results-root Artifacts/CI/TestResults`
+> 測試來源：`latest_successful_ci`，run `23543399252`，artifact `none`
+> Run URL：https://github.com/kk555770/ink-unity-integration/actions/runs/23543399252
 
 ## 測試摘要
 
 | Suite | Result | Total | Passed | Failed | Skipped | Duration(s) | Start | End | Source |
 |-------|--------|-------|--------|--------|---------|-------------|-------|-----|--------|
-| `EditMode` | Passed | 103 | 103 | 0 | 0 | 1.8056052 | 2026-03-25 12:59:06Z | 2026-03-25 12:59:08Z | `Logs/TestResults/OpsidanosInk_EditMode.xml` |
-| `PlayMode` | Passed | 17 | 17 | 0 | 0 | 6.9670968 | 2026-03-25 12:59:12Z | 2026-03-25 12:59:19Z | `Logs/TestResults/OpsidanosInk_PlayMode.xml` |
+| `none` | Missing | 0 | 0 | 0 | 0 | 0 | - | - | - |

@@ -4,7 +4,7 @@
 
 ## 目前主要缺口
 
-- `repo_guard v2` 已開始補 docs freshness / cross-links / active exec plan，但還沒有 ownership 檢查
+- `repo_guard v3` 已開始補 docs freshness / index 內容量 / cross-links / active exec plan，但還沒有 ownership 檢查
 - `codex-auto-fix.yml` 已改成 Unity-first，但完整 verify 仍依賴 `UNITY_LICENSE`
 - Unity 測試在缺少授權時仍可能退化成說明訊息而非固定回饋回圈
-- `docs-garden.yml` 已建立，但目前仍只產生報告 / artifact，還沒有自動開 PR
+- 需要至少一個新版 CI run 產出 Unity 測試 artifact，generated test truth 才會從 bootstrap 狀態進入固定更新

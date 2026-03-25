@@ -6,7 +6,9 @@ on:
     - cron: "0 1 * * 1"
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  actions: read
 
 jobs:
   docs-garden:
@@ -14,14 +16,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
+      - name: 抓最新成功 CI 的測試結果 artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DOCS_GARDEN_SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: python3 Tools/fetch_ci_test_results.py --workflow-file CI.yml --output-dir Artifacts/CI/TestResults
+
       - name: Generate test results index
-        run: python3 Tools/generate_test_results_index.py
+        run: python3 Tools/generate_test_results_index.py --results-root Artifacts/CI/TestResults
 
       - name: Generate doc garden report
         run: python3 Tools/doc_garden.py
@@ -29,11 +39,27 @@ jobs:
       - name: Run repo guard
         run: python3 Tools/repo_guard.py
 
+      - name: 建立 docs-garden PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(docs): 更新 generated docs 與 doc garden 報告"
+          branch: codex/docs-garden-${{ github.run_id }}
+          title: "chore(docs): 更新 generated docs 與 doc garden 報告"
+          body: |
+            ## 這次自動更新
+
+            - 重新抓取最新成功 CI 的測試結果 artifact
+            - 重建 `Documentation/generated/test_results_index.md`
+            - 重建 `Documentation/generated/doc_garden_report.md`
+            - 重新跑 `python3 Tools/repo_guard.py`
+          delete-branch: true
+
       - name: Upload generated docs
         uses: actions/upload-artifact@v4
         with:
           name: docs-garden-generated
           path: |
+            Artifacts/CI/TestResults/_source.json
             Documentation/generated/doc_garden_report.md
             Documentation/generated/test_results_index.md
           if-no-files-found: error

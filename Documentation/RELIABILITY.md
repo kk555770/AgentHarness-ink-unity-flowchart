@@ -17,8 +17,8 @@
 ## 現況
 
 - `repo_guard v1` 已先守 docs 入口、asmdef 依賴方向、`.cs` 檔案大小
-- `repo_guard v2` 已開始守 docs freshness / cross-links / active exec plan
-- `docs-garden.yml` 已能週期性產生 doc garden report 與 test results index
+- `repo_guard v3` 已開始守 docs freshness / index 內容量 / cross-links / active exec plan
+- `docs-garden.yml` 已能抓最新成功 CI run 的測試 artifact，並重建 generated docs
 - EditMode / PlayMode / contract 測試已是主要回饋迴路
 - current projection contract 已被文件化
 - `codex-auto-fix.yml` 已改成 Unity-first verify flow
@@ -29,4 +29,4 @@
 - 仍缺更深層的 docs ownership 檢查
 - 缺少更完整的 code graph / asmdef 以外架構 gate
 - 缺少不依賴 `UNITY_LICENSE` 的完整 Unity 驗證回饋
-- doc-gardening 目前仍是報告 / artifact 型，還沒有自動修正或開 PR
+- 目前仍需要至少一個新版 CI run 產出 Unity 測試 artifact，之後 generated test truth 才會從 `Missing` 進入穩定更新

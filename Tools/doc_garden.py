@@ -5,17 +5,26 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from doc_guard_utils import (
+    DOC_ROOT,
+    ROOT,
+    freshness_status,
+    indexed_markdown_targets,
+    load_rules,
+    parse_last_updated_date,
+    read_text,
+    relative,
+)
 
-ROOT = Path(__file__).resolve().parent.parent
-DOC_ROOT = ROOT / "Documentation"
 OUTPUT_PATH = DOC_ROOT / "generated" / "doc_garden_report.md"
 
 TRACKED_GROUPS = [
-    ("design-docs", DOC_ROOT / "design-docs"),
-    ("exec-plans/active", DOC_ROOT / "exec-plans" / "active"),
-    ("exec-plans/completed", DOC_ROOT / "exec-plans" / "completed"),
-    ("product-specs", DOC_ROOT / "product-specs"),
-    ("references", DOC_ROOT / "references"),
+    ("design-docs", DOC_ROOT / "design-docs" / "index.md"),
+    ("exec-plans/active", DOC_ROOT / "exec-plans" / "active" / "index.md"),
+    ("exec-plans/completed", DOC_ROOT / "exec-plans" / "completed" / "index.md"),
+    ("product-specs", DOC_ROOT / "product-specs" / "index.md"),
+    ("references", DOC_ROOT / "references" / "index.md"),
+    ("generated", DOC_ROOT / "generated" / "index.md"),
 ]
 
 GENERATED_OUTPUTS = [
@@ -32,29 +41,39 @@ def today() -> str:
     return datetime.now().strftime("%Y/%m/%d")
 
 
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
 def all_markdown_files() -> list[Path]:
     return sorted(DOC_ROOT.rglob("*.md"))
 
 
 def missing_last_updated(files: list[Path]) -> list[Path]:
-    return [path for path in files if "最後更新：" not in read_text(path)]
+    return [path for path in files if parse_last_updated_date(path) is None]
 
 
-def count_non_index_markdown(directory: Path) -> int:
-    return sum(
-        1
-        for path in directory.glob("*.md")
-        if path.is_file() and path.name != "index.md"
-    )
+def stale_docs(rules: dict) -> list[tuple[Path, str, str]]:
+    results: list[tuple[Path, str, str]] = []
+    freshness_checks = rules.get("docs", {}).get("freshness_checks", {})
+    for rel_path, watched_rel_paths in freshness_checks.items():
+        doc_path = ROOT / rel_path
+        watched_paths = [ROOT / watched_rel_path for watched_rel_path in watched_rel_paths]
+        last_updated, latest_change = freshness_status(doc_path, watched_paths)
+        if last_updated is None or latest_change is None:
+            continue
+        if last_updated < latest_change:
+            results.append(
+                (
+                    doc_path,
+                    last_updated.strftime("%Y/%m/%d"),
+                    latest_change.strftime("%Y/%m/%d"),
+                )
+            )
+    return results
 
 
 def build_lines() -> list[str]:
     files = all_markdown_files()
     missing_headers = missing_last_updated(files)
+    rules = load_rules()
+    outdated_docs = stale_docs(rules)
     lines = [
         "# doc garden report",
         "",
@@ -68,15 +87,13 @@ def build_lines() -> list[str]:
         "",
         "## 分類內容盤點",
         "",
-        "| 類別 | 非 index 正式文件數 |",
-        "|------|--------------------|",
+        "| 類別 | index 指到的正式文件數 |",
+        "|------|------------------------|",
     ]
 
-    for label, directory in TRACKED_GROUPS:
-        lines.append(f"| `{label}` | {count_non_index_markdown(directory)} |")
-    lines.append(
-        f"| `generated` | {sum(1 for path in GENERATED_OUTPUTS if path.is_file())} |"
-    )
+    for label, index_path in TRACKED_GROUPS:
+        actual = len(indexed_markdown_targets(index_path))
+        lines.append(f"| `{label}` | {actual} |")
 
     lines.extend(["", "## 缺少 `最後更新` 的文件", ""])
 
@@ -89,10 +106,26 @@ def build_lines() -> list[str]:
     lines.extend(
         [
             "",
+            "## 可能已過時的文件",
+            "",
+        ]
+    )
+
+    if outdated_docs:
+        for path, last_updated, latest_change in outdated_docs:
+            lines.append(
+                f"- `{relative(path)}`：文件日期 `{last_updated}` 早於 watched paths 的最新日期 `{latest_change}`"
+            )
+    else:
+        lines.append("- 無")
+
+    lines.extend(
+        [
+            "",
             "## 備註",
             "",
-            "- 這份報告是 doc-gardening 的最小版掃描，不直接修改其他文件。",
-            "- 若某個分類長期只有 `index.md`，表示它仍偏向入口殼，尚未長出正式內容。",
+            "- 這份報告現在以分類 index 指到的正式文件為準，不再只數資料夾內有幾個 markdown。",
+            "- 若文件日期早於 watched paths 的最新 git 變更日期，表示它可能已過時，應由 docs-garden 回寫或開 PR。",
         ]
     )
     return lines

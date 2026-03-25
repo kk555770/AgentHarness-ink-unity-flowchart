@@ -1,25 +1,18 @@
 #!/usr/bin/env python3
 
-import json
 import sys
 from pathlib import Path
 
+from doc_guard_utils import (
+    ROOT,
+    count_indexed_markdown_targets,
+    freshness_status,
+    load_json,
+    read_text,
+    relative,
+)
 
-ROOT = Path(__file__).resolve().parent.parent
 RULES_PATH = ROOT / "Tools" / "repo_guard_rules.json"
-
-
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def load_json(path: Path):
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def relative(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
 
 
 def check_required_files(rules: dict, errors: list[str]) -> None:
@@ -76,6 +69,49 @@ def check_min_non_index_docs(rules: dict, errors: list[str]) -> None:
         if actual < int(minimum):
             errors.append(
                 f"{rel_path} 正式文件數不足：current={actual} minimum={minimum}"
+            )
+
+
+def check_indexed_doc_counts(rules: dict, errors: list[str]) -> None:
+    indexed_doc_counts = rules.get("indexed_doc_counts", {})
+    for rel_path, minimum in indexed_doc_counts.items():
+        path = ROOT / rel_path
+        if not path.is_file():
+            errors.append(f"缺少必要索引：{rel_path}")
+            continue
+
+        actual = count_indexed_markdown_targets(path)
+        if actual < int(minimum):
+            errors.append(
+                f"{rel_path} 索引到的正式文件數不足：current={actual} minimum={minimum}"
+            )
+
+
+def check_freshness(rules: dict, errors: list[str]) -> None:
+    freshness_checks = rules.get("freshness_checks", {})
+    for rel_path, watched_rel_paths in freshness_checks.items():
+        doc_path = ROOT / rel_path
+        if not doc_path.is_file():
+            errors.append(f"缺少必要文件：{rel_path}")
+            continue
+
+        watched_paths = [
+            ROOT / watched_rel_path for watched_rel_path in watched_rel_paths
+        ]
+        last_updated, latest_change = freshness_status(doc_path, watched_paths)
+
+        if last_updated is None:
+            errors.append(f"{rel_path} 缺少可解析的最後更新日期")
+            continue
+
+        if latest_change is None:
+            errors.append(f"{rel_path} 找不到 watched paths 的 git 變更紀錄")
+            continue
+
+        if last_updated < latest_change:
+            errors.append(
+                f"{rel_path} 已過時：last_updated={last_updated.strftime('%Y/%m/%d')} "
+                f"latest_change={latest_change.strftime('%Y/%m/%d')}"
             )
 
 
@@ -138,6 +174,8 @@ def main() -> int:
     check_required_contains(rules.get("docs", {}), errors)
     check_last_updated_headers(rules.get("docs", {}), errors)
     check_min_non_index_docs(rules.get("docs", {}), errors)
+    check_indexed_doc_counts(rules.get("docs", {}), errors)
+    check_freshness(rules.get("docs", {}), errors)
     check_exact_asmdef_references(rules.get("asmdef", {}), errors)
     check_file_sizes(rules.get("filesize", {}), errors)
 

@@ -70,14 +70,15 @@
       "Documentation/generated/index.md": [
         "Documentation/generated/doc_garden_report.md",
         "Documentation/generated/test_results_index.md",
-        ".github/workflows/docs-garden.yml"
+        ".github/workflows/docs-garden.yml",
+        "Tools/fetch_ci_test_results.py"
       ],
       "Documentation/QUALITY_SCORE.md": [
-        "repo_guard v2",
+        "repo_guard v3",
         "Documentation/exec-plans/active/harness_system_of_record_v2.md"
       ],
       "Documentation/RELIABILITY.md": [
-        "repo_guard v2",
+        "repo_guard v3",
         "Documentation/exec-plans/active/harness_system_of_record_v2.md"
       ]
     },
@@ -102,10 +103,79 @@
       "Documentation/references/index.md",
       "Documentation/AgentWorkflowRules.md",
       "Documentation/GraphToolkitSpec.md",
-      "Documentation/UIToolkitSpec.md"
+      "Documentation/UIToolkitSpec.md",
+      "Documentation/InkPlayerWindow.md"
     ],
+    "indexed_doc_counts": {
+      "Documentation/design-docs/index.md": 5,
+      "Documentation/exec-plans/active/index.md": 3,
+      "Documentation/exec-plans/completed/index.md": 3,
+      "Documentation/product-specs/index.md": 3,
+      "Documentation/references/index.md": 5,
+      "Documentation/generated/index.md": 2
+    },
     "min_non_index_docs": {
       "Documentation/exec-plans/active": 1
+    },
+    "freshness_checks": {
+      "Documentation/generated/doc_garden_report.md": [
+        "Documentation",
+        "Tools/doc_garden.py",
+        "Tools/doc_guard_utils.py",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/generated/test_results_index.md": [
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml",
+        "Tools/fetch_ci_test_results.py",
+        "Tools/generate_test_results_index.py"
+      ],
+      "Documentation/generated/index.md": [
+        "Documentation/generated/doc_garden_report.md",
+        "Documentation/generated/test_results_index.md",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        "Tools/generate_test_results_index.py",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/QUALITY_SCORE.md": [
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/RELIABILITY.md": [
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/exec-plans/tech-debt.md": [
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml"
+      ],
+      "Documentation/exec-plans/active/harness_system_of_record_v2.md": [
+        "Tools/repo_guard.py",
+        "Tools/repo_guard_rules.json",
+        "Tools/doc_garden.py",
+        "Tools/fetch_ci_test_results.py",
+        "Tools/generate_test_results_index.py",
+        ".github/workflows/CI.yml",
+        ".github/workflows/docs-garden.yml"
+      ]
     }
   },
   "asmdef": {
