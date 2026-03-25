@@ -17,7 +17,10 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_DIR = ROOT / "Artifacts" / "CI" / "TestResults"
-ARTIFACT_PREFIX = "unity-test-results-"
+ARTIFACT_PREFIXES = {
+    "unity-test-results-": "test-results",
+    "unity-evidence-": "evidence",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,6 +36,13 @@ def parse_args() -> argparse.Namespace:
         help="下載後的輸出目錄。",
     )
     return parser.parse_args()
+
+
+def classify_artifact(name: str) -> str | None:
+    for prefix, kind in ARTIFACT_PREFIXES.items():
+        if name.startswith(prefix):
+            return kind
+    return None
 
 
 def github_headers(token: str) -> dict[str, str]:
@@ -99,13 +109,14 @@ def download_bytes(url: str, token: str) -> bytes:
         raise
 
 
-def filter_test_artifacts(artifacts: list[dict]) -> list[dict]:
-    return [
-        artifact
-        for artifact in artifacts
-        if artifact.get("expired") is False
-        and artifact.get("name", "").startswith(ARTIFACT_PREFIX)
-    ]
+def filter_relevant_artifacts(artifacts: list[dict]) -> list[dict]:
+    selected: list[dict] = []
+    for artifact in artifacts:
+        name = artifact.get("name", "")
+        kind = classify_artifact(name)
+        if artifact.get("expired") is False and kind is not None:
+            selected.append({**artifact, "kind": kind})
+    return selected
 
 
 def find_latest_successful_run(
@@ -122,7 +133,9 @@ def find_latest_successful_run(
             continue
         if fallback_run is None:
             fallback_run = run
-        artifacts = filter_test_artifacts(list_artifacts(repo, str(run["id"]), token))
+        artifacts = filter_relevant_artifacts(
+            list_artifacts(repo, str(run["id"]), token)
+        )
         if artifacts:
             return run, artifacts
     return fallback_run, []
@@ -139,22 +152,81 @@ def list_artifacts(repo: str, run_id: str, token: str) -> list[dict]:
     return payload.get("artifacts", [])
 
 
+def list_jobs(repo: str, run_id: str, token: str) -> list[dict]:
+    url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"
+    payload = api_json(url, token)
+    return payload.get("jobs", [])
+
+
+def normalize_job(job: dict) -> dict:
+    return {
+        "id": job.get("id"),
+        "name": job.get("name"),
+        "status": job.get("status"),
+        "conclusion": job.get("conclusion"),
+        "started_at": job.get("started_at"),
+        "completed_at": job.get("completed_at"),
+        "steps": [
+            {
+                "name": step.get("name"),
+                "status": step.get("status"),
+                "conclusion": step.get("conclusion"),
+            }
+            for step in job.get("steps", [])
+        ],
+    }
+
+
 def write_metadata(
     output_dir: Path,
     mode: str,
     run: dict,
+    jobs: list[dict],
     artifacts: list[dict],
-    result_roots: list[Path],
+    artifact_roots: list[Path],
 ) -> None:
+    normalized_jobs = [normalize_job(job) for job in jobs]
+    normalized_artifacts = []
+    result_roots: list[str] = []
+    evidence_roots: list[str] = []
+
+    for artifact, path in zip(artifacts, artifact_roots):
+        rel_path = path.relative_to(ROOT).as_posix()
+        normalized_artifacts.append(
+            {
+                "name": artifact.get("name"),
+                "kind": artifact.get("kind"),
+                "expired": artifact.get("expired", False),
+                "root": rel_path,
+            }
+        )
+        if artifact.get("kind") == "test-results":
+            result_roots.append(rel_path)
+        if artifact.get("kind") == "evidence":
+            evidence_roots.append(rel_path)
+
     metadata = {
         "mode": mode,
         "run_id": run.get("id"),
         "run_url": run.get("html_url"),
         "run_name": run.get("name"),
+        "run_status": run.get("status"),
+        "run_conclusion": run.get("conclusion"),
         "head_branch": run.get("head_branch"),
         "head_sha": run.get("head_sha"),
         "artifact_names": [artifact.get("name") for artifact in artifacts],
-        "result_roots": [path.relative_to(ROOT).as_posix() for path in result_roots],
+        "artifact_types": sorted(
+            {
+                artifact.get("kind")
+                for artifact in artifacts
+                if artifact.get("kind") is not None
+            }
+        ),
+        "artifacts": normalized_artifacts,
+        "jobs": normalized_jobs,
+        "artifact_roots": [path.relative_to(ROOT).as_posix() for path in artifact_roots],
+        "result_roots": result_roots,
+        "evidence_roots": evidence_roots,
         "downloaded_at": datetime.now(timezone.utc).isoformat(),
     }
     (output_dir / "_source.json").write_text(
@@ -184,17 +256,18 @@ def main() -> int:
     if requested_run_id:
         run = get_run(repo, requested_run_id, token)
         mode = "workflow_run"
-        artifacts = filter_test_artifacts(list_artifacts(repo, str(run["id"]), token))
+        artifacts = filter_relevant_artifacts(list_artifacts(repo, str(run["id"]), token))
     else:
         run, artifacts = find_latest_successful_run(repo, args.workflow_file, token)
         mode = "latest_successful_ci"
 
     if not run:
-        write_metadata(output_dir, "missing_ci_run", {}, [], [])
+        write_metadata(output_dir, "missing_ci_run", {}, [], [], [])
         print("[fetch_ci_test_results] 找不到成功的 CI run")
         return 0
 
-    result_roots: list[Path] = []
+    jobs = list_jobs(repo, str(run["id"]), token)
+    artifact_roots: list[Path] = []
     for artifact in artifacts:
         destination = output_dir / f"run_{run['id']}" / artifact["name"]
         try:
@@ -204,9 +277,9 @@ def main() -> int:
                 f"下載 artifact 失敗：name={artifact['name']} status={error.code}"
             ) from error
         extract_artifact_zip(zip_bytes, destination)
-        result_roots.append(destination)
+        artifact_roots.append(destination)
 
-    write_metadata(output_dir, mode, run, artifacts, result_roots)
+    write_metadata(output_dir, mode, run, jobs, artifacts, artifact_roots)
     print(
         "[fetch_ci_test_results] 已同步 run {run_id} 的 {count} 個 artifact".format(
             run_id=run["id"],

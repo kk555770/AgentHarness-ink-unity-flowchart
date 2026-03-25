@@ -16,6 +16,7 @@
 
 ## 更新方式
 
+- 本地驗證：`python3 Tools/generate_test_results_index.py`
 - `python3 Tools/fetch_ci_test_results.py`
 - `python3 Tools/generate_test_results_index.py --results-root Artifacts/CI/TestResults`
 - `python3 Tools/doc_garden.py`
@@ -23,8 +24,14 @@
 
 ## 目前流程
 
-- `docs-garden.yml` 會先抓最新成功 CI run 的測試 artifact
+- `docs-garden.yml` 會先抓最新成功 CI run 的 test / evidence artifact
 - 接著重建 `test_results_index.md` 與 `doc_garden_report.md`
 - 若 generated docs 有變更，workflow 會自動開 PR
 - `doc_garden_report.md` 也會列出 owner coverage
-- 若目前 repo 還沒有新的 Unity 測試 artifact，`test_results_index.md` 會誠實顯示 `Missing`，不再假裝是最新 CI 真相
+- `test_results_index.md` 已升級成最小 Unity evidence index：
+  - 測試摘要
+  - console error / warning 計數
+  - 短 console 摘要
+  - log source
+  - 本地模式會讀 `Logs/TestResults` 與 `Logs/UnityEvidence`
+  - 若 CI 沒有 artifact，則顯示 `Missing` 與對應 job 狀態

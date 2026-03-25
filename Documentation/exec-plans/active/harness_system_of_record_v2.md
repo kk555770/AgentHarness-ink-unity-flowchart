@@ -47,6 +47,12 @@
    - `design-docs/core-beliefs.md` 已把 golden principles 寫成正式入口
    - `repo_guard v4` 與 `doc_garden_report.md` 已開始檢查 owner header / owner coverage
 
+5. Unity evidence bundle
+   - `Tools/run_tests.sh` 已把 EditMode / PlayMode Unity log 落到 `Logs/UnityEvidence/`
+   - `CI.yml` 已準備 `unity-evidence-*` artifact upload
+   - `fetch_ci_test_results.py` 會抓 `unity-test-results-*` 與 `unity-evidence-*`
+   - `test_results_index.md` 已升級成最小 Unity evidence index，會顯示 XML 摘要、console evidence、log source、CI job 狀態
+
 ## 決策紀錄
 
 - 不再把本地 `Logs/TestResults` 直接描述成最新 CI 真相
@@ -57,7 +63,7 @@
 
 - 更深層 code graph / naming / structured logging guard
 - 不依賴 `UNITY_LICENSE` 的更穩定雲端回饋閉環
-- UI / log / metrics / trace 層級的 agent 可觀測性
+- UI / metrics / trace 層級的 agent 可觀測性
 
 ## 驗收標準
 
@@ -65,3 +71,4 @@
 - `python3 Tools/repo_guard.py` 能檢查真正的 freshness / index counts / cross-links / active plan / ownership
 - `PLANS.md`、`QUALITY_SCORE.md`、`RELIABILITY.md` 已把目前活躍計畫寫回正式文件
 - `docs-garden.yml` 已能回寫 generated docs 並建立 PR
+- `Documentation/generated/test_results_index.md` 不再只有 XML 結果表，而是可重建的最小 Unity evidence index

@@ -78,17 +78,21 @@
         "Documentation/generated/doc_garden_report.md",
         "Documentation/generated/test_results_index.md",
         ".github/workflows/docs-garden.yml",
-        "Tools/fetch_ci_test_results.py"
+        "Tools/fetch_ci_test_results.py",
+        "console error / warning",
+        "job 狀態"
       ],
       "Documentation/QUALITY_SCORE.md": [
         "repo_guard v4",
         "ownership",
-        "Documentation/exec-plans/active/harness_system_of_record_v2.md"
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "evidence bundle"
       ],
       "Documentation/RELIABILITY.md": [
         "repo_guard v4",
         "ownership",
-        "Documentation/exec-plans/active/harness_system_of_record_v2.md"
+        "Documentation/exec-plans/active/harness_system_of_record_v2.md",
+        "evidence index"
       ]
     },
     "allowed_doc_owners": [

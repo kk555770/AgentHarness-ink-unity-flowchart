@@ -8,7 +8,7 @@
 
 - Documentation Markdown 總數：37
 - 缺少 `最後更新` 標頭：0
-- 缺少 `文件負責人` 標頭：1
+- 缺少 `文件負責人` 標頭：0
 
 ## 分類內容盤點
 
@@ -29,7 +29,7 @@
 
 - `architecture`：6
 - `authoring`：6
-- `harness`：15
+- `harness`：16
 - `projection`：3
 - `reference`：4
 - `runtime`：1
@@ -37,7 +37,7 @@
 
 ## 缺少 `文件負責人` 的文件
 
-- `Documentation/generated/doc_garden_report.md`
+- 無
 
 ## 可能已過時的文件
 

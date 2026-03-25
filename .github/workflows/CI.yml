@@ -54,6 +54,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 準備 evidence 目錄
+        run: mkdir -p artifacts/evidence/editmode artifacts/evidence/playmode
+
       - name: 跑 EditMode（只跑我們的）
         id: editmode_tests
         uses: game-ci/unity-test-runner@v4
@@ -65,7 +68,7 @@ jobs:
           testMode: editmode
           githubToken: ${{ github.token }}
           artifactsPath: artifacts/editmode
-          customParameters: -assemblyNames OpsidanosInk.EditModeTests
+          customParameters: -assemblyNames OpsidanosInk.EditModeTests -logFile artifacts/evidence/editmode/Editor.log
 
       - name: 上傳 EditMode 測試結果 artifact
         if: ${{ always() && steps.editmode_tests.outputs.artifactsPath != '' }}
@@ -73,6 +76,30 @@ jobs:
         with:
           name: unity-test-results-editmode
           path: ${{ steps.editmode_tests.outputs.artifactsPath }}
+          if-no-files-found: error
+
+      - name: 整理 EditMode evidence
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_root="artifacts/evidence/editmode"
+          mkdir -p "${evidence_root}"
+          if [ ! -s "${evidence_root}/Editor.log" ]; then
+            printf '%s\n' '[OpsidanosInk] EditMode Unity log 不在預期位置。' > "${evidence_root}/Editor.log.missing"
+          fi
+          cat > "${evidence_root}/manifest.txt" <<EOF
+          suite=EditMode
+          log_file=Editor.log
+          test_results_artifacts_path=${{ steps.editmode_tests.outputs.artifactsPath }}
+          EOF
+
+      - name: 上傳 EditMode evidence artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-evidence-editmode
+          path: artifacts/evidence/editmode
           if-no-files-found: error
 
       - name: 跑 PlayMode（只跑我們的）
@@ -86,7 +113,7 @@ jobs:
           testMode: playmode
           githubToken: ${{ github.token }}
           artifactsPath: artifacts/playmode
-          customParameters: -assemblyNames OpsidanosInk.PlayModeTests
+          customParameters: -assemblyNames OpsidanosInk.PlayModeTests -logFile artifacts/evidence/playmode/Editor.log
 
       - name: 上傳 PlayMode 測試結果 artifact
         if: ${{ always() && steps.playmode_tests.outputs.artifactsPath != '' }}
@@ -94,6 +121,30 @@ jobs:
         with:
           name: unity-test-results-playmode
           path: ${{ steps.playmode_tests.outputs.artifactsPath }}
+          if-no-files-found: error
+
+      - name: 整理 PlayMode evidence
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_root="artifacts/evidence/playmode"
+          mkdir -p "${evidence_root}"
+          if [ ! -s "${evidence_root}/Editor.log" ]; then
+            printf '%s\n' '[OpsidanosInk] PlayMode Unity log 不在預期位置。' > "${evidence_root}/Editor.log.missing"
+          fi
+          cat > "${evidence_root}/manifest.txt" <<EOF
+          suite=PlayMode
+          log_file=Editor.log
+          test_results_artifacts_path=${{ steps.playmode_tests.outputs.artifactsPath }}
+          EOF
+
+      - name: 上傳 PlayMode evidence artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-evidence-playmode
+          path: artifacts/evidence/playmode
           if-no-files-found: error
 
   unity-tests-disabled:

@@ -25,6 +25,10 @@
 - doc-gardening：黃
   - 已補 `Tools/doc_garden.py`、`Tools/fetch_ci_test_results.py` 與 `.github/workflows/docs-garden.yml`
   - 目前會抓最新成功 CI run 的 artifact、重建 generated docs、並自動開 PR
+- evidence bundle：黃
+  - `Documentation/generated/test_results_index.md` 已升級成 Unity evidence index
+  - 現在會把 XML、console 摘要、log source、CI job 狀態收斂到同一頁
+  - generated docs 不再只知道「有沒有測試」，也知道「發生了什麼」
 - auto-fix harness：黃
   - workflow 已改成 Unity-first
   - 完整 verify 仍依賴 `UNITY_LICENSE`

@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: 抓最新成功 CI 的測試結果 artifact
+      - name: 抓最新成功 CI 的 test / evidence artifact
         env:
           GITHUB_TOKEN: ${{ github.token }}
           DOCS_GARDEN_SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
@@ -48,7 +48,7 @@ jobs:
           body: |
             ## 這次自動更新
 
-            - 重新抓取最新成功 CI 的測試結果 artifact
+            - 重新抓取最新成功 CI 的 test / evidence artifact
             - 重建 `Documentation/generated/test_results_index.md`
             - 重建 `Documentation/generated/doc_garden_report.md`
             - 重新跑 `python3 Tools/repo_guard.py`
