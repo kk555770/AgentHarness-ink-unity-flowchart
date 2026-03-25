@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
         help="要抓測試 artifact 的 workflow 檔名。",
     )
     parser.add_argument(
+        "--run-id",
+        default="",
+        help="指定要抓的 workflow run id；若未提供，才回退到 workflow_run env 或最新成功 CI。",
+    )
+    parser.add_argument(
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
         help="下載後的輸出目錄。",
@@ -245,7 +250,7 @@ def main() -> int:
     args = parse_args()
     repo = os.environ.get("GITHUB_REPOSITORY")
     token = os.environ.get("GITHUB_TOKEN")
-    requested_run_id = os.environ.get("DOCS_GARDEN_SOURCE_RUN_ID")
+    requested_run_id = args.run_id or os.environ.get("DOCS_GARDEN_SOURCE_RUN_ID", "")
 
     if not repo or not token:
         raise SystemExit("缺少 GITHUB_REPOSITORY 或 GITHUB_TOKEN")

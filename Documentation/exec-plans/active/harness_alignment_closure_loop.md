@@ -11,8 +11,8 @@
 ## 本輪已落地的基線
 
 - workflow guard
-  - `CI.yml` 在缺少 `UNITY_LICENSE` 時改為 fail closed
-  - `codex-auto-fix.yml` 在缺少 `UNITY_LICENSE` 時不再假裝修好
+  - `CI.yml` 在缺少完整 Unity 驗證 secrets 時改為 fail closed
+  - `codex-auto-fix.yml` 在缺少完整 Unity 驗證 secrets 時不再假裝修好
   - `docs-garden.yml` 改成優先使用 CI workflow_run provenance
 - docs guard
   - `repo_guard` 已擴大 freshness / index / ownership / workflow permissions 檢查
@@ -22,6 +22,9 @@
   - `ValidateProjection(Ink)` 與 `ProjectGraph(Ink)` 已要求 compile probe
   - 預設 compile probe 已進 canonical core，不再只靠 Editor bootstrap 才有 probe
   - 對應測試已補上 probe 成功 / 失敗 / JSON control plane 的回歸驗證
+- Unity evidence provenance
+  - local / CI 都會寫 suite manifest，至少保留 suite、結果路徑、log 路徑、run metadata 與 auth mode
+  - auto-fix 會先抓失敗 run 的 test / evidence artifact，再交給 Codex 判讀
 
 ## 改進項目與順序
 
@@ -32,8 +35,8 @@
 
 2. workflow guard 收斂
    - 目標：把 CI、auto-fix、docs-garden 的信任邊界寫死
-   - 驗證方式：缺少授權時 fail closed、workflow permissions 檢查、docs-garden provenance 可追溯
-   - 完成定義：不會再出現缺授權卻綠燈的假驗證
+   - 驗證方式：缺少完整 Unity secrets 時 fail closed、workflow permissions 檢查、docs-garden provenance 可追溯
+   - 完成定義：不會再出現缺完整 Unity 驗證條件卻綠燈的假驗證
 
 3. docs guard 收斂
    - 目標：讓 docs freshness、owner coverage、index counts、generated docs 彼此一致
@@ -59,7 +62,7 @@
 
 - `ImportProjection` 目前只先支援 `flowchart-json`
 - `ink` import、legacy mapping warnings 與更多 target 的 round-trip 語意仍待補強
-- 雲端 / CI 的完整 Unity feedback loop 仍依賴 `UNITY_LICENSE`
+- 雲端 / CI 的完整 Unity feedback loop 仍依賴 GitHub 上有有效的 Unity secrets 組合
 - `story-json` 與 `graphtoolkit-model` 仍是後續 target
 - 更深層的 code graph guard 與 observability 仍待補強
 

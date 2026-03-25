@@ -51,9 +51,9 @@
 
 | workflow | 狀態 | 實際 permissions | 預期 permissions |
 |----------|------|------------------|------------------|
-| `.github/workflows/CI.yml` | OK | `contents: read` | `contents: read` |
+| `.github/workflows/CI.yml` | OK | `checks: write, contents: read` | `checks: write, contents: read` |
 | `.github/workflows/docs-garden.yml` | OK | `actions: read, contents: write, pull-requests: write` | `actions: read, contents: write, pull-requests: write` |
-| `.github/workflows/codex-auto-fix.yml` | OK | `contents: write, pull-requests: write` | `contents: write, pull-requests: write` |
+| `.github/workflows/codex-auto-fix.yml` | OK | `actions: read, contents: write, pull-requests: write` | `actions: read, contents: write, pull-requests: write` |
 
 ## 備註
 

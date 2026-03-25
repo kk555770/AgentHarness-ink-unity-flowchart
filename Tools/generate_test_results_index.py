@@ -41,6 +41,11 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_RESULTS_ROOT),
         help="測試結果根目錄，可為本地 Logs 或下載回來的 CI artifact 根目錄。",
     )
+    parser.add_argument(
+        "--output-path",
+        default=str(OUTPUT_PATH),
+        help="輸出 markdown 路徑；預設為 Documentation/generated/test_results_index.md。",
+    )
     return parser.parse_args()
 
 
@@ -325,6 +330,13 @@ def source_lines(results_root: Path, metadata: dict | None) -> list[str]:
                     conclusion=metadata.get("run_conclusion", "-"),
                 )
             )
+        if metadata.get("head_branch") or metadata.get("head_sha"):
+            lines.append(
+                "> Head：branch `{branch}` / sha `{sha}`".format(
+                    branch=metadata.get("head_branch", "-"),
+                    sha=metadata.get("head_sha", "-"),
+                )
+            )
         if metadata.get("run_url"):
             lines.append(f"> Run URL：{metadata['run_url']}")
         return lines
@@ -402,14 +414,15 @@ def build_lines(
 def main() -> int:
     args = parse_args()
     results_root = Path(args.results_root).resolve()
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    output_path = Path(args.output_path).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     metadata = load_source_metadata(results_root)
     results = build_suite_rows(results_root, metadata)
-    OUTPUT_PATH.write_text(
+    output_path.write_text(
         "\n".join(build_lines(results, results_root, metadata)) + "\n",
         encoding="utf-8",
     )
-    print(f"[test_results_index] 已更新 {rel(OUTPUT_PATH)}")
+    print(f"[test_results_index] 已更新 {rel(output_path)}")
     return 0
 
 

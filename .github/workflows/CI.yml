@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   repo-guards:
@@ -30,29 +31,43 @@ jobs:
     name: CI 前置檢查
     runs-on: ubuntu-latest
     outputs:
-      has-unity-license: ${{ steps.unity-license.outputs.has-unity-license }}
+      has-unity-auth: ${{ steps.unity-auth.outputs.has-unity-auth }}
+      unity-auth-mode: ${{ steps.unity-auth.outputs.unity-auth-mode }}
     steps:
-      - name: 檢查 UNITY_LICENSE
-        id: unity-license
+      - name: 檢查 Unity secrets
+        id: unity-auth
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
-          if [ -n "$UNITY_LICENSE" ]; then
-            echo "has-unity-license=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$UNITY_LICENSE" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "has-unity-auth=true" >> "$GITHUB_OUTPUT"
+            echo "unity-auth-mode=personal" >> "$GITHUB_OUTPUT"
+          elif [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "has-unity-auth=true" >> "$GITHUB_OUTPUT"
+            echo "unity-auth-mode=professional" >> "$GITHUB_OUTPUT"
           else
-            echo "has-unity-license=false" >> "$GITHUB_OUTPUT"
+            echo "has-unity-auth=false" >> "$GITHUB_OUTPUT"
+            echo "unity-auth-mode=missing" >> "$GITHUB_OUTPUT"
           fi
 
   unity-tests:
     name: Unity 測試（Edit → Play，只跑我們的）
     needs: [repo-guards, ci-gate]
-    if: ${{ needs.ci-gate.outputs.has-unity-license == 'true' }}
+    if: ${{ needs.ci-gate.outputs.has-unity-auth == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
       - name: 準備 evidence 目錄
         run: mkdir -p artifacts/evidence/editmode artifacts/evidence/playmode
@@ -62,6 +77,9 @@ jobs:
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: .
           unityVersion: 6000.3.9f1
@@ -81,6 +99,8 @@ jobs:
       - name: 整理 EditMode evidence
         if: ${{ always() }}
         shell: bash
+        env:
+          UNITY_AUTH_MODE: ${{ needs.ci-gate.outputs.unity-auth-mode }}
         run: |
           set -euo pipefail
           evidence_root="artifacts/evidence/editmode"
@@ -88,11 +108,28 @@ jobs:
           if [ ! -s "${evidence_root}/Editor.log" ]; then
             printf '%s\n' '[OpsidanosInk] EditMode Unity log 不在預期位置。' > "${evidence_root}/Editor.log.missing"
           fi
-          cat > "${evidence_root}/manifest.txt" <<EOF
-          suite=EditMode
-          log_file=Editor.log
-          test_results_artifacts_path=${{ steps.editmode_tests.outputs.artifactsPath }}
-          EOF
+          python3 Tools/write_unity_evidence_manifest.py \
+            --suite "EditMode" \
+            --output "${evidence_root}/manifest.json" \
+            --source-mode "ci" \
+            --log-file "${evidence_root}/Editor.log" \
+            --test-results-path "${{ steps.editmode_tests.outputs.artifactsPath }}" \
+            --test-platform "EditMode" \
+            --assembly-name "OpsidanosInk.EditModeTests" \
+            --repository "${{ github.repository }}" \
+            --workflow-name "${{ github.workflow }}" \
+            --workflow-run-id "${{ github.run_id }}" \
+            --workflow-run-attempt "${{ github.run_attempt }}" \
+            --workflow-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --job-name "${{ github.job }}" \
+            --head-sha "${{ github.sha }}" \
+            --head-branch "${{ github.head_ref || github.ref_name }}" \
+            --ref-name "${{ github.ref_name }}" \
+            --actor "${{ github.actor }}" \
+            --runner-os "${{ runner.os }}" \
+            --runner-name "${{ runner.name }}" \
+            --unity-version "6000.3.9f1" \
+            --unity-auth-mode "${UNITY_AUTH_MODE}"
 
       - name: 上傳 EditMode evidence artifact
         if: ${{ always() }}
@@ -107,6 +144,9 @@ jobs:
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: .
           unityVersion: 6000.3.9f1
@@ -126,6 +166,8 @@ jobs:
       - name: 整理 PlayMode evidence
         if: ${{ always() }}
         shell: bash
+        env:
+          UNITY_AUTH_MODE: ${{ needs.ci-gate.outputs.unity-auth-mode }}
         run: |
           set -euo pipefail
           evidence_root="artifacts/evidence/playmode"
@@ -133,11 +175,28 @@ jobs:
           if [ ! -s "${evidence_root}/Editor.log" ]; then
             printf '%s\n' '[OpsidanosInk] PlayMode Unity log 不在預期位置。' > "${evidence_root}/Editor.log.missing"
           fi
-          cat > "${evidence_root}/manifest.txt" <<EOF
-          suite=PlayMode
-          log_file=Editor.log
-          test_results_artifacts_path=${{ steps.playmode_tests.outputs.artifactsPath }}
-          EOF
+          python3 Tools/write_unity_evidence_manifest.py \
+            --suite "PlayMode" \
+            --output "${evidence_root}/manifest.json" \
+            --source-mode "ci" \
+            --log-file "${evidence_root}/Editor.log" \
+            --test-results-path "${{ steps.playmode_tests.outputs.artifactsPath }}" \
+            --test-platform "PlayMode" \
+            --assembly-name "OpsidanosInk.PlayModeTests" \
+            --repository "${{ github.repository }}" \
+            --workflow-name "${{ github.workflow }}" \
+            --workflow-run-id "${{ github.run_id }}" \
+            --workflow-run-attempt "${{ github.run_attempt }}" \
+            --workflow-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --job-name "${{ github.job }}" \
+            --head-sha "${{ github.sha }}" \
+            --head-branch "${{ github.head_ref || github.ref_name }}" \
+            --ref-name "${{ github.ref_name }}" \
+            --actor "${{ github.actor }}" \
+            --runner-os "${{ runner.os }}" \
+            --runner-name "${{ runner.name }}" \
+            --unity-version "6000.3.9f1" \
+            --unity-auth-mode "${UNITY_AUTH_MODE}"
 
       - name: 上傳 PlayMode evidence artifact
         if: ${{ always() }}
@@ -150,12 +209,13 @@ jobs:
   unity-tests-disabled:
     name: Unity 測試（缺少授權，CI 視為失敗）
     needs: [repo-guards, ci-gate]
-    if: ${{ needs.ci-gate.outputs.has-unity-license != 'true' }}
+    if: ${{ needs.ci-gate.outputs.has-unity-auth != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: 說明
         run: |
-          echo "::error::[OpsidanosInk] 目前未設定 UNITY_LICENSE，所以這次 CI 不能宣稱 Unity 驗證通過。"
-          echo "[OpsidanosInk] 你可以到 GitHub Repo → Settings → Secrets and variables → Actions → New repository secret"
-          echo "[OpsidanosInk] 新增一個名為 UNITY_LICENSE 的 secret，之後這個 CI 就會自動跑測試。"
+          echo "::error::[OpsidanosInk] 目前缺少完整的 Unity 驗證 secrets，所以這次 CI 不能宣稱 Unity 驗證通過。"
+          echo "[OpsidanosInk] Personal license：UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD"
+          echo "[OpsidanosInk] Professional license：UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD"
+          echo "[OpsidanosInk] 請到 GitHub Repo → Settings → Secrets and variables → Actions 補上其中一組。"
           exit 1

@@ -20,6 +20,9 @@
 
 - `OPENAI_API_KEY`
 - `UNITY_LICENSE`
+- `UNITY_EMAIL`
+- `UNITY_PASSWORD`
+- `UNITY_SERIAL`
 - GitHub token / Actions 權限
 - 任意未來接上的外部 API token
 
@@ -66,6 +69,7 @@
 - 每個 workflow 都必須明確宣告 `permissions:`，禁止依賴隱含預設值。
 - 寫入型 workflow 必須解釋為什麼需要 `contents: write` 或 `pull-requests: write`。
 - 驗證型 workflow 優先使用 read-only 權限。
+- 若驗證 workflow 需要把測試結果回寫成 GitHub status checks，必須把 `checks: write` 明確寫出，且只用在確實需要的 workflow。
 
 ### External-service Usage
 

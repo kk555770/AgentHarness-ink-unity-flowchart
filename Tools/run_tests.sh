@@ -67,9 +67,32 @@ EDITMODE_XML="${RESULTS_DIR}/OpsidanosInk_EditMode.xml"
 PLAYMODE_XML="${RESULTS_DIR}/OpsidanosInk_PlayMode.xml"
 EDITMODE_LOG="${EVIDENCE_DIR}/OpsidanosInk_EditMode.log"
 PLAYMODE_LOG="${EVIDENCE_DIR}/OpsidanosInk_PlayMode.log"
+EDITMODE_MANIFEST="${EVIDENCE_DIR}/OpsidanosInk_EditMode.manifest.json"
+PLAYMODE_MANIFEST="${EVIDENCE_DIR}/OpsidanosInk_PlayMode.manifest.json"
 
 run_unity_tests "EditMode" "OpsidanosInk.EditModeTests" "${EDITMODE_XML}" "${EDITMODE_LOG}"
+python3 "${PROJECT_ROOT}/Tools/write_unity_evidence_manifest.py" \
+  --suite "EditMode" \
+  --output "${EDITMODE_MANIFEST}" \
+  --source-mode "local" \
+  --log-file "${EDITMODE_LOG}" \
+  --test-results-path "${EDITMODE_XML}" \
+  --test-platform "EditMode" \
+  --assembly-name "OpsidanosInk.EditModeTests" \
+  --runner-os "macOS" \
+  --unity-version "6000.3.9f1"
+
 run_unity_tests "PlayMode" "OpsidanosInk.PlayModeTests" "${PLAYMODE_XML}" "${PLAYMODE_LOG}"
+python3 "${PROJECT_ROOT}/Tools/write_unity_evidence_manifest.py" \
+  --suite "PlayMode" \
+  --output "${PLAYMODE_MANIFEST}" \
+  --source-mode "local" \
+  --log-file "${PLAYMODE_LOG}" \
+  --test-results-path "${PLAYMODE_XML}" \
+  --test-platform "PlayMode" \
+  --assembly-name "OpsidanosInk.PlayModeTests" \
+  --runner-os "macOS" \
+  --unity-version "6000.3.9f1"
 
 echo "[OpsidanosInk] 全部測試完成（EditMode → PlayMode）"
 echo "[OpsidanosInk] 測試結果："
@@ -78,3 +101,6 @@ echo "  - ${PLAYMODE_XML}"
 echo "[OpsidanosInk] Evidence logs："
 echo "  - ${EDITMODE_LOG}"
 echo "  - ${PLAYMODE_LOG}"
+echo "[OpsidanosInk] Evidence manifests："
+echo "  - ${EDITMODE_MANIFEST}"
+echo "  - ${PLAYMODE_MANIFEST}"

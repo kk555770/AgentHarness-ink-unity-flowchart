@@ -36,8 +36,9 @@
   - 現在會把 XML、console 摘要、log source、CI job 狀態收斂到同一頁
   - generated docs 不再只知道「有沒有測試」，也知道「發生了什麼」
 - auto-fix harness：黃
-  - workflow 已改成 Unity-first，而且缺少 `UNITY_LICENSE` 時會 fail closed
-  - 完整 verify 仍需要有效 `UNITY_LICENSE`
+  - workflow 已改成 Unity-first，而且會檢查完整 Unity 驗證 secrets（personal / professional 二選一）
+  - auto-fix 也會先抓失敗 run 的 test / evidence artifact，再把相同證據交給 Codex
+  - 完整 verify 仍需要 GitHub 上有有效的 Unity secrets 組合
 
 ## 補充
 

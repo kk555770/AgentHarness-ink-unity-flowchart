@@ -34,5 +34,6 @@
   - console error / warning 計數
   - 短 console 摘要
   - log source
+  - CI / local 兩邊都會寫 suite manifest，保留最少必要 provenance
   - 本地模式會讀 `Logs/TestResults` 與 `Logs/UnityEvidence`
   - 若 CI 沒有 artifact，則顯示 `Missing` 與對應 job 狀態

@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: read
 
 jobs:
   auto-fix:
@@ -18,7 +19,11 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
       FAILED_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+      FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
       FAILED_RUN_URL: ${{ github.event.workflow_run.html_url }}
       FAILED_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
       FAILED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -30,9 +35,14 @@ jobs:
             echo "OPENAI_API_KEY secret is not set. Skipping auto-fix." >&2
             exit 1
           fi
-          if [ -z "$UNITY_LICENSE" ]; then
-            echo "::error::[OpsidanosInk] UNITY_LICENSE 未設定，這次 CI 失敗不是 auto-fix 可以假裝修好的問題。"
-            echo "[OpsidanosInk] 先補 Unity 授權，否則自動修復流程不會產生可信結果。"
+          if [ -n "$UNITY_LICENSE" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "UNITY_AUTH_MODE=personal" >> "$GITHUB_ENV"
+          elif [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "UNITY_AUTH_MODE=professional" >> "$GITHUB_ENV"
+          else
+            echo "::error::[OpsidanosInk] 缺少完整的 Unity 驗證 secrets，這次 CI 失敗不是 auto-fix 可以假裝修好的問題。"
+            echo "[OpsidanosInk] Personal license：UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD"
+            echo "[OpsidanosInk] Professional license：UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD"
             exit 1
           fi
 
@@ -51,6 +61,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+
+      - name: 抓失敗 run 的 test / evidence artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 Tools/fetch_ci_test_results.py --workflow-file CI.yml --run-id "$FAILED_RUN_ID" --output-dir Artifacts/CI/TestResults
+
+      - name: 生成失敗 run 的 test results index
+        run: python3 Tools/generate_test_results_index.py --results-root Artifacts/CI/TestResults --output-path Artifacts/CI/TestResults/failing_test_results_index.md
 
       - name: Prepare Codex prerequisites
         shell: bash
@@ -74,7 +92,7 @@ jobs:
 
       - name: Run Codex to fix CI failure
         run: |
-          codex exec --full-auto --sandbox workspace-write "You are working in a Unity 6000.3.9f1 repository with GitHub Actions. This is not a Node.js monorepo and it does not use Jest as the primary test harness. Read AGENTS.md, Documentation/DocsIndex.md, Documentation/CurrentMilestones.md, Documentation/AgentWorkflowRules.md, and .github/workflows/CI.yml first. The standard verification flow is python3 Tools/repo_guard.py, then Unity EditMode and PlayMode test assemblies OpsidanosInk.EditModeTests and OpsidanosInk.PlayModeTests. Identify the minimal change needed to fix the failing CI, implement only that change, and stop. Do not refactor unrelated code or files. Keep changes small and surgical."
+          codex exec --full-auto --sandbox workspace-write "You are working in a Unity 6000.3.9f1 repository with GitHub Actions. This is not a Node.js monorepo and it does not use Jest as the primary test harness. Read AGENTS.md, Documentation/DocsIndex.md, Documentation/CurrentMilestones.md, Documentation/AgentWorkflowRules.md, .github/workflows/CI.yml, Artifacts/CI/TestResults/_source.json, and Artifacts/CI/TestResults/failing_test_results_index.md first. The standard verification flow is python3 Tools/repo_guard.py, then Unity EditMode and PlayMode test assemblies OpsidanosInk.EditModeTests and OpsidanosInk.PlayModeTests. Identify the minimal change needed to fix the failing CI, implement only that change, and stop. Do not refactor unrelated code or files. Keep changes small and surgical."
 
       - name: 準備 evidence 目錄
         run: mkdir -p artifacts/evidence/editmode artifacts/evidence/playmode
@@ -86,6 +104,9 @@ jobs:
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: .
           unityVersion: 6000.3.9f1
@@ -98,6 +119,9 @@ jobs:
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: .
           unityVersion: 6000.3.9f1

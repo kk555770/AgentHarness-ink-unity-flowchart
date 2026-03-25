@@ -346,7 +346,8 @@
     ],
     "permissions": {
       ".github/workflows/CI.yml": {
-        "contents": "read"
+        "contents": "read",
+        "checks": "write"
       },
       ".github/workflows/docs-garden.yml": {
         "contents": "write",
@@ -355,7 +356,8 @@
       },
       ".github/workflows/codex-auto-fix.yml": {
         "contents": "write",
-        "pull-requests": "write"
+        "pull-requests": "write",
+        "actions": "read"
       }
     }
   },
