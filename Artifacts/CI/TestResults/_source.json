@@ -1,0 +1,123 @@
+{
+  "mode": "workflow_run",
+  "run_id": 23550563234,
+  "run_url": "https://github.com/kk555770/AgentHarness-ink-unity-flowchart/actions/runs/23550563234",
+  "run_name": "CI",
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "head_branch": "master",
+  "head_sha": "6597ecc9b7dc70683cd21f4f1a5924d5e06c576e",
+  "artifact_names": [],
+  "artifact_types": [],
+  "artifacts": [],
+  "jobs": [
+    {
+      "id": 68563068997,
+      "name": "Repo Guards",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-03-25T15:55:56Z",
+      "completed_at": "2026-03-25T15:56:07Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Setup Python",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "跑 repo guard",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Setup Python",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 68563069017,
+      "name": "CI 前置檢查",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-03-25T15:55:57Z",
+      "completed_at": "2026-03-25T15:56:00Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "檢查 Unity secrets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 68563108103,
+      "name": "Unity 測試（缺少授權，CI 視為失敗）",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-03-25T15:56:11Z",
+      "completed_at": "2026-03-25T15:56:15Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "說明",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 68563108595,
+      "name": "Unity 測試（Edit → Play，只跑我們的）",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-03-25T15:56:07Z",
+      "completed_at": "2026-03-25T15:56:07Z",
+      "steps": []
+    }
+  ],
+  "artifact_roots": [],
+  "result_roots": [],
+  "evidence_roots": [],
+  "downloaded_at": "2026-03-25T15:56:36.035395+00:00"
+}
