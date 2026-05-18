@@ -1,13 +1,24 @@
 # test results index
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
-> 來源：`python3 Tools/generate_test_results_index.py --results-root Logs/TestResults`
-> 測試來源：本地結果 `Logs/TestResults`
+> 最後更新：2026/05/18
+> 來源：`python3 Tools/generate_test_results_index.py --results-root Artifacts/CI/TestResults`
+> 測試來源：`latest_successful_ci`，run `23546553016`，artifact 類型 `none`
+> Run 狀態：`completed` / `success`
+> Head：branch `arcumit/CodexInk` / sha `258421797674ad8611f980e00379ef63a49463a8`
+> Run URL：https://github.com/kk555770/AgentHarness-ink-unity-flowchart/actions/runs/23546553016
+
+## CI 作業狀態
+
+| Job | Status | Conclusion | Steps | Started | Completed |
+|-----|--------|------------|-------|---------|-----------|
+| `Repo Guards` | `completed` | `success` | 7 | `2026-03-25T14:34:48Z` | `2026-03-25T14:34:57Z` |
+| `CI 前置檢查` | `completed` | `success` | 3 | `2026-03-25T14:34:49Z` | `2026-03-25T14:34:51Z` |
+| `Unity 測試（尚未啟用）` | `completed` | `success` | 3 | `2026-03-25T14:35:00Z` | `2026-03-25T14:35:04Z` |
+| `Unity 測試（Edit → Play，只跑我們的）` | `completed` | `skipped` | 0 | `2026-03-25T14:34:57Z` | `2026-03-25T14:34:57Z` |
 
 ## 測試摘要
 
 | Suite | Result | Total | Passed | Failed | Skipped | Duration(s) | Start | End | Console errors | Console warnings | Console summary | XML source | Log source |
 |-------|--------|-------|--------|--------|---------|-------------|-------|-----|----------------|-----------------|-----------------|------------|-----------|
-| `EditMode` | Passed | 115 | 115 | 0 | 0 | 2.3882735 | 2026-03-25 15:38:43Z | 2026-03-25 15:38:45Z | 1 | 0 | errors=1; warnings=0; OpsidanosInk_EditMode.log: [Licensing::Module] Error: Access token is unavailable; failed to update | `Logs/TestResults/OpsidanosInk_EditMode.xml` | `Logs/UnityEvidence/OpsidanosInk_EditMode.log` |
-| `PlayMode` | Passed | 17 | 17 | 0 | 0 | 7.161596 | 2026-03-25 15:38:51Z | 2026-03-25 15:38:58Z | 1 | 0 | errors=1; warnings=0; OpsidanosInk_PlayMode.log: [Licensing::Module] Error: Access token is unavailable; failed to update | `Logs/TestResults/OpsidanosInk_PlayMode.xml` | `Logs/UnityEvidence/OpsidanosInk_PlayMode.log` |
+| `none` | Missing | 0 | 0 | 0 | 0 | 0 | - | - | - | - | Missing console source | - | - |
