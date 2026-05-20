@@ -1,12 +1,12 @@
 name: Docs Garden
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
   workflow_dispatch:
-  schedule:
-    - cron: "0 1 * * 1"
+    inputs:
+      confirm_pr:
+        description: "專案閒置中；輸入 CREATE_DOCS_PR 才會建立 docs PR。"
+        required: true
+        default: "DISABLED"
 
 permissions:
   contents: write
@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   docs-garden:
+    if: ${{ github.event.inputs.confirm_pr == 'CREATE_DOCS_PR' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

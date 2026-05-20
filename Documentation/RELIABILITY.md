@@ -1,7 +1,7 @@
 # RELIABILITY
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 ## 現有可靠性入口
 
@@ -19,9 +19,17 @@
 
 ## 現況
 
+- 2026/05/20 起，專案進入閒置狀態：
+  - 遠端 `CI`、`Update-UPM-Branch`、`Codex Auto-Fix on Failure`、
+    `Docs Garden` workflow 都已設為 `disabled_manually`
+  - `CI.yml` 改為只能人工啟動
+  - `docs-garden.yml` 取消 `workflow_run` 與每週排程，且需要確認字才會開 PR
+  - `codex-auto-fix.yml` 取消 CI failure 自動觸發，job 在閒置期間不執行
+  - `Update-UPM-Branch.yml` 取消 tag push 觸發，改為手動指定 tag
 - `repo_guard v1` 已先守 docs 入口、asmdef 依賴方向、`.cs` 檔案大小
 - `repo_guard v4` 已開始守 docs freshness / index 內容量 / cross-links / active exec plan / ownership / workflow permissions
-- `docs-garden.yml` 已能抓最新成功 CI run 的測試 artifact，並重建 generated docs
+- `docs-garden.yml` 保留抓最新成功 CI run 測試 artifact 與重建 generated docs
+  的能力，但閒置期間不再自動排程或自動跟著 CI 執行
 - `test_results_index.md` 已升級成 Unity evidence index，會把 XML 摘要、console evidence、log source 與 CI job 狀態收斂在同一頁
 - `run_tests.sh` 現在會把 EditMode / PlayMode 的 Unity log 落到 `Logs/UnityEvidence/`
 - EditMode / PlayMode / contract 測試已是主要回饋迴路
@@ -37,6 +45,7 @@
 
 ## 主要缺口
 
+- 閒置期間 generated evidence 不會自動刷新；需要使用者明確恢復 CI/CD 後才會更新。
 - 缺少更完整的 code graph / asmdef 以外架構 gate
 - `ImportProjection` 目前只先支援 `flowchart-json`
 - 完整 Unity 驗證回饋仍依賴 GitHub 上有有效的 Unity secrets 組合，以及至少一個成功 CI run 產生 artifact

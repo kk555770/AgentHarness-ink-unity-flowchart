@@ -1,9 +1,11 @@
 name: Update-UPM-Branch
 
 on:
-  push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      git_tag:
+        description: "要建立 UPM branch 的既有版本 tag，例如 1.0.0。"
+        required: true
 
 jobs:
   update:
@@ -16,7 +18,7 @@ jobs:
 
       - name: Tag name
         id: tag
-        run: echo ::set-output name=name::${GITHUB_REF#refs/tags/v}
+        run: echo "name=${{ github.event.inputs.git_tag }}" >> "$GITHUB_OUTPUT"
 
       - name: Create UPM Branches
         uses: hecomi/create-upm-branch-action@main

@@ -1,7 +1,7 @@
 # PLANS
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 計畫是第一級工件。
 
@@ -21,5 +21,7 @@
 
 ## 目前活躍計畫
 
+- 2026/05/20 起，專案目前閒置；下列計畫先視為歷史 system-of-record，
+  不代表代理人可以自行恢復 PR、CI 或開發節奏。
 - `Documentation/exec-plans/active/harness_system_of_record_v2.md`
 - `Documentation/exec-plans/active/harness_alignment_closure_loop.md`

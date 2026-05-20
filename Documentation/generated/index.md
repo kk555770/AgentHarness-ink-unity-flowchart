@@ -1,13 +1,13 @@
 # generated index
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 ## 角色
 
 - 放生成文件入口
 - 這裡只放可重建、可再生的產物
-- generated docs 由固定腳本與 workflow 重建，不靠手動改內容
+- generated docs 由固定腳本重建；閒置期間不靠背景 workflow 自動開 PR
 
 ## 固定 generated docs
 
@@ -24,9 +24,11 @@
 
 ## 目前流程
 
-- `docs-garden.yml` 會先抓 CI workflow_run provenance 的 test / evidence artifact；若是手動或排程啟動，才回退到最新成功 CI
+- 專案目前閒置，`docs-garden.yml` 不再由 `workflow_run` 或排程自動啟動
+- 若使用者明確手動啟動並輸入確認字，workflow 會抓最新成功 CI run 的
+  test / evidence artifact
 - 接著重建 `test_results_index.md` 與 `doc_garden_report.md`
-- 若 generated docs 有變更，workflow 會自動開 PR
+- 若 generated docs 有變更，只有在手動確認啟動時才會建立 PR
 - `doc_garden_report.md` 也會列出 owner coverage
 - `ImportProjection(flowchart-json)` 已納入正式 system-of-record 與 control-plane；generated docs 仍應只反映實際驗證證據，不負責替未跑過的 target 背書
 - `test_results_index.md` 已升級成最小 Unity evidence index：

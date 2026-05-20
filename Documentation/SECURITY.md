@@ -1,7 +1,7 @@
 # SECURITY
 
 > 文件負責人：security
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 ## 目的
 
@@ -38,6 +38,7 @@
 - workflow 沒有明確 `permissions`
 - 寫入型 workflow 權限大於實際需要
 - auto-fix / docs-garden 在來源不明的情況下回寫 repo
+- 閒置專案仍保留背景排程、CI failure auto-fix、或自動開 PR
 
 ### 3. External Services
 
@@ -73,7 +74,10 @@
 
 ### External-service Usage
 
-- `codex-auto-fix.yml` 只能在 CI failure 後執行，且修改必須回到 PR。
+- 專案閒置期間，`codex-auto-fix.yml` 不得自動執行。
+- 若未來恢復 `codex-auto-fix.yml`，只能在 CI failure 後執行，
+  且修改必須回到 PR。
+- 恢復任何會寫入 repo 或開 PR 的 workflow 前，必須先有使用者明確要求。
 - 任何新增的外部 API 整合，都必須先把：
   - 用途
   - 所需 secret

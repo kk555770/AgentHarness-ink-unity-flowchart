@@ -1,7 +1,7 @@
 # Agent 工作規則
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 ## 1. 修改流程
 
@@ -60,5 +60,7 @@ a = b + c;
 
 ## 6. 標準驗證入口
 
-- GitHub Actions：`.github/workflows/CI.yml`
+- 專案目前閒置；GitHub Actions 遠端 workflow 已手動停用。
+- 閒置期間不得自行開 PR、推送 branch、啟用 CI/CD、或恢復排程。
+- GitHub Actions：`.github/workflows/CI.yml` 只作為人工啟動入口。
 - 本地終端一鍵測試：`Tools/run_tests.sh`

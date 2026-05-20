@@ -1,8 +1,7 @@
 name: CI
 
 on:
-  push:
-  pull_request:
+  # 專案目前閒置；CI 只能由使用者在 GitHub Actions 頁面手動啟動。
   workflow_dispatch:
 
 permissions:

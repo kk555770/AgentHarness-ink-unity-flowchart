@@ -1,12 +1,18 @@
 # 目前里程碑
 
 > 文件負責人：harness
-> 最後更新：2026/03/25  
+> 最後更新：2026/05/20
 > 角色：**現況進度入口 / Current Status**  
 > 目的：讓新讀者先知道 repo 現在做到哪裡，不必先翻整包 `PlanningWithFiles/`
 
 ## 0. 先講結論
 
+- 2026/05/20 起，這個 repo 進入**閒置狀態**。
+- GitHub Actions 遠端 workflow 已手動停用；本地 workflow source
+  也已拿掉 `push`、`pull_request`、`schedule`、`workflow_run`
+  這些背景觸發。
+- 閒置期間不得自動產生 docs-garden PR 或 Codex auto-fix PR。
+  要恢復 CI/CD，必須由使用者明確要求。
 - canonical JSON control plane 已不是只停在文件層。
 - Batch 8~10 已把最小可讀可寫回圈落到程式與測試。
 - Batch 11 / 11A 已把 `ValidateProjection / ProjectGraph` 先接到 `flowchart-json / ink`，並補上 request / response / dispatcher 護欄。
@@ -80,6 +86,7 @@ repo 內目前已可見：
 
 現在比較合理的理解是：
 
+- 專案暫停主動推進，先保持現況，不跑背景 CI/CD。
 - canonical graph / JSON control plane 已經成形
 - current GraphToolkit workflow 仍是 baseline
 - projection-specific control plane 正在收穩

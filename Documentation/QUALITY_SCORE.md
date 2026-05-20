@@ -1,7 +1,7 @@
 # QUALITY_SCORE
 
 > 文件負責人：harness
-> 最後更新：2026/03/25
+> 最後更新：2026/05/20
 
 ## 目前盤點
 
@@ -30,7 +30,8 @@
   - 仍缺更深層的 code graph guard
 - doc-gardening：黃
   - 已補 `Tools/doc_garden.py`、`Tools/fetch_ci_test_results.py` 與 `.github/workflows/docs-garden.yml`
-  - 目前會抓最新成功 CI run 的 artifact、重建 generated docs、並自動開 PR
+  - 閒置期間不再自動排程、不再跟著 CI 自動執行，也不再自行開 PR
+  - 若使用者明確手動啟動，仍可抓最新成功 CI run 的 artifact 並重建 generated docs
 - evidence bundle：黃
   - `Documentation/generated/test_results_index.md` 已升級成 Unity evidence index
   - 現在會把 XML、console 摘要、log source、CI job 狀態收斂到同一頁
@@ -38,6 +39,7 @@
 - auto-fix harness：黃
   - workflow 已改成 Unity-first，而且會檢查完整 Unity 驗證 secrets（personal / professional 二選一）
   - auto-fix 也會先抓失敗 run 的 test / evidence artifact，再把相同證據交給 Codex
+  - 閒置期間 job 已停用，不會在 CI failure 後自動跑 Codex 或自動開 PR
   - 完整 verify 仍需要 GitHub 上有有效的 Unity secrets 組合
 
 ## 補充
